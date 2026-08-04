@@ -35,7 +35,6 @@ var grid_root: Control
 var roster_root: Control
 var hand_root: Control
 var lbl_warn: Label
-var lbl_curve: Label
 var btn_fight: Button
 
 
@@ -80,15 +79,11 @@ func setup(p_run: RunState) -> void:
 	add_child(hand_root)
 
 	# 유닛 종류 - 격자 아래 한 줄.
-	# ── 왜 성장 곡선을 여기에 적는가 ──────────────────────────────────────
-	# 강화 보상은 **출전한 유닛만** 대상이다. 즉 여기서 고른 3인방으로 런 끝까지
-	# 가야 한다. 그런데 유닛마다 크는 속도가 다르다 - 암살자는 1스테이지 0강
-	# 승률 0% 에서 5스테이지 3강 100% 로 뒤집히고, 총사는 83% → 67% 로 밀린다.
-	#
-	# 그 정보가 고르는 화면에 없으면 저울질이 아니라 도박이 된다. 처음 하는
-	# 사람이 암살자를 골라 첫 판에 이유도 모르고 전멸하는 게 정확히 그 경우다.
+	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
+	# 로딩 화면의 TIP 이 그 역할을 한다 - 유닛 버튼 아래에 태그를 달면 정보가
+	# 늘어난 만큼 화면이 빽빽해지고, 정작 고를 때 읽는 건 HP·공격력이다.
 	UiKit.label(self, Vector2(48, 340), Vector2(460, 22),
-		UiText.t("loadout.unit_pick", "유닛 선택   -   아래 표시는 강화로 크는 속도다"), 15, UiKit.MUTED)
+		UiText.t("loadout.unit_pick", "유닛 선택"), 15, UiKit.MUTED)
 	var x := 48.0
 	for tid in UnitData.playable():
 		var s: Dictionary = UnitData.TABLE[tid]
@@ -100,19 +95,11 @@ HP%d 공%d" % [s["name"], s["hp"], s["atk"]], 10, 3)
 		b.pressed.connect(_on_type_pressed.bind(String(tid)))
 		type_buttons[tid] = b
 
-		# 곡선 표시는 버튼 밖에 둔다. 안에 넣으면 세 줄이 되어 79×44 에서 뭉개지고
-		# clip_text 에 걸려 통째로 잘린다.
-		var tag := UiKit.label(self, Vector2(x, 410), Vector2(79, 16),
-			UnitData.curve(String(tid)), 10, UnitData.curve_color(String(tid)))
-		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 		if tut != null:
 			tut.register_anchor("unit_%s" % tid, b)
 		x += 84.0
 
-	# 고른 유닛의 곡선 설명. 한 줄이면 충분하고, 안 골랐으면 비워 둔다.
-	lbl_curve = UiKit.label(self, Vector2(48, 430), Vector2(500, 20), "", 11, UiKit.FAINT)
 
 	# 손패가 바닥을 다 쓰고 규칙 슬롯이 y=520 까지 내려오므로, 경고는 헤더 옆에 둔다.
 	lbl_warn = UiKit.label(self, Vector2(48, 82), Vector2(820, 22), "", 13, UiKit.BAD)
@@ -209,9 +196,6 @@ func _member_at(slot: int) -> int:
 
 func _on_type_pressed(tid: String) -> void:
 	sel_type = "" if sel_type == tid else tid
-	if lbl_curve != null:
-		lbl_curve.text = "" if sel_type == "" else "%s - %s" % [
-			UnitData.TABLE[sel_type]["role"], UnitData.curve_text(sel_type)]
 	if tut != null and sel_type != "":
 		tut.notify_action("pick_type")
 	refresh()

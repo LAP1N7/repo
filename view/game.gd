@@ -25,6 +25,7 @@ const SCN_BATTLE := preload("res://scenes/battle_view.tscn")
 const SCN_REWARD := preload("res://scenes/reward_screen.tscn")
 const SCN_RUN_CLEAR := preload("res://scenes/run_clear_screen.tscn")
 const SCN_TUT_INTRO := preload("res://scenes/tutorial_intro_screen.tscn")
+const SCN_LOADING := preload("res://scenes/loading_screen.tscn")
 
 var run: RunState
 var current: Node = null
@@ -67,7 +68,8 @@ func _ready() -> void:
 		"tutorial":
 			start_tutorial()
 		_:
-			goto_title()
+			# 부팅 시 한 번. 게임이 무엇인지 알기 전에 톤을 먼저 준다.
+			goto_loading(goto_title)
 
 
 func _swap(node: Node) -> void:
@@ -78,6 +80,17 @@ func _swap(node: Node) -> void:
 
 
 # ── 화면 ─────────────────────────────────────────────────────────────────
+
+## 로딩 연출을 한 번 끼우고 next 를 부른다.
+##
+## 실제로 로딩할 것은 없다(씬이 전부 코드다). 세계관 톤과 TIP 전달이 목적이고,
+## 아무 키나 눌러 즉시 건너뛸 수 있다. (view/loading_screen.gd 주석 참조)
+func goto_loading(next: Callable) -> void:
+	var s := SCN_LOADING.instantiate() as LoadingScreen
+	_swap(s)
+	s.setup()
+	s.done.connect(next)
+
 
 func goto_title() -> void:
 	var s := SCN_TITLE.instantiate() as TitleScreen
@@ -195,7 +208,17 @@ func goto_loadout() -> void:
 	)
 
 
+## 전투 직전에도 한 번 끼운다. 시뮬레이션이 새로 도는 순간이라 세계관상 자리가 맞고,
+## 편성 화면에서 전투 화면으로 바로 튀는 것보다 호흡이 생긴다.
+## 튜토리얼 중에는 건너뛴다 - 대본이 화면 순서를 세고 있어서 끼면 어긋난다.
 func goto_battle() -> void:
+	if not tut.active:
+		goto_loading(_do_goto_battle)
+		return
+	_do_goto_battle()
+
+
+func _do_goto_battle() -> void:
 	var s := SCN_BATTLE.instantiate() as BattleScreen
 	_swap(s)
 	_bind_tutorial(s, "battle")

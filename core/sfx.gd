@@ -34,6 +34,14 @@ const DIR := "res://assets/sfx/"
 static var enabled: bool = true
 static var volume_db: float = -6.0
 
+## 배경음악은 효과음 풀과 따로 둔다.
+##
+## 풀을 돌려 쓰면 음악이 다음 효과음에 밀려 끊긴다. 그리고 음악은 화면을
+## 넘어가도 이어져야 하는데(타이틀 → 상점), 그러려면 인스턴스가 아니라
+## **정적**으로 하나만 살아 있어야 한다.
+static var _music: AudioStreamPlayer = null
+static var _music_name: String = ""
+
 var _players: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _cache: Dictionary = {}      ## 이름 -> AudioStream
@@ -51,6 +59,43 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
+
+
+## 배경음악을 튼다. 같은 곡이 이미 돌고 있으면 아무것도 안 한다 -
+## 화면이 바뀔 때마다 처음부터 다시 시작하면 음악이 계속 끊긴다.
+func play_music(name: String) -> void:
+	if _music_name == name and _music != null and is_instance_valid(_music):
+		if not enabled:
+			_music.stop()
+		elif not _music.playing:
+			_music.play()
+		return
+
+	var path := "res://assets/music/%s.mp3" % name
+	if not ResourceLoader.exists(path):
+		return
+	var stream = load(path)
+	if not (stream is AudioStream):
+		return
+
+	stop_music()
+	_music = AudioStreamPlayer.new()
+	_music.stream = stream
+	# 음악은 효과음보다 확실히 낮게 깔린다. 같은 볼륨이면 타격감이 묻힌다.
+	_music.volume_db = volume_db - 8.0
+	# 트리 루트에 붙인다. 화면이 사라져도 음악은 살아 있어야 한다.
+	get_tree().root.add_child(_music)
+	_music_name = name
+	if enabled:
+		_music.play()
+
+
+func stop_music() -> void:
+	if _music != null and is_instance_valid(_music):
+		_music.stop()
+		_music.queue_free()
+	_music = null
+	_music_name = ""
 
 
 ## 이름 하나로 낸다. 없는 이름이면 조용히 무시한다 -

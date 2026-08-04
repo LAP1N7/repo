@@ -5,8 +5,8 @@ config_version=5
 
 [application]
 
-config/name="GAMBIT GRID"
-config/description="규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러"
+config/name="PROJECT RECLAIM"
+config/description="프로젝트 리클레임 - 규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러"
 run/main_scene="res://scenes/game.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"

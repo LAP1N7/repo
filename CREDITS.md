@@ -40,6 +40,17 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 > 제출 문서에 "합성 6종은 코드가 생성하며 외부 저작물이 아님" 을 명시할 것.
 > 파일로 교체하는 규격은 `assets/sfx/README.md` 에 있다.
 
+## 배경음악
+
+| 파일 | 출처 | 라이선스 | 용도 |
+|---|---|---|---|
+| `assets/music/opening_theme.mp3` | PaulYudin (Pixabay) | Pixabay Content License (무료·상업 이용 가능·출처 표기 불필요하나 명시함) | 타이틀 오프닝 테마 |
+
+> Say 'thanks' to **PaulYudin**! This helps keep the creative spirit going!
+> By downloading, you agree to our License.
+>
+> 원본: Pixabay 무료 음악 (`paulyudin-game-game-music-573991`)
+
 ## 아트
 
 아직 없음. 전부 도형·색으로 렌더된다. 필요 규격은 `ASSETS.md` 참조.

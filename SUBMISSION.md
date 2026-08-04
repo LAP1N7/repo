@@ -68,7 +68,7 @@ AI 합성·타인 영상 도용 불가. **실제 플레이 화면 그대로.**
 
 > 아래를 그대로 PDF 로 옮기면 된다. 링크 두 개만 채우면 완성.
 
-### GAMBIT GRID
+### PROJECT RECLAIM (프로젝트 리클레임)
 
 **내가 조종하는 건 캐릭터가 아니라 캐릭터의 사고방식이다.**
 
@@ -164,6 +164,7 @@ index 와 방향 상수 순서로 끊고, HP 계산은 정수 연산만 쓴다. 
 `CREDITS.md` 참조. 요약:
 
 - Godot Engine 4.7.1 — MIT
+- 오프닝 테마 — PaulYudin / Pixabay Content License
 - 던파 비트비트체 / v2 — OFL 1.1
 - Pretendard — OFL 1.1
 - 효과음 7종 — 제작자 직접 제작

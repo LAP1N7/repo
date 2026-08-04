@@ -35,7 +35,7 @@
 	"shop.note_merge": "합성 -%d",
 	"loadout.sub": "유닛을 고르고 진영의 빈 칸을 누른다. 그 다음 유닛을 골라 손패의 카드를 꽂는다.",
 	"loadout.field": "아군 진영 - %d칸 중 %d칸에 배치",
-	"loadout.unit_pick": "유닛 선택   -   아래 표시는 강화로 크는 속도다",
+	"loadout.unit_pick": "유닛 선택",
 	"loadout.back": "←  상점으로",
 	"loadout.fight": "전투 시작  →",
 	"loadout.slots_head": "규칙 슬롯 - 위에서부터 처음 맞는 규칙 하나가 실행된다",
@@ -80,5 +80,9 @@
 	"card.cond": "조건",
 	"card.act": "행동",
 	"card.ban": "제외",
-	"reward.speed_bonus": "     신속 제압  예산 +%d"
+	"reward.speed_bonus": "     신속 제압  예산 +%d",
+	"title.name": "PROJECT RECLAIM",
+	"title.name_ko": "프로젝트 리클레임",
+	"loading.head": "PROJECT RECLAIM",
+	"loading.skip": "아무 곳이나 눌러 넘어간다"
 }

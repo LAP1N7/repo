@@ -31,14 +31,19 @@ func setup() -> void:
 	grid.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(grid)
 
-	var t := UiKit.label(self, Vector2(0, 168), Vector2(1280, 92), "GAMBIT GRID", 76)
+	var t := UiKit.label(self, Vector2(0, 150), Vector2(1280, 92),
+		UiText.t("title.name", "PROJECT RECLAIM"), 68)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	var sub := UiKit.label(self, Vector2(0, 262), Vector2(1280, 30),
+	var t_ko := UiKit.label(self, Vector2(0, 226), Vector2(1280, 34),
+		UiText.t("title.name_ko", "프로젝트 리클레임"), 22, UiKit.MUTED)
+	t_ko.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	var sub := UiKit.label(self, Vector2(0, 272), Vector2(1280, 30),
 		UiText.t("title.sub", "규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러"), 18, UiKit.MUTED)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	var tag := UiKit.label(self, Vector2(0, 300), Vector2(1280, 28),
+	var tag := UiKit.label(self, Vector2(0, 306), Vector2(1280, 28),
 		UiText.t("title.tagline", "내가 조종하는 건 캐릭터가 아니라 캐릭터의 사고방식이다."),
 		15, UiKit.ACCENT)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -61,8 +66,8 @@ func setup() -> void:
 			Specials.ORDER.size(), UnitData.TABLE.size()], 13, UiKit.FAINT)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	# 오프닝음은 한 번만. 화면이 뜨는 순간 재생한다.
-	sfx.play("opening")
+	# 오프닝 테마. 화면을 넘어가도 이어지도록 배경음악 경로로 튼다.
+	sfx.play_music("opening_theme")
 
 
 ## 타이틀 배경의 격자 장식. 전투 화면과 같은 타일 크기를 써서 톤을 맞춘다.
