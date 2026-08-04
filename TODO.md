@@ -9,9 +9,10 @@
 
 | 일 | 상태 | 비고 |
 |---|---|---|
-| git 저장소 생성 + 커밋 기록 | **미착수** | 요구사항에 "커밋 기록 유지" 명시 |
-| `web/` → `docs/` 이름 변경 | 미착수 | Pages 는 루트나 `/docs` 만 서빙 |
-| GitHub Pages 배포 · 링크 확보 | 미착수 | public 권장 / 비공개면 심사 계정 초대 |
+| git 저장소 생성 + 커밋 기록 | **완료** | 초기 커밋 164파일 |
+| `web/` → `docs/` 이름 변경 | **완료** | 익스포트 프리셋도 `docs/index.html` 로 |
+| GitHub 원격 저장소 + push | 미착수 | **사용자 계정 필요** |
+| GitHub Pages 켜기 | 미착수 | Settings → Pages → main / docs |
 | 플레이 영상 30~60초 | 미착수 | 구성안은 `SUBMISSION.md` §2 |
 | 게임 소개 PDF | 초안 완료 | `SUBMISSION.md` §3 → 링크 채우고 변환 |
 | AI 활용 기술 PDF | 초안 완료 | `SUBMISSION.md` §4 → **프롬프트 내역 보강 필요** |
