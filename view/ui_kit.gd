@@ -1,0 +1,220 @@
+class_name UiKit
+
+## 화면 세 개가 공유하는 색·폰트·위젯 생성기.
+
+const BG := Color(0.075, 0.085, 0.11)
+const PANEL := Color(0.13, 0.15, 0.19)
+const PANEL_HI := Color(0.19, 0.22, 0.28)
+const LINE := Color(0.30, 0.34, 0.42)
+const TEXT := Color(0.93, 0.94, 0.97)
+const MUTED := Color(0.55, 0.58, 0.68)
+## 부차 정보용. LINE(0.30) 은 테두리 색이라 글자로 쓰면 거의 안 읽힌다.
+const FAINT := Color(0.46, 0.50, 0.60)
+const ACCENT := Color(1.0, 0.78, 0.35)
+const GOOD := Color(0.42, 0.95, 0.62)
+const BAD := Color(1.0, 0.42, 0.38)
+const TEAM_P := Color(0.35, 0.75, 1.0)
+const TEAM_E := Color(1.0, 0.42, 0.38)
+
+static var _font: Font = null
+
+
+## 프로젝트에 심어 둔 프리텐다드(OFL)를 쓴다.
+##
+## Godot 기본 폰트에는 한글 글리프가 없어서 그냥 두면 전부 네모로 뜬다.
+## 예전에는 시스템 폰트(맑은 고딕)를 빌려 썼는데 웹 빌드에서 통째로 깨졌다.
+## 브라우저 샌드박스에서는 C:/Windows/Fonts 에 접근할 수 없기 때문이다.
+## 게다가 맑은 고딕은 재배포 불가라 애초에 빌드에 넣을 수도 없다. (DESIGN 6장)
+##
+## 그래서 OFL 폰트를 res:// 에 포함하는 것이 유일하게 옳은 방법이다.
+## 시스템 폰트 경로는 폰트 임포트가 깨졌을 때를 위한 폴백으로만 남겨 둔다.
+## 우선순위대로 찾는다. 앞엣것이 없으면 뒤엣것으로 내려간다.
+## 폰트를 크기에 따라 둘로 나눠 쓴다.
+##
+## ── 왜 나누는가 ──────────────────────────────────────────────────────────
+## 비트비트체는 큰 글씨에서 성격이 살지만, 카드 설명처럼 9~13px 로 들어가면
+## 획이 뭉쳐서 못 읽는다. 픽셀 계열 폰트는 특정 크기를 전제로 그려지기 때문에
+## 그 크기를 벗어나면 급격히 무너진다.
+##
+## 그래서 작은 글씨만 v2 로 바꾼다. 같은 계열이라 톤이 안 깨지면서 작은 크기를
+## 훨씬 잘 버틴다. 제목·유닛 이름 같은 큰 글씨는 원래 것을 그대로 둔다.
+const BUNDLED_FONTS: Array[String] = [
+	"res://assets/fonts/DNFBitBitTTF.ttf",      # 던파 비트비트체 (OFL)
+	"res://assets/fonts/Pretendard-Regular.otf",
+]
+const BUNDLED_FONTS_SMALL: Array[String] = [
+	"res://assets/fonts/DNFBitBitv2.ttf",       # 던파 비트비트체 v2 (OFL)
+	"res://assets/fonts/Pretendard-Regular.otf",
+]
+
+## 이 크기 이하는 작은 글씨용 폰트를 쓴다.
+## 카드 본문 11, 미니 카드 10, 배지 9, 전투 로그 13 이 전부 여기 걸린다.
+const SMALL_MAX: int = 13
+
+static var _font_small: Font = null
+
+
+## size 를 주면 그 크기에 맞는 폰트를 돌려준다. 0 이면 큰 글씨용.
+static func font(size: int = 0) -> Font:
+	var small := size > 0 and size <= SMALL_MAX
+	if small and _font_small != null:
+		return _font_small
+	if not small and _font != null:
+		return _font
+
+	for path in (BUNDLED_FONTS_SMALL if small else BUNDLED_FONTS):
+		if not ResourceLoader.exists(path):
+			continue
+		var bundled = load(path)
+		if bundled is Font:
+			_tune_pixel_font(bundled)
+			if small:
+				_font_small = bundled
+			else:
+				_font = bundled
+			return bundled
+	push_warning("번들 폰트를 못 읽었다 - 시스템 폰트로 폴백한다.")
+
+	for p in [
+		"C:/Windows/Fonts/malgun.ttf",
+		"C:/Windows/Fonts/NanumGothic.ttf",
+		"/System/Library/Fonts/AppleSDGothicNeo.ttc",
+		"/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+	]:
+		if FileAccess.file_exists(p):
+			var f := FontFile.new()
+			if f.load_dynamic_font(p) == OK:
+				_font = f
+				return _font
+	push_warning("한글 폰트를 찾지 못했다. 글자가 깨져 보일 수 있다.")
+	_font = ThemeDB.fallback_font
+	return _font
+
+
+## hpad 는 좌우 안쪽 여백. 좁은 아이콘 버튼(▲▼)에 기본값 8을 쓰면 내용 폭이
+## 10px 밖에 안 남아 글자가 통째로 잘려 빈 버튼처럼 보인다. 그럴 땐 2를 넘겨라.
+## 비트맵 스타일 폰트는 안티에일리어싱을 끄고 서브픽셀을 잠가야 제 모습이 나온다.
+## 켜 두면 획이 뭉개져서 "픽셀 폰트인데 흐릿한" 최악의 조합이 된다.
+## 아웃라인 폰트(프리텐다드)에 걸어도 해롭지 않으므로 조건 없이 적용한다.
+static func _tune_pixel_font(f: Font) -> void:
+	if not (f is FontFile):
+		return
+	var ff := f as FontFile
+	ff.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+	ff.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	ff.hinting = TextServer.HINTING_NONE
+
+
+static func box(bg: Color, border: Color, radius: int = 5, hpad: int = 8) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(radius)
+	sb.content_margin_left = hpad
+	sb.content_margin_right = hpad
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	return sb
+
+
+## wrap 을 켜면 지정한 폭에서 줄이 접힌다.
+##
+## ── 왜 옵션이 따로 있는가 ────────────────────────────────────────────────
+## Label 은 자동 줄바꿈이 꺼져 있으면 텍스트 한 줄 전체가 **최소 폭**이 된다.
+## Control 은 최소 크기보다 작아질 수 없으므로, 긴 문장을 넣고 size 를 좁게 줘도
+## 라벨이 제멋대로 늘어나 부모 패널을 뚫고 나간다. 보상 화면의 궁극기 설명이
+## 옆 카드까지 넘어가던 게 이것이었다.
+##
+## 그래서 autowrap 을 **size 보다 먼저** 켜야 한다. 나중에 켜면 이미 커진 크기가
+## 다시 줄어들지 않는다.
+static func label(parent: Node, pos: Vector2, size: Vector2, text: String,
+		fsize: int, col: Color = TEXT, wrap: bool = false) -> Label:
+	var l := Label.new()
+	if wrap:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.text = text
+	l.position = pos
+	l.size = size
+	l.add_theme_font_override("font", font(fsize))
+	l.add_theme_font_size_override("font_size", fsize)
+	l.add_theme_color_override("font_color", col)
+	parent.add_child(l)
+	# 트리에 들어가면서 최소 크기 규칙으로 다시 커질 수 있다. 한 번 더 못 박는다.
+	l.size = size
+	return l
+
+
+static func button(parent: Node, pos: Vector2, size: Vector2, text: String,
+		fsize: int = 14, hpad: int = 8) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.position = pos
+	b.size = size
+	b.add_theme_font_override("font", font(fsize))
+	b.add_theme_font_size_override("font_size", fsize)
+	b.add_theme_stylebox_override("normal", box(PANEL, LINE, 5, hpad))
+	b.add_theme_stylebox_override("hover", box(PANEL_HI, Color(0.6, 0.65, 0.8), 5, hpad))
+	b.add_theme_stylebox_override("pressed",
+		box(Color(0.28, 0.32, 0.42), Color(0.8, 0.85, 1.0), 5, hpad))
+	# 비활성 버튼은 BG(0.075,0.085,0.11)보다 **밝아야** 한다.
+	# 예전 값 0.11/0.12/0.15 는 배경과 거의 같아서, 버튼이 사라진 게 아니라
+	# 화면에 검은 사각형이 얹힌 것처럼 보였다. 튜토리얼이 그 버튼을 주황 테두리로
+	# 가리키고 있을 때 특히 그랬다 - "누르라는데 검은 구멍이 있다" 가 된다.
+	# 눌리지 않는다는 건 글자색으로 말하고, 형태는 계속 버튼으로 남긴다.
+	b.add_theme_stylebox_override("disabled",
+		box(Color(0.145, 0.16, 0.20), Color(0.26, 0.28, 0.34), 5, hpad))
+	b.add_theme_color_override("font_disabled_color", Color(0.4, 0.42, 0.5))
+	b.clip_text = true
+	parent.add_child(b)
+	return b
+
+
+## 한 스테이지를 치르는 세 국면. 화면 순서와 같다.
+## 한 스테이지를 치르는 세 국면. 화면 순서와 같다.
+## const 로 못 둔다 - 문구를 data/ui_text.json 에서 읽어야 하는데 const 는
+## 함수 호출을 못 하기 때문이다.
+static func phases() -> Array[String]:
+	return [
+		UiText.t("phase.shop", "덱 구성"),
+		UiText.t("phase.loadout", "편성과 배치"),
+		UiText.t("phase.battle", "전투"),
+	]
+
+
+## 화면 제목 + 진행 표시.
+##
+## ── 왜 "1단계 · 덱 구성" 을 버렸는가 ─────────────────────────────────────
+## 그 바로 아래에 "스테이지 1/5" 가 뜬다. 서로 다른 두 진행도가 똑같이 "단계" 로
+## 불리니 화면에 숫자가 두 개 있고 어느 쪽이 어느 쪽인지 읽을 수가 없었다.
+## 국면은 이름으로, 진행은 위치로 보여 준다 - 숫자는 스테이지 하나만 남긴다.
+static func phase_header(parent: Node, pos: Vector2, index: int) -> void:
+	var f := font()
+	var names := phases()
+	label(parent, pos, Vector2(600, 34), names[index], 26)
+
+	# 제목 **오른쪽**에 붙인다. 아래에 두면 화면마다 있는 스테이지 줄과 겹친다.
+	# (실제로 겹쳐서 글자가 뭉갰다)
+	var x: float = pos.x + f.get_string_size(
+		names[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x + 24.0
+	var y: float = pos.y + 13.0
+	for i in names.size():
+		var on := i == index
+		var t: String = names[i]
+		label(parent, Vector2(x, y), Vector2(160, 18), t, 11,
+			ACCENT if on else Color(0.38, 0.41, 0.50))
+		x += f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 6.0
+		if i < names.size() - 1:
+			label(parent, Vector2(x, y), Vector2(20, 18), ">", 11,
+				Color(0.38, 0.41, 0.50))
+			x += 12.0
+
+
+## 카드 코스트를 색으로 읽히게. 비싼 카드일수록 눈에 띈다.
+static func cost_color(cost: int) -> Color:
+	match cost:
+		0: return Color(0.55, 0.60, 0.70)
+		1: return Color(0.50, 0.80, 0.95)
+		2: return Color(0.45, 0.90, 0.65)
+		3: return Color(1.0, 0.78, 0.35)
+	return Color(1.0, 0.45, 0.45)

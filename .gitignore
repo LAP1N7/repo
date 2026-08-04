@@ -1,0 +1,8 @@
+.godot/
+.capture/
+
+# *.import 는 무시하면 안 된다.
+# Godot 4 의 .import 파일은 리소스 UID 를 들고 있어서, 빠진 채로 클론하면
+# 씬의 uid:// 참조가 어긋날 수 있다. 무시할 것은 .godot/ 뿐이다.
+
+# 웹 빌드 산출물은 커밋한다 - GitHub Pages 가 이걸 서빙한다.

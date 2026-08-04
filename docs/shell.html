@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>$GODOT_PROJECT_NAME</title>
+		<!--
+			커스텀 로딩 셸.
+
+			Godot 기본 셸을 베끼고 "표시" 부분만 갈아 끼웠다. 엔진 부팅 로직과
+			익스포터가 치환하는 자리표시자는 하나도 건드리지 않았다.
+			하나라도 빠지면 빌드가 아예 안 뜬다.
+
+			(자리표시자를 이 주석에 그대로 적으면 빌드 산출물에 남아 검사에 걸린다.
+			 목록은 Godot 템플릿의 godot.html 을 참고할 것.)
+
+			왜 필요한가: wasm 이 39MB 라 첫 로딩이 10~20초 걸린다. 기본 셸은 그동안
+			검은 화면에 얇은 진행 바 하나만 보여준다. 심사자가 흰/검은 화면을 보고
+			닫으면 게임이 완성돼 있어도 끝이다. (DESIGN R1)
+		-->
+		<style>
+html, body, #canvas { margin: 0; padding: 0; border: 0; }
+
+body {
+	color: #eceef5;
+	background-color: #13151a;
+	overflow: hidden;
+	touch-action: none;
+	font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+}
+
+#canvas { display: block; }
+#canvas:focus { outline: none; }
+
+/* 기본 셸의 진행 바와 스플래시는 쓰지 않는다. 자리만 남겨 둔다 (스크립트가 참조). */
+#status-progress, #status-splash { display: none !important; }
+
+#status {
+	position: absolute;
+	left: 0; right: 0; top: 0; bottom: 0;
+	background: radial-gradient(ellipse at 50% 40%, #1b1f29 0%, #0e1014 70%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+	z-index: 10;
+}
+
+#gg-title {
+	font-size: 58px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	color: #f2f4fa;
+	margin-bottom: 10px;
+}
+
+#gg-sub { font-size: 15px; color: #8b90a0; margin-bottom: 4px; }
+#gg-tag { font-size: 13px; color: #ffc759; margin-bottom: 40px; }
+
+#gg-barwrap {
+	width: 420px;
+	height: 8px;
+	background: #23262f;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+#gg-bar {
+	height: 100%;
+	width: 0%;
+	background: linear-gradient(90deg, #59bf72, #8fe0a2);
+	transition: width 0.18s ease-out;
+}
+
+#gg-pct { margin-top: 12px; font-size: 13px; color: #8b90a0; }
+#gg-hint { margin-top: 28px; font-size: 12px; color: #5b6070; max-width: 520px; text-align: center; line-height: 1.7; }
+
+/* 오류 표시. 기본 셸의 notice 를 그대로 쓰되 스타일만 맞춘다. */
+#status-notice {
+	margin-top: 24px;
+	color: #ff8a80;
+	font-size: 13px;
+	line-height: 1.6;
+	text-align: center;
+	max-width: 640px;
+	display: none;
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">
+			이 브라우저는 canvas 를 지원하지 않습니다.
+		</canvas>
+
+		<noscript>
+			이 브라우저는 JavaScript 가 꺼져 있습니다. 켜야 실행됩니다.
+		</noscript>
+
+		<div id="status">
+			<img id="status-splash" class="$GODOT_SPLASH_CLASSES" src="$GODOT_SPLASH" alt="">
+			<progress id="status-progress"></progress>
+
+			<div id="gg-title">GAMBIT GRID</div>
+			<div id="gg-sub">규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러</div>
+			<div id="gg-tag">내가 조종하는 건 캐릭터가 아니라 캐릭터의 사고방식이다.</div>
+
+			<div id="gg-barwrap"><div id="gg-bar"></div></div>
+			<div id="gg-pct">불러오는 중…</div>
+
+			<div id="gg-hint">
+				용량이 커서 처음 여는 데 10~20초 걸립니다. 데스크탑 브라우저를 권장합니다.
+			</div>
+
+			<div id="status-notice"></div>
+		</div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+	const ggBar = document.getElementById('gg-bar');
+	const ggPct = document.getElementById('gg-pct');
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = text.split('\n');
+		lines.forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('알 수 없는 오류가 발생했습니다.');
+		}
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+			let serviceWorkerRegistrationPromise;
+			try {
+				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
+			} catch (err) {
+				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
+			}
+			Promise.race([
+				serviceWorkerRegistrationPromise.then((registration) => {
+					if (registration != null) {
+						return Promise.reject(new Error('Service worker already exists.'));
+					}
+					return registration;
+				}).then(() => engine.installServiceWorker()),
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
+			]).then(() => {
+				window.location.reload();
+			}).catch((err) => {
+				console.error('Error while registering service worker:', err);
+			});
+		} else {
+			const missingMsg = '오류\n이 브라우저에 다음 기능이 없어 실행할 수 없습니다:\n';
+			displayFailureNotice(missingMsg + missing.join('\n'));
+		}
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				// 기본 셸의 progress 요소도 함께 갱신해 둔다 (숨겨져 있지만 상태는 맞춘다).
+				if (current > 0 && total > 0) {
+					statusProgress.value = current;
+					statusProgress.max = total;
+					const pct = Math.min(100, Math.round((current / total) * 100));
+					ggBar.style.width = pct + '%';
+					ggPct.textContent = pct + '%   (' + (current / 1048576).toFixed(1)
+						+ ' / ' + (total / 1048576).toFixed(1) + ' MB)';
+				} else {
+					// 서버가 전체 크기를 안 알려주는 경우. 진행률을 알 수 없으므로
+					// 막대를 애매하게 채우지 말고 문구로만 알린다.
+					statusProgress.removeAttribute('value');
+					statusProgress.removeAttribute('max');
+					ggBar.style.width = '35%';
+					ggPct.textContent = '불러오는 중…';
+				}
+			},
+		}).then(() => {
+			ggBar.style.width = '100%';
+			ggPct.textContent = '시작합니다';
+			setStatusMode('hidden');
+		}, displayFailureNotice);
+	}
+}());
+		</script>
+	</body>
+</html>

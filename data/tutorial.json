@@ -1,0 +1,287 @@
+{
+	"_comment": [
+		"튜토리얼 대본. 코드에 대사를 박지 않는다 - 여기만 고치면 된다.",
+		"",
+		"speaker  : 초상 이미지를 고를 유닛 id. assets/art/tutorial/<id>.png 를 쓰고 없으면 실루엣.",
+		"side     : 캐릭터가 서는 쪽. left | right",
+		"portrait : false 면 초상을 아예 띄우지 않는다. 전투처럼 화면이 꽉 찬 곳에 쓴다. (기본 true)",
+		"text     : 말풍선 본문. \n 으로 줄바꿈. 폭에 맞춰 자동으로 접힌다.",
+		"anchor   : 말풍선이 가리킬 UI 앵커 이름. 화면이 Tutorial.register_anchor 로 등록한다.",
+		"           앵커가 있으면 말풍선은 그 사각형을 피해 알아서 놓인다 - place 는 무시된다.",
+		"place    : 앵커가 없을 때 말풍선을 놓을 자리.",
+		"           top_left | top_right | bottom_left | bottom_right | center",
+		"           비우면 초상 반대쪽 가운데. 화면마다 비는 구역이 달라서 직접 골라야 한다.",
+		"advance  : 다음으로 넘어가는 조건",
+		"             click         [계속] 또는 말풍선 클릭",
+		"             action:<이름> 게임에서 그 행동이 일어나야 함",
+		"at_tick  : 전투에서 이 틱 앞에 재생을 멈추고 이 대사를 띄운다",
+		"screen   : 이 대사가 떠야 하는 화면. tutorial|shop|loadout|battle|any",
+		"gate     : true 면 anchor 외의 조작을 막는다"
+	],
+	"speaker_name": "궁수",
+	"steps": [
+		{
+			"id": "intro_1",
+			"screen": "tutorial",
+			"speaker": "archer",
+			"side": "left",
+			"text": "지휘관.\n처음이지.",
+			"advance": "click"
+		},
+		{
+			"id": "intro_2",
+			"screen": "tutorial",
+			"speaker": "archer",
+			"side": "left",
+			"text": "여기선 대원을 직접 움직이지 않아.\n원하는 전술을 지시해서 대원들이 전투하게 하는거야.",
+			"advance": "click"
+		},
+		{
+			"id": "intro_3",
+			"screen": "tutorial",
+			"speaker": "archer",
+			"side": "left",
+			"text": "지시는 카드로 한다.\n대원은 매 틱 자기 카드를 위에서부터 읽어,\n조건이 맞고 실행도 되는 첫 번째 것 하나만 해.",
+			"advance": "click"
+		},
+		{
+			"id": "intro_4",
+			"screen": "tutorial",
+			"speaker": "archer",
+			"side": "left",
+			"text": "순서가 곧 전술이야.\n그것만 기억하면 돼.",
+			"advance": "click"
+		},
+		{
+			"id": "intro_5",
+			"screen": "tutorial",
+			"speaker": "archer",
+			"side": "left",
+			"text": "한 번 해보자.\n작전 하나만 같이 치르면 돼.",
+			"advance": "click"
+		},
+		{
+			"id": "shop_1",
+			"screen": "shop",
+			"speaker": "archer",
+			"side": "right",
+			"text": "먼저 전술을 사.\n예산 안에서만 가능해 - 다 가질 수는 없다는 뜻이야.",
+			"advance": "click"
+		},
+		{
+			"id": "shop_2",
+			"screen": "shop",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "shop_card_0",
+			"text": "[교전] 부터.\n사거리 안의 적을 친다. 제일 기본이야.\n\n눌러서 사.",
+			"advance": "action:buy",
+			"gate": true
+		},
+		{
+			"id": "shop_3",
+			"screen": "shop",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "shop_card_1",
+			"text": "[거리 유지] 도 챙겨.\n적이 붙으면 물러나. 궁수에겐 이게 생명줄이야.\n\n눌러서 사.",
+			"advance": "action:buy",
+			"gate": true
+		},
+		{
+			"id": "shop_4",
+			"screen": "shop",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "shop_ban_2",
+			"text": "안 쓸 카드는 제외해.\n이번 작전 전체에서 배제돼 - 다음 전투에도 안 나와.\n덱이 얇아야 원하는 게 나오지.\n\n[제외] 를 눌러 봐.",
+			"advance": "action:ban",
+			"gate": true
+		},
+		{
+			"id": "shop_5",
+			"screen": "shop",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "shop_reroll",
+			"text": "마음에 드는 게 없으면 리롤.\n예산을 쓰지만, 안 맞는 카드를 억지로 사는 것보단 나아.",
+			"advance": "click"
+		},
+		{
+			"id": "shop_6",
+			"screen": "shop",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "shop_next",
+			"text": "됐어. 편성하러 가자.",
+			"advance": "action:next",
+			"gate": true
+		},
+		{
+			"id": "load_1",
+			"screen": "loadout",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "unit_archer",
+			"text": "자, 궁수 캐릭터를 하나 배치해봐.",
+			"advance": "action:pick_type",
+			"gate": true
+		},
+		{
+			"id": "load_2",
+			"screen": "loadout",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "grid_slot_0",
+			"text": "뒤쪽에 세워.\n궁수는 맞으면 약해. 거리로 싸우는 대원이야.",
+			"advance": "action:place",
+			"gate": true
+		},
+		{
+			"id": "load_3",
+			"screen": "loadout",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "hand_card_0",
+			"text": "산 카드를 꽂아.\n[교전] 을 1번에.\n\n사거리 안의 적을 친다. 궁수 사거리는 3칸이야.",
+			"advance": "action:equip",
+			"gate": true
+		},
+		{
+			"id": "load_4",
+			"screen": "loadout",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "hand_card_0",
+			"text": "그 다음 [거리 유지].\n적이 2칸 안에 들어오면 물러나라는 뜻이야.",
+			"advance": "action:equip",
+			"gate": true
+		},
+		{
+			"id": "load_5",
+			"screen": "loadout",
+			"speaker": "archer",
+			"side": "right",
+			"text": "순서가 왜 중요한지는 곧 보여줄게.\n지금은 [교전] 이 위라는 것만 기억해.",
+			"advance": "click"
+		},
+		{
+			"id": "load_6",
+			"screen": "loadout",
+			"speaker": "archer",
+			"side": "right",
+			"anchor": "fight_button",
+			"text": "카드가 전부 안 맞아도 걱정 마.\n기본기가 깔려 있어. 아무것도 안 하는 일은 없어.\n\n나가자.",
+			"advance": "action:fight",
+			"gate": true
+		},
+		{
+			"id": "battle_1",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"anchor": "start_button",
+			"text": "지시는 끝났어. 이제 개입할 수 없어.\n\n시작해.",
+			"advance": "action:start",
+			"gate": true
+		},
+		{
+			"id": "battle_t1",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 1,
+			"text": "아직 사거리 밖이야.\n카드가 둘 다 안 맞으면 기본기가 나와 - 적에게 걸어간다.\n\n빈손이어도 대원이 멍하니 서 있는 일은 없어.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t2",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 2,
+			"text": "한 틱에 한 번만 움직여.\n이동이든 사격이든 하나야. 둘 다는 안 돼.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t3",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 3,
+			"text": "사거리 3에 들어왔어.\n[교전] 이 1번이라 바로 쏜다.\n\n표적도 반격했지. 붙으면 맞는 거야.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t4",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 4,
+			"text": "[거리 유지] 는 한 번도 안 터졌지.\n[교전] 이 위에 있어서 매번 선수를 치거든.\n\n이게 순서가 곧 전술이라는 뜻이야.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t5",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 5,
+			"text": "만약 [거리 유지] 를 1번에 올리면?\n궁수 사거리는 3, 거리 유지 문턱은 2 -\n2칸에서는 쏠 수 있는데도 물러난다.\n\n순서 하나로 사격 기회가 통째로 날아가.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t6",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 6,
+			"text": "하나 부쉈어.\n남은 건 제자리를 지키는 표적이야.\n\n[사수] 를 들고 있어서 다가오지 않아.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t7",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 7,
+			"text": "오른쪽 로그를 봐.\n뭐가 왜 터졌는지, 어느 슬롯에서 나왔는지 다 적혀 있어.\n\n네 전술이 실제로 무슨 일을 했는지는 거기서 확인해.",
+			"advance": "click"
+		},
+		{
+			"id": "battle_t8",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "right",
+			"portrait": false,
+			"place": "bottom_left",
+			"at_tick": 8,
+			"text": "마무리해.",
+			"advance": "click"
+		},
+		{
+			"id": "outro_1",
+			"screen": "battle",
+			"speaker": "archer",
+			"side": "left",
+			"place": "bottom_right",
+			"text": "응, 지휘능력이 우수하네.\n앞으로의 전투도 잘 해내기를 바래.",
+			"advance": "click"
+		}
+	]
+}

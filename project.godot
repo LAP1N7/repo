@@ -1,0 +1,28 @@
+; Engine configuration file.
+; GAMBIT GRID — 규칙 기반 격자 오토배틀러
+
+config_version=5
+
+[application]
+
+config/name="GAMBIT GRID"
+config/description="규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러"
+run/main_scene="res://scenes/game.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+; 1 = Linear. 고해상도 원본을 축소해 쓰므로 반드시 Linear 여야 한다.
+; 0(Nearest)으로 두면 축소 시 계단과 반짝임이 생긴다.
+; 픽셀아트로 방향을 바꾸면 0 으로 되돌리고 원본을 정수배로만 확대할 것.
+textures/canvas_textures/default_texture_filter=1
