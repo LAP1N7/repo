@@ -41,6 +41,7 @@ func _init() -> void:
 	test_doctrine_in_battle()
 	test_axis_doctrine()
 	test_squad_movement()
+	test_story_wiring()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -435,3 +436,24 @@ func test_squad_movement() -> void:
 	# 새 협력 교리
 	ok(Doctrines.active_ids(["follow_guard", "hold_the_line"]).has("vanguard"),
 		"선봉 교리가 켜진다")
+
+
+func test_story_wiring() -> void:
+	print("\n[18] 스토리 대본")
+
+	# 대본이 실제로 읽히는가. 파일이 안 읽히면 조용히 빈 배열이 되어
+	# 스토리가 통째로 안 나오는데, 화면에는 아무 표시도 안 남는다.
+	ok(not Story.beats("pre", 1).is_empty(), "1단계 도입 대사가 있다")
+	ok(not Story.beats("post", 5).is_empty(), "5단계 마무리 대사가 있다")
+	ok(Story.all_beats().size() > 20, "몰아보기 목록이 만들어진다",
+		str(Story.all_beats().size()))
+
+	# 연출 이름 오타는 조용히 죽는다 - 그 장면만 밋밋하게 지나간다.
+	var bad := ""
+	for stage in [1, 2, 3, 4, 5]:
+		for when in ["pre", "post"]:
+			for b in Story.beats(when, stage):
+				var fx := String((b as Dictionary).get("fx", ""))
+				if fx != "" and not Story.EFFECTS.has(fx):
+					bad = "%s_%d: %s" % [when, stage, fx]
+	ok(bad == "", "알 수 없는 연출 이름이 없다", bad)

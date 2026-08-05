@@ -26,15 +26,23 @@ var tut: Tutorial = null
 ## 2/3(853) 근처여야 하므로 1.63 쯤이지만, 그러면 세로가 626 이 되어 하단
 ## 대원 바를 덮는다. 세로가 한계라 1.36 으로 맞추고(가로 696 · 세로 522)
 ## 오른쪽 정보 열을 그만큼 좁힌다.
-## 세로가 한계다. 판 아래에 대원 바(높이 76)와 여백이 있어야 하므로
-## 96 + 6행 x 64 x 배율 <= 588 이어야 한다. 1.28 이 그 상한이고, 이때 가로는
-## 655px 로 화면의 절반을 조금 넘는다.
+## 한 칸의 화면 크기. **정사각형이 아니다.**
 ##
-## 가로를 3분의 2까지 늘리려면 배율이 아니라 **열 수**를 늘려야 한다(8 -> 10).
-## 그건 사거리·이동·적 배치가 전부 걸리는 밸런스 변경이라 따로 잡는다.
-const BOARD_SCALE := 1.28
+## ── 왜 가로로 긴가 ───────────────────────────────────────────────────────
+## 예전에는 판 전체에 균등 배율을 걸었다. 그러면 가로를 키우는 만큼 세로도
+## 커지는데, 세로는 하단 대원 바 때문에 상한이 있어서 가로까지 같이 묶였다.
+## 결국 판이 화면의 절반을 못 넘겼다.
+##
+## 칸을 정사각형으로 둘 이유가 없다. 가로만 크게, 세로는 필요한 만큼만 잡으면
+## 8열 x 6행이 화면의 3분의 2(848px)를 채우면서 세로는 486px 로 남는다.
+##
+## 거리 계산은 맨해튼이라 **픽셀 비율과 무관하다.** 한 칸 이동은 화면에서
+## 가로로 106px, 세로로 81px 이지만 규칙상으로는 똑같이 1칸이다.
+## 게임 규칙은 한 줄도 안 바뀐다.
+const TILE_W: float = 106.0
+const TILE_H: float = 81.0
 
-const BOARD_ORIGIN := Vector2(40, 96)
+const BOARD_ORIGIN := Vector2(36, 100)
 const TILE: int = Grid.TILE
 const ACT_TIME: float = 0.22
 const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
@@ -117,7 +125,6 @@ func setup(p_run: RunState) -> void:
 
 	board = Node2D.new()
 	board.position = BOARD_ORIGIN
-	board.scale = Vector2(BOARD_SCALE, BOARD_SCALE)
 	# 세로로 긴 스프라이트는 위 칸을 침범한다. Y 정렬을 켜면 화면 아래쪽 유닛이
 	# 항상 앞에 그려져서 앞줄이 뒷줄을 가리는 올바른 겹침이 나온다.
 	board.y_sort_enabled = true
@@ -125,7 +132,6 @@ func setup(p_run: RunState) -> void:
 
 	fx = Node2D.new()
 	fx.position = BOARD_ORIGIN
-	fx.scale = Vector2(BOARD_SCALE, BOARD_SCALE)
 	add_child(fx)
 
 	_build_ui()
@@ -148,32 +154,36 @@ func _draw() -> void:
 
 	for y in Grid.H:
 		for x in Grid.W:
-			var r := Rect2(BOARD_ORIGIN + Vector2(x * TILE, y * TILE) * BOARD_SCALE,
-				Vector2(TILE, TILE) * BOARD_SCALE)
-			draw_rect(r, COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
+			draw_rect(Rect2(BOARD_ORIGIN + Vector2(x * TILE_W, y * TILE_H),
+				Vector2(TILE_W, TILE_H)),
+				COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
 
 	# ── 배율은 위치와 크기 **둘 다**에 걸어야 한다 ───────────────────────
 	# 진영 표시만 크기에 배율을 안 걸어서, 칸은 74px 인데 표시는 64px 로 그려져
 	# 반 칸씩 밀린 것처럼 보였다. 유닛이 어긋난 게 아니라 이 사각형이 어긋난
 	# 것이었다 - 눈에는 똑같이 "격자와 안 맞는다" 로 보인다.
-	var cell := Vector2(TILE, TILE) * BOARD_SCALE
+	var cell := Vector2(TILE_W, TILE_H)
 	for p in Grid.PLAYER_SLOTS:
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE) * BOARD_SCALE,
+		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_PLAYER_ZONE)
 	for p in Grid.ENEMY_SLOTS:
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE) * BOARD_SCALE,
+		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_ENEMY_ZONE)
 
 	for x in Grid.W + 1:
-		draw_line(BOARD_ORIGIN + Vector2(x * TILE, 0) * BOARD_SCALE,
-			BOARD_ORIGIN + Vector2(x * TILE, Grid.H * TILE) * BOARD_SCALE, UiKit.LINE, 1.0)
+		draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),
+			BOARD_ORIGIN + Vector2(x * TILE_W, Grid.H * TILE_H), UiKit.LINE, 1.0)
 	for y in Grid.H + 1:
-		draw_line(BOARD_ORIGIN + Vector2(0, y * TILE) * BOARD_SCALE,
-			BOARD_ORIGIN + Vector2(Grid.W * TILE, y * TILE) * BOARD_SCALE, UiKit.LINE, 1.0)
+		draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
+			BOARD_ORIGIN + Vector2(Grid.W * TILE_W, y * TILE_H), UiKit.LINE, 1.0)
 
 
+## 유닛이 서는 자리(board 로컬 좌표).
+##
+## 판을 그리는 식과 **반드시 같은 값**을 써야 한다. 예전에 진영 표시만 다른
+## 식으로 그렸다가 반 칸씩 어긋나 보였다. 칸 크기는 이 파일에 하나뿐이어야 한다.
 func tile_center(p: Vector2i) -> Vector2:
-	return Vector2(p.x * TILE + TILE * 0.5, p.y * TILE + TILE * 0.5)
+	return Vector2(p.x * TILE_W + TILE_W * 0.5, p.y * TILE_H + TILE_H * 0.5)
 
 
 # ── UI ───────────────────────────────────────────────────────────────────
@@ -198,8 +208,8 @@ func _build_ui() -> void:
 
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
 	var cy := 596.0
-	var bx := 860.0
-	btn_start = UiKit.button(ui, Vector2(bx, cy), Vector2(372, 44), UiText.t("battle.start", "▶  전투 시작"), 15)
+	var bx := 900.0
+	btn_start = UiKit.button(ui, Vector2(bx, cy), Vector2(340, 44), UiText.t("battle.start", "▶  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
@@ -225,13 +235,13 @@ func _build_ui() -> void:
 
 	# 이 줄은 x=600(로그 패널) 전에 끝나야 한다. 셋을 176 폭으로 줄이면
 	# 48 + 176*3 + 8*2 = 592 로 딱 들어간다.
-	var b1 := UiKit.button(ui, Vector2(bx, cy + 52), Vector2(180, 40), UiText.t("battle.to_loadout", "←  편성 고치기"), 14)
+	var b1 := UiKit.button(ui, Vector2(bx, cy + 52), Vector2(164, 40), UiText.t("battle.to_loadout", "←  편성 고치기"), 14)
 	b1.pressed.connect(func(): to_loadout.emit())
-	var b2 := UiKit.button(ui, Vector2(bx + 192, cy + 52), Vector2(180, 40), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
+	var b2 := UiKit.button(ui, Vector2(bx + 176, cy + 52), Vector2(164, 40), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
 	b2.pressed.connect(func(): to_shop.emit())
 
 	# 이기면 보상 화면으로. 아직 못 이겼으면 숨긴다.
-	btn_next = UiKit.button(ui, Vector2(bx, cy), Vector2(372, 44), UiText.t("battle.to_reward", "보급 수령  ▶"), 19)
+	btn_next = UiKit.button(ui, Vector2(bx, cy), Vector2(340, 44), UiText.t("battle.to_reward", "보급 수령  ▶"), 19)
 	btn_next.visible = false
 	btn_next.pressed.connect(func(): won.emit())
 
@@ -243,7 +253,7 @@ func _build_ui() -> void:
 	# 알고리즘 전문은 여기 안 적는다 - 세 명분을 다 적으면 결국 지금과 같은
 	# 글자 벽이 된다. 얼굴에 마우스를 올리면 그때 사선 판으로 펼친다.
 	squad_root = Control.new()
-	squad_root.position = Vector2(40, 596)
+	squad_root.position = Vector2(36, 596)
 	ui.add_child(squad_root)
 
 	rules_root = Control.new()
@@ -258,7 +268,7 @@ func _build_ui() -> void:
 	trace_root = Control.new()
 	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
 	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
-	trace_root.position = Vector2(972, 314)
+	trace_root.position = Vector2(900, 318)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
@@ -266,7 +276,7 @@ func _build_ui() -> void:
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
 	# 오른쪽 끝에 붙여 고정한다. 판이 커지거나 줄어도 이 열은 안 움직인다.
-	log_root.position = Vector2(972, 96)
+	log_root.position = Vector2(900, 100)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
 	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 20), UiText.t("battle.log_head", "교전 기록"), 13, UiKit.MUTED)
@@ -274,12 +284,12 @@ func _build_ui() -> void:
 	logbg.position = Vector2(0, 24)
 	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
 	# 600 + 388 = 988. 12px 여백을 둔다.
-	logbg.size = Vector2(268, 200)
+	logbg.size = Vector2(340, 200)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(8, 5), Vector2(252, 190), "", 10)
+	log_label = UiKit.label(logbg, Vector2(8, 5), Vector2(324, 190), "", 10)
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
 	log_label.add_theme_constant_override("line_spacing", -6)
@@ -293,21 +303,21 @@ func _build_result_panel() -> void:
 	result_panel = Control.new()
 	# 판(x48~637 · y104~546)의 한가운데. 예전 (48,300)은 왼쪽 위에 걸쳐서
 	# 유닛을 반쯤 덮고 판 밖으로도 삐져나갔다.
-	result_panel.position = Vector2(48, 240)
-	result_panel.size = Vector2(594, 180)
+	result_panel.position = Vector2(36, 250)
+	result_panel.size = Vector2(848, 180)
 	result_panel.visible = false
 	result_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(result_panel)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.04, 0.045, 0.07, 0.9)
-	bg.size = Vector2(594, 180)
+	bg.size = Vector2(848, 180)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	result_panel.add_child(bg)
 
-	lbl_result = UiKit.label(result_panel, Vector2(0, 34), Vector2(594, 60), "", 46)
+	lbl_result = UiKit.label(result_panel, Vector2(0, 34), Vector2(848, 60), "", 46)
 	lbl_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_result_sub = UiKit.label(result_panel, Vector2(0, 104), Vector2(594, 30), "", 15, UiKit.MUTED)
+	lbl_result_sub = UiKit.label(result_panel, Vector2(0, 104), Vector2(848, 30), "", 15, UiKit.MUTED)
 	lbl_result_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
@@ -444,9 +454,9 @@ func _build_squad_bar() -> void:
 			continue
 		var card := _SquadCard.new()
 		card.unit = u
-		card.position = Vector2(i * 268.0, 0)
-		card.size = Vector2(252, 76)
-		card.pivot_offset = Vector2(126, 38)
+		card.position = Vector2(i * 284.0, 0)
+		card.size = Vector2(272, 76)
+		card.pivot_offset = Vector2(136, 38)
 		squad_root.add_child(card)
 		squad_cards[u.index] = card
 		i += 1
@@ -934,7 +944,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") 
 	spark.initial_velocity_max = 240.0
 	spark.scale_amount_min = 1.0
 	spark.scale_amount_max = 2.6
-	spark.color = Color(tint.r, tint.g, tint.b, 0.55)
+	spark.color = Color(tint.r, tint.g, tint.b, 0.95)
 	layer.add_child(spark)
 
 	# ── 1)+4) 사선 프레임 + 색 잔상 ────────────────────────────────────────
@@ -1181,7 +1191,7 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	# 붙어 있다" 가 읽힌다. 아트보다 앞에 두되 흐리게 깔아 얼굴을 안 가린다.
 	var dust := CPUParticles2D.new()
 	dust.position = Vector2(640, 720)
-	dust.amount = 70
+	dust.amount = 150
 	dust.lifetime = 2.4
 	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 	dust.emission_rect_extents = Vector2(660, 20)
@@ -1191,25 +1201,25 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	dust.initial_velocity_min = 70.0
 	dust.initial_velocity_max = 260.0
 	dust.scale_amount_min = 1.0
-	dust.scale_amount_max = 3.4
-	dust.color = Color(1, 1, 1, 0.28)
+	dust.scale_amount_max = 5.0
+	dust.color = Color(1, 1, 1, 0.62)
 	view.add_child(dust)
 
 	# 인물 쪽으로 빨려 드는 불티. 확대의 방향과 같은 쪽으로 흘러야 시선이
 	# 얼굴로 모인다. 아래에서 위로 올라가는 먼지와 방향이 달라 층이 갈린다.
 	var spark := CPUParticles2D.new()
 	spark.position = Vector2(1180, 360)
-	spark.amount = 34
+	spark.amount = 90
 	spark.lifetime = 1.1
 	spark.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	spark.emission_rect_extents = Vector2(12, 300)
+	spark.emission_rect_extents = Vector2(12, 360)
 	spark.direction = Vector2(-1, 0)
 	spark.spread = 10.0
 	spark.gravity = Vector2.ZERO
 	spark.initial_velocity_min = 420.0
 	spark.initial_velocity_max = 900.0
 	spark.scale_amount_min = 1.0
-	spark.scale_amount_max = 2.2
+	spark.scale_amount_max = 4.0
 	spark.color = Color(tint.r, tint.g, tint.b, 0.55)
 	view.add_child(spark)
 
@@ -1217,8 +1227,10 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	# 파티클은 "공기 중에 뭔가 있다" 이고 이 선은 "카메라가 보고 있다" 라서
 	# 둘이 겹치면 층이 하나 더 생긴다.
 	var scan := ColorRect.new()
-	scan.color = Color(tint.r, tint.g, tint.b, 0.16)
-	scan.size = Vector2(1280, 3)
+	# 0.16 은 어두운 일러스트 위에서 거의 안 보였다. 이 선은 "카메라가 훑고
+	# 있다" 를 말하는 유일한 신호라 확실히 보여야 한다.
+	scan.color = Color(tint.r, tint.g, tint.b, 0.42)
+	scan.size = Vector2(1280, 5)
 	scan.position = Vector2(0, -20)
 	scan.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(scan)
@@ -1450,7 +1462,7 @@ func _finisher(unit_index: int) -> void:
 	var d := unit_views[unit_index]
 	var focus := d.position
 	var zoom := 1.7
-	var center := Vector2(Grid.W * TILE, Grid.H * TILE) * 0.5 + BOARD_ORIGIN
+	var center := Vector2(Grid.W * TILE_W, Grid.H * TILE_H) * 0.5 + BOARD_ORIGIN
 	var zoom_pos := center - focus * zoom
 
 	Engine.time_scale = 0.3
