@@ -734,7 +734,7 @@ func _play_special(e: Dictionary) -> void:
 		# 플레이어는 자기 알고리즘이 왜 안 통했는지 되짚을 단서를 잃는다.
 		# 무슨 기술이 터졌는지만 그 자리에 짧게 띄운다.
 		if v.unit.team == Unit.TEAM_PLAYER:
-			await _cutin(String(e.get("name", "")), v.unit.color, v.unit.type_id)
+			await _cutin(String(e.get("name", "")), v.unit.color, v.unit.type_id, sid)
 		else:
 			await _enemy_special_tag(v, String(e.get("name", "")))
 
@@ -791,7 +791,7 @@ const CUTIN_X: float = 384.0        ## 1280 의 30%. 일러스트가 차지하�
 const CUTIN_SKEW: float = 44.0      ## 사선 프레임의 기울기(위가 넓고 아래가 좁다).
 const CUTIN_ART: Vector2 = Vector2(600, 900)
 
-func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
+func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") -> void:
 	Engine.time_scale = 0.35
 
 	var layer := Control.new()
@@ -927,9 +927,35 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 		ln.default_color = Color(tint.r, tint.g, tint.b, 0.85)
 		band.add_child(ln)
 
+	# ── 영문 이름을 뒤에 크게 깐다 ───────────────────────────────────────
+	# 띠 위에 한글 한 줄뿐이면 층이 없어서 밋밋하다. 뒤에 큰 영문을 흐리게 깔면
+	# 깊이가 생기고 한글이 그 위에 얹혀 더 또렷해진다. 뜻을 두 번 전하려는 게
+	# 아니므로 알파를 낮게 두고 한글보다 크게 잡는다.
+	var en := String(Specials.TABLE.get(sid, {}).get("en", ""))
+	if en != "":
+		var back := Label.new()
+		back.text = en
+		back.position = Vector2(name_x + 8.0, 262)
+		back.size = Vector2(bw, 96)
+		back.add_theme_font_override("font", UiKit.title_font())
+		back.add_theme_font_size_override("font_size", 86)
+		back.add_theme_color_override("font_color", Color(1, 1, 1, 0.10))
+		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(back)
+
+	# ── 띠 위아래 HUD 라인 ───────────────────────────────────────────────
+	# 짧은 눈금과 모서리 꺾쇠. 계기판에 얹힌 표식처럼 보이게 하는 최소한이다.
+	var hudline := _CutinBandHud.new()
+	hudline.tint = tint
+	hudline.band_w = bw
+	hudline.position = Vector2(name_x, 294)
+	hudline.size = Vector2(bw, 92)
+	hudline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(hudline)
+
 	var lbl := Label.new()
 	lbl.text = skill_name
-	lbl.position = Vector2(name_x + 96.0, 300)      # 오른쪽에서 밀려 들어온다
+	lbl.position = Vector2(name_x + 96.0, 296)      # 오른쪽에서 밀려 들어온다
 	lbl.size = Vector2(bw - 40.0, 80)
 	lbl.add_theme_font_override("font", UiKit.title_font())
 	lbl.add_theme_font_size_override("font_size", 64)
@@ -944,10 +970,11 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 	lbl.scale = Vector2(1.18, 1.18)
 	layer.add_child(lbl)
 
-	# 누구 궁극기인지. 색만으로는 여섯 직업을 다 못 가른다.
-	var unit_name := String(UnitData.TABLE.get(type_id, {}).get("name", ""))
-	var sub := UiKit.label(layer, Vector2(name_x + 30.0, 264), Vector2(bw, 22),
-		unit_name, 14, Color(1, 1, 1, 0.85))
+	# 직업 이름은 뺐다. 왼쪽에 그 대원의 일러스트가 통째로 서 있고 색도 직업
+	# 색인데, 작은 글씨로 한 번 더 적으면 정보가 아니라 잡티가 된다.
+	# 자리를 비우는 대신 뒤의 큰 영문이 그 역할을 한다.
+	var sub := UiKit.label(layer, Vector2(name_x + 30.0, 262), Vector2(bw, 22), "", 12,
+		Color(1, 1, 1, 0.0))
 	sub.modulate.a = 0.0
 
 	# ── 들어온다 (0.34초) ────────────────────────────────────────────────
@@ -964,7 +991,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(band, "scale", Vector2.ONE, 0.14)\
 		.set_delay(0.06).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tw.tween_property(lbl, "position", Vector2(name_x + 30.0, 300), 0.20)\
+	tw.tween_property(lbl, "position", Vector2(name_x + 30.0, 296), 0.20)\
 		.set_delay(0.06).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), 0.12)\
 		.set_delay(0.06).from(Color(1, 1, 1, 0))
@@ -1001,6 +1028,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 	tw2.tween_property(sub, "modulate", Color(1, 1, 1, 0), 0.08)
 	tw2.tween_property(veil, "color", Color(0.02, 0.02, 0.04, 0.0), 0.20)
 	tw2.tween_property(hud, "modulate", Color(1, 1, 1, 0), 0.12)
+	tw2.tween_property(hudline, "modulate", Color(1, 1, 1, 0), 0.12)
 	tw2.tween_property(spark, "modulate", Color(1, 1, 1, 0), 0.12)
 	await tw2.finished
 
@@ -1141,6 +1169,35 @@ static func _noise_tex() -> ImageTexture:
 ## 얇은 육각형 격자와 모서리 괄호, 눈금. 화면을 채우는 게 목적이 아니라
 ## "여기는 계기판이다" 를 깔아 주는 것이 목적이라 선은 최대한 가늘게 둔다.
 ## 굵어지는 순간 이름을 읽는 데 방해가 된다.
+## 이름 띠의 위아래에 얹는 눈금과 꺾쇠.
+##
+## 띠가 단색 사선 하나뿐이면 "색칠한 도형" 으로 읽힌다. 짧은 눈금 몇 개와 모서리
+## 꺾쇠만 얹어도 계기판 위의 표식처럼 보인다. 굵게 그리면 이름을 읽는 데
+## 방해되므로 전부 1~2px 로 둔다.
+class _CutinBandHud extends Control:
+	var tint: Color = Color.WHITE
+	var band_w: float = 600.0
+
+	func _draw() -> void:
+		var c := Color(tint.r, tint.g, tint.b, 0.75)
+		var faint := Color(tint.r, tint.g, tint.b, 0.30)
+
+		# 위아래 가는 선. 띠의 사선과 나란히 간다.
+		draw_line(Vector2(46, -6), Vector2(band_w, -6), c, 1.0)
+		draw_line(Vector2(0, 98), Vector2(band_w - 46, 98), c, 1.0)
+
+		# 눈금. 위는 아래로, 아래는 위로 짧게.
+		for i in 16:
+			var x := 60.0 + i * ((band_w - 90.0) / 16.0)
+			var h := 7.0 if i % 4 == 0 else 4.0
+			draw_line(Vector2(x, -6), Vector2(x, -6 + h), faint, 1.0)
+			draw_line(Vector2(x - 20.0, 98), Vector2(x - 20.0, 98 - h), faint, 1.0)
+
+		# 오른쪽 끝 꺾쇠. 이름 줄이 어디서 끝나는지 눈에 걸린다.
+		draw_line(Vector2(band_w - 2, -6), Vector2(band_w - 2, 22), c, 2.0)
+		draw_line(Vector2(band_w - 2, -6), Vector2(band_w - 26, -6), c, 2.0)
+
+
 class _CutinHud extends Control:
 	var tint: Color = Color.WHITE
 

@@ -19,8 +19,8 @@ signal banned(node: CardNode)
 ##
 ## 축 라벨과 이름이 한눈에 들어와야 "이번 상점에 표적이 둘 나왔다" 가 훑기만
 ## 해도 읽힌다. 손패는 mini 로 0.72배 줄여 쓰므로 거기 밀도는 그대로다.
-const W: float = 168.0
-const H: float = 218.0
+const W: float = 152.0
+const H: float = 196.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
 const BANNER_RATIO: float = 0.38
@@ -243,6 +243,7 @@ func _draw() -> void:
 	# "무슨 종류인가" 다. 표적 모듈이 필요한 판에서 위치 모듈을 훑고 있으면
 	# 아무리 싸도 소용이 없다. 코스트는 배지 숫자로 이미 보인다.
 	var axis := String(c.get("axis", ""))
+	var axis_label := Axes.label(axis) if axis != "" else ""
 	var ccol: Color = UiKit.ACCENT if special else (
 		Axes.color(axis) if axis != "" else UiKit.cost_color(cost))
 	var s := card_size()
@@ -315,9 +316,11 @@ func _draw() -> void:
 	# 넉넉히 빼면 미니 카드에서 "거리 유지" 같은 이름이 잘린다.
 	# 영문 축 라벨. 전부 영문이면 한국어 톤과 충돌하고 전부 한글이면 축이
 	# 안 보인다. 축만 영문으로 두면 계기판처럼 읽히면서 본문은 그대로다.
-	if axis != "":
-		draw_string(fs, Vector2(pad, pad + 12.0), Axes.label(axis),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11 if not _is_mini() else 8,
+	# 궁극기는 축이 없다. 대신 ULTIMATE 을 같은 자리에 적는다. 이 줄이 없으면
+	# 그 자리가 비어서 이름이 위로 붙고, 아래 부제와 글자가 겹친다.
+	var top_label := axis_label if axis != "" else "ULTIMATE"
+	draw_string(UiKit.font_role("large"), Vector2(pad, pad + 11.0), top_label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10 if not _is_mini() else 8,
 			Color(ccol.r, ccol.g, ccol.b, 0.95))
 
 	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 30.0), String(c["name"]),
@@ -333,12 +336,9 @@ func _draw() -> void:
 	#
 	# 중첩 걱정은 없다. 조건을 매 틱 다시 보므로 회복해서 50%를 넘기는 순간
 	# 저절로 꺼지고, 대상 선택이 만피 아군을 제외하므로 헛도는 일도 없다.
-	if _is_mini():
-		# 미니는 폭이 92px 이라 문장이 중간에서 잘린다. 궁극기만 한 단어로 표시한다.
-		if special:
-			draw_string(fs, Vector2(pad, pad + 38.0), UiText.t("card.special_tag_mini", "궁극기"),
-				HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2, 9, UiKit.ACCENT * dim)
-	else:
+	# 미니 카드에는 부제를 안 적는다. 위에 ULTIMATE / TARGET 라벨이 이미 있어
+	# 같은 뜻을 두 번 적는 셈이고, 폭이 좁아 이름과 글자가 겹쳤다.
+	if not _is_mini():
 		var tag := ""
 		var tcol := UiKit.ACCENT
 		if special:
@@ -346,8 +346,8 @@ func _draw() -> void:
 		else:
 			tag = UiText.t("card.tactic_tag", "전술 · 조건이 맞는 한 매 틱 발동")
 			tcol = UiKit.MUTED
-		draw_string(fs, Vector2(pad, pad + 38.0), tag,
-			HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2, 9, tcol * dim)
+		draw_string(fs, Vector2(pad, pad + 36.0), tag,
+			HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2, 10, tcol * dim)
 
 	# 규칙 문장 - 조건과 행동을 두 줄로 쪼개 보여준다. 카드 한 장 = 한 문장.
 	var parts: PackedStringArray = String(c["text"]).split("→")
@@ -365,7 +365,9 @@ func _draw() -> void:
 	# 미니는 태그가 없으니 예전 높이 그대로 둔다.
 	# 미니 카드도 궁극기면 태그 한 줄(pad+38)이 붙는다. 0.42(=50px)로 시작하면
 	# 그 태그와 조건 첫 줄이 겹친다. 궁극기만 조금 내려서 시작한다.
-	var ty: float = s.y * ((0.47 if special else 0.42) if _is_mini() else 0.48)
+	# 본문 시작 높이. 큰 카드는 0.48(높이의 절반)이라 제목과 본문 사이가 통째로
+	# 비어 보였다. 라벨·이름·부제가 pad+36 에서 끝나므로 그 바로 아래면 된다.
+	var ty: float = s.y * ((0.47 if special else 0.42) if _is_mini() else 0.32)
 	var line_h := float(text_size) + 3.0
 
 	# 아래로 침범하면 안 되는 선. 큰 카드는 [배제] 버튼과 안내문이 하단을 쓴다.

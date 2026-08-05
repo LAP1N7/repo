@@ -191,7 +191,13 @@ func _build_shop() -> void:
 
 	# 보유 모듈로 한 장만 더 채우면 켜지는 교리들. { 모듈 id: 교리 이름 }
 	var near: Dictionary = {}
-	for n in Doctrines.near_complete(run.hand):
+	# 손패만 보면 안 된다. 이미 대원에게 장착한 모듈은 손패에서 빠져 있어서,
+	# 한 장 남은 교리가 있어도 "완성" 안내가 안 떴다. 보유 + 장착을 다 센다.
+	var owned: Array = []
+	owned.append_array(run.hand)
+	for row in run.unit_cards:
+		owned.append_array(row)
+	for n in Doctrines.near_complete(owned):
 		near[String(n["need"])] = String((n["doctrine"] as Dictionary)["name"])
 
 	for i in total:

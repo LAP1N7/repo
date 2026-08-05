@@ -55,9 +55,9 @@ const TABLE: Array[Dictionary] = [
 			{ "type": "archer", "pos": Vector2i(5, 1),
 			  "cards": ["snipe", "keep_range", "hold_fire"] },
 			{ "type": "archer", "pos": Vector2i(6, 2),
-			  "cards": ["near_first", "pursue"] },
+			  "cards": ["hold_the_line", "pursue"] },
 			{ "type": "musketeer", "pos": Vector2i(5, 3),
-			  "cards": ["near_first", "keep_range", "hold_fire"] },
+			  "cards": ["hold_the_line", "keep_range", "hold_fire"] },
 		],
 	},
 	{
@@ -71,9 +71,9 @@ const TABLE: Array[Dictionary] = [
 		# 정체 패배한다. 후열(악사)을 끊어야만 판이 진행된다.
 		"enemies": [
 			{ "type": "shieldman", "pos": Vector2i(5, 1),
-			  "cards": ["near_first", "guard_stance", "front_line"] },
+			  "cards": ["hold_the_line", "guard_stance", "front_line"] },
 			{ "type": "shieldman", "pos": Vector2i(5, 3),
-			  "cards": ["near_first", "guard_stance", "front_line"] },
+			  "cards": ["hold_the_line", "guard_stance", "front_line"] },
 			{ "type": "bard", "pos": Vector2i(6, 2),
 			  "cards": ["behind_guard"], "special": "cantabile" },
 		],
@@ -108,7 +108,7 @@ const TABLE: Array[Dictionary] = [
 		# 표적 교리 하나로는 어느 쪽도 못 뚫는다.
 		"enemies": [
 			{ "type": "shieldman", "pos": Vector2i(5, 2),
-			  "cards": ["near_first", "guard_stance", "front_line"],
+			  "cards": ["hold_the_line", "guard_stance", "front_line"],
 			  "special": "last_guard" },
 			{ "type": "archer", "pos": Vector2i(6, 1),
 			  "cards": ["execute", "coop_fire", "keep_range"],

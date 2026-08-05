@@ -148,16 +148,19 @@ static func active_ids(ids: Array) -> Dictionary:
 	return out
 
 
-## 장착 규칙 목록(카드 사전 배열)에서 활성 교리를 찾는다.
+## 장착 규칙 목록(카드 사전 배열)에서 활성 교리를 전부 찾는다.
 ##
-## Unit 은 id 가 아니라 규칙 사전을 들고 다니므로 이쪽이 실제로 쓰인다.
+## 이름 붙은 조합 교리와 축 교리 둘 다 본다. 겹치면 둘 다 켜지고 효과는
+## 합산된다 - 한쪽만 세면 플레이어가 짠 것과 화면에 뜬 것이 어긋난다.
 static func active(rules: Array) -> Dictionary:
 	var ids: Array = []
 	for r in rules:
 		var cid := String((r as Dictionary).get("id", ""))
 		if cid != "":
 			ids.append(cid)
-	return active_ids(ids)
+	var out := active_ids(ids)
+	out.merge(active_axis(rules))
+	return out
 
 
 ## 활성 교리에서 특정 효과의 합을 낸다. 없으면 0.
@@ -192,3 +195,70 @@ static func near_complete(ids: Array) -> Array:
 		if missing.size() == 1:
 			out.append({ "key": key, "doctrine": d, "need": missing[0] })
 	return out
+
+
+# ── 축 교리 ──────────────────────────────────────────────────────────────
+
+## 한 축을 **세 칸 다** 같은 축으로 채웠을 때 켜지는 교리.
+##
+## ── 왜 이게 따로 필요한가 ────────────────────────────────────────────────
+## 이름 붙은 조합 교리(위)는 특정 두 장을 맞춰야 하므로 상점 운을 탄다. 원하는
+## 조합이 끝까지 안 나오면 그 판은 교리를 한 번도 못 켠다 - 완성하는 재미를
+## 팔면서 완성할 길이 하나뿐이면 안 된다.
+##
+## 축 교리는 **무엇으로든 한 축을 몰면** 켜진다. 표적 셋이든 위치 셋이든
+## 상관없다. 그래서 어떤 상점이 나와도 "이 방향으로 몰자" 는 목표가 생긴다.
+##
+## 조합 교리보다 값은 작다. 아무 조합으로나 되는 대신 덜 준다.
+## 둘은 겹칠 수 있고, 겹치면 효과가 합쳐진다.
+const AXIS_TABLE: Dictionary = {
+	"target": {
+		"name": "표적 교리",
+		"effect": "crit_pct",
+		"value": 8,
+		"text": "치명타 확률 +8%",
+		"flavor": "무엇을 먼저 지울지가 정해진 부대는 흔들리지 않는다.",
+	},
+	"engage": {
+		"name": "교전 교리",
+		"effect": "attack_pct",
+		"value": 8,
+		"text": "공격력 +8%",
+		"flavor": "언제 붙을지를 아는 쪽이 언제 뺄지도 안다.",
+	},
+	"position": {
+		"name": "위치 교리",
+		"effect": "damage_taken_pct",
+		"value": -10,
+		"text": "받는 피해 -10%",
+		"flavor": "제자리를 지킨 대열은 좀처럼 무너지지 않는다.",
+	},
+	"squad": {
+		"name": "협력 교리",
+		"effect": "same_target_pct",
+		"value": 6,
+		"text": "같은 표적을 노린 아군 1명당 +6%",
+		"flavor": "혼자 강한 것보다 같이 맞추는 편이 낫다.",
+	},
+}
+
+## 한 축을 몰아야 하는 최소 장수. 슬롯 셋을 전부 같은 축으로 채운다는 뜻이다.
+const AXIS_FULL: int = 3
+
+
+## 장착 규칙에서 축 교리를 찾는다. 장착 수가 AXIS_FULL 이고 전부 같은 축일 때만.
+static func active_axis(rules: Array) -> Dictionary:
+	if rules.size() < AXIS_FULL:
+		return {}
+	var axis := ""
+	for r in rules:
+		var ax := String((r as Dictionary).get("axis", ""))
+		if ax == "":
+			return {}
+		if axis == "":
+			axis = ax
+		elif axis != ax:
+			return {}
+	if not AXIS_TABLE.has(axis):
+		return {}
+	return { "axis:" + axis: AXIS_TABLE[axis] }

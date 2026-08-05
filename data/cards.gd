@@ -35,16 +35,34 @@ class_name Cards
 
 const TABLE: Dictionary = {
 	# ── TARGET · 표적 ────────────────────────────────────────
-	"near_first": {
+	# ── 왜 [근접 우선] 을 지웠는가 ───────────────────────────────────────
+	# "가장 가까운 적을 노린다" 는 이미 **기본 AI 가 하는 일**이다. 코스트를
+	# 내고 사면 아무것도 안 바뀐다. 축이 나뉘기 전에는 슬롯을 채워 아래를 막는
+	# 용도라도 있었지만, 지금은 그냥 낭비다.
+	#
+	# 대신 같은 자리에 "가까운 적을 노리되 **조건이 붙는**" 모듈을 둔다.
+	# 조건이 붙는 순간 그건 전술이 된다.
+	"hold_the_line": {
 		"axis": "target",
 		"tag": "none",
 		"tier": 1,
-		"cost": 1,
-		"name": "근접 우선",
-		"cond": "always",
-		"cond_arg": 0,
+		"cost": 2,
+		"name": "전선 고정",
+		"cond": "enemies_adjacent_at_least",
+		"cond_arg": 1,
 		"pick": "nearest_enemy",
-		"text": "가장 가까운 적을 노린다",
+		"text": "적이 붙었다 → 붙은 적을 먼저 떼어 낸다",
+	},
+	"opportunist": {
+		"axis": "target",
+		"tag": "execute",
+		"tier": 2,
+		"cost": 3,
+		"name": "빈틈 포착",
+		"cond": "ally_engaged",
+		"cond_arg": 0,
+		"pick": "unguarded_enemy",
+		"text": "아군이 교전 중 → 방어하지 않는 적을 노린다",
 	},
 	"backline": {
 		"axis": "target",

@@ -39,6 +39,7 @@ func _init() -> void:
 	test_specials()
 	test_tutorial_battle()
 	test_doctrine_in_battle()
+	test_axis_doctrine()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -90,7 +91,7 @@ func test_grid() -> void:
 func test_determinism() -> void:
 	print("\n[2] 결정론")
 	var party := [
-		member("warrior", 0, ["near_first", "forced_march"]),
+		member("warrior", 0, ["hold_the_line", "forced_march"]),
 		member("archer", 2, ["backline", "keep_range"]),
 		member("bard", 4, ["escort"]),
 	]
@@ -136,10 +137,10 @@ func test_base_ai() -> void:
 func test_axis_fallthrough() -> void:
 	print("\n[4] 축 안의 폴스루")
 
-	# 표적 축에 [근접 우선](조건 없음)을 위에 두면 아래는 절대 안 걸린다.
+	# 조건 없는 표적 모듈을 위에 두면 아래는 절대 안 걸린다.
 	# 이게 "위에 있는 게 먼저다" 라는 이 게임의 코어다.
-	var d := decide(3, [
-		member("archer", 0, ["near_first", "backline"]),
+	var d := decide(5, [
+		member("archer", 0, ["cut_support", "execute"]),
 		member("warrior", 2), member("warrior", 4)])
 	var rows: Array = d["trace"].get(Axes.TARGET, [])
 	ok(rows.size() >= 2, "표적 축 두 줄이 기록된다")
@@ -148,8 +149,8 @@ func test_axis_fallthrough() -> void:
 		ok(not bool(rows[1]["hit"]), "2번은 안 걸린다")
 
 	# 순서를 뒤집으면 결과가 바뀐다. 같은 모듈로 다른 대원이 되는 근거다.
-	var d2 := decide(3, [
-		member("archer", 0, ["backline", "near_first"]),
+	var d2 := decide(5, [
+		member("archer", 0, ["execute", "cut_support"]),
 		member("warrior", 2), member("warrior", 4)])
 	var t1: Unit = d["target"]
 	var t2: Unit = d2["target"]
@@ -203,9 +204,9 @@ func test_target_axis() -> void:
 	ok(t2 != null and t2.type_id == "bard", "[지원 차단] 은 회복형을 고른다",
 		t2.type_id if t2 != null else "null")
 
-	var d3 := decide(3, [member("archer", 0, ["near_first"]), member("warrior", 2), member("warrior", 4)])
+	var d3 := decide(1, [member("archer", 0, ["hold_the_line"]), member("warrior", 2), member("warrior", 4)])
 	var t3: Unit = d3["target"]
-	ok(t3 != null and t3.pos.x == 5, "[근접 우선] 은 앞을 고른다")
+	ok(t3 != null, "[전선 고정] 은 조건이 안 맞으면 기본 표적으로 내려간다")
 
 
 # ── 7. 협력 축 ───────────────────────────────────────────────────────────
@@ -215,7 +216,7 @@ func test_squad_axis() -> void:
 
 	var b := Battle.new()
 	b.setup(3, [
-		member("archer", 0, ["coop_fire", "near_first"]),
+		member("archer", 0, ["coop_fire", "hold_the_line"]),
 		member("warrior", 2, ["backline"]),
 		member("bard", 4)])
 	# 아군이 아직 아무도 안 때렸으면 협공은 성립하지 않는다 - 표적 축으로 내려간다.
@@ -375,3 +376,25 @@ func test_doctrine_in_battle() -> void:
 	var a := b.units[0].take_damage(100, null)
 	var c := plain.units[1].take_damage(100, null)
 	ok(a < c, "돌파 교리가 받는 피해를 줄인다", "%d vs %d" % [a, c])
+
+
+func test_axis_doctrine() -> void:
+	print("\n[16] 축 교리")
+
+	# 한 축으로 세 칸을 다 채우면 켜진다. 조합이 무엇이든 상관없다.
+	var b := Battle.new()
+	b.setup(1, [
+		member("archer", 0, ["backline", "snipe", "execute"]),
+		member("warrior", 2, ["hold_the_line", "front_line", "coop_fire"]),
+		member("bard", 4)])
+	ok(b.units[0].doctrines.has("axis:target"), "표적 셋이면 표적 교리")
+	ok(not b.units[1].doctrines.has("axis:target"), "축이 섞이면 안 켜진다")
+
+	# 조합 교리와 축 교리는 겹칠 수 있고, 겹치면 효과가 합쳐진다.
+	var both := Battle.new()
+	both.setup(1, [
+		member("archer", 0, ["cut_support", "flank", "keep_range"]),
+		member("warrior", 2), member("bard", 4)])
+	var d: Dictionary = both.units[0].doctrines
+	ok(d.has("interdict"), "저지 교리(조합)가 켜졌다")
+	ok(Doctrines.amount(d, "attack_pct") == 12, "조합 교리 효과가 살아 있다")

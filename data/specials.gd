@@ -36,11 +36,17 @@ const FOCUS_DISTANCE: int = 2
 ##
 ## passive 가 true 면 규칙 엔진이 후보로 올리지 않는다. 행동이 아니라 상태를
 ## 가로채는 능력이라 "이번 틱에 무엇을 할까" 의 선택지가 될 수 없기 때문이다.
+## en 은 컷인 뒤판에 크게 깔리는 영문 이름이다.
+##
+## 한글 이름만 띄우면 띠 위에 글자 한 줄뿐이라 밋밋하다. 뒤에 큰 영문을 깔면
+## 층이 생기고, 한글은 그 위에 얹혀 더 또렷해진다. 뜻을 두 번 전하려는 게
+## 아니라 **깊이를 만들려는** 것이므로 영문은 흐리게 깐다.
 const TABLE: Dictionary = {
 	# ── 총사 ──────────────────────────────────────────────────────────────
 	# 사거리 2 짜리 인파이팅 원딜의 존재 이유. 붙으면 죽는 원딜이 아니라,
 	# 붙으면 한 번 터뜨리고 빠지는 원딜이 된다.
 	"keep_off": {
+		"en": "KEEP OFF",
 		"weight": 2,
 		"cutin": true,
 		"name": "거리두기",
@@ -59,6 +65,7 @@ const TABLE: Dictionary = {
 	# 유일하게 "지금 뭔가 일어나는" 게 아니라 이후를 바꾸는 궁극기다.
 	# 거리를 유지한 값을 나중에 받는 구조라, 카이팅 카드와 한 세트로 읽힌다.
 	"focus_fire": {
+		"en": "FOCUS FIRE",
 		"weight": 2,
 		"cutin": true,
 		"name": "집중사격",
@@ -77,6 +84,7 @@ const TABLE: Dictionary = {
 	# 개전 즉시 후열을 찢는다. 강화하면 아무나 죽을 때마다 다시 찬다 -
 	# 후반에 강해지는 암살자의 성장 곡선(growth 140)과 같은 방향이다.
 	"shadow_rend": {
+		"en": "SHADOW REND",
 		"weight": 1,
 		"cutin": true,
 		"name": "비영천참",
@@ -97,6 +105,7 @@ const TABLE: Dictionary = {
 	# 유일한 패시브. "이번 틱에 무엇을 할까" 가 아니라 죽는 순간을 가로채는 능력이라
 	# 규칙 슬롯에 올라갈 수가 없다. Battle 이 치명타 처리에서 직접 본다.
 	"unyielding": {
+		"en": "UNYIELDING",
 		"weight": 2,
 		"cutin": true,
 		"name": "불굴의 의지",
@@ -120,6 +129,7 @@ const TABLE: Dictionary = {
 	# 자기 몸이 아니라 남의 몸을 지키는 유일한 궁극기. 이동 + 밀치기 + 방어가
 	# 한 번에 들어가서, 무너지던 전선을 한 틱 만에 되돌린다.
 	"last_guard": {
+		"en": "LAST GUARD",
 		"weight": 2,
 		"cutin": true,
 		"name": "최후의 수호",
@@ -138,6 +148,7 @@ const TABLE: Dictionary = {
 	# 레가토(기본기)가 매 틱 조금씩 흘려 넣는 물이라면 이건 한 번에 붓는 물이다.
 	# 자신도 대상에 포함되므로 악사가 먼저 죽는 상황도 막는다.
 	"cantabile": {
+		"en": "CANTABILE",
 		"weight": 2,
 		"cutin": true,
 		"name": "칸타빌레",
