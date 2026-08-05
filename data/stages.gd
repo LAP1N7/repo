@@ -53,11 +53,11 @@ const TABLE: Array[Dictionary] = [
 		# 한 발도 못 쏘고 플레이어가 무피해로 이긴다 - 실제로 그랬다.
 		"enemies": [
 			{ "type": "archer", "pos": Vector2i(5, 1),
-			  "cards": ["snipe", "keep_range", "hold_fire"] },
+			  "cards": ["far_in_range", "keep_range", "hold_fire"] },
 			{ "type": "archer", "pos": Vector2i(6, 2),
-			  "cards": ["hold_the_line", "pursue"] },
+			  "cards": ["near_first", "run_down"] },
 			{ "type": "musketeer", "pos": Vector2i(5, 3),
-			  "cards": ["hold_the_line", "keep_range", "hold_fire"] },
+			  "cards": ["near_first", "keep_range", "hold_fire"] },
 		],
 	},
 	{
@@ -71,9 +71,9 @@ const TABLE: Array[Dictionary] = [
 		# 정체 패배한다. 후열(악사)을 끊어야만 판이 진행된다.
 		"enemies": [
 			{ "type": "shieldman", "pos": Vector2i(5, 1),
-			  "cards": ["hold_the_line", "guard_stance", "front_line"] },
+			  "cards": ["near_first", "guard_stance", "front_line"] },
 			{ "type": "shieldman", "pos": Vector2i(5, 3),
-			  "cards": ["hold_the_line", "guard_stance", "front_line"] },
+			  "cards": ["near_first", "guard_stance", "front_line"] },
 			{ "type": "bard", "pos": Vector2i(6, 2),
 			  "cards": ["behind_guard"], "special": "cantabile" },
 		],
@@ -108,7 +108,7 @@ const TABLE: Array[Dictionary] = [
 		# 표적 교리 하나로는 어느 쪽도 못 뚫는다.
 		"enemies": [
 			{ "type": "shieldman", "pos": Vector2i(5, 2),
-			  "cards": ["hold_the_line", "guard_stance", "front_line"],
+			  "cards": ["near_first", "guard_stance", "front_line"],
 			  "special": "last_guard" },
 			{ "type": "archer", "pos": Vector2i(6, 1),
 			  "cards": ["execute", "coop_fire", "keep_range"],

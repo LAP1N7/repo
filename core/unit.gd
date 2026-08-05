@@ -101,6 +101,18 @@ var last_attacker_index: int = -1
 ## (data/doctrines.gd 참조)
 var doctrines: Dictionary = {}
 
+## 위협도 보정. 교전 수칙(도발·전투태세·은신)이 매 틱 채운다.
+##
+## 적이 표적을 고를 때 이 값을 본다. 이게 있어야 "방패병이 붙잡는 동안 원거리가
+## 갉는다" 같은 전술이 성립한다. (core/threat.gd 참조)
+var threat_mod: int = 0
+
+## 잠복 남은 틱. 0보다 크면 맞지도 때리지도 않는다.
+var ambush_ticks: int = 0
+
+## 잠복이 풀린 뒤 첫 공격에 실릴 보너스. 해제되면 켜지고 한 번 쓰면 꺼진다.
+var ambush_ready: bool = false
+
 ## 이 대원이 마지막으로 고른 표적.
 ##
 ## 협력 축이 이걸 읽는다. [협공] 은 아군의 표적을 그대로 쓰고 [분산] 은 그

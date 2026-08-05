@@ -13,12 +13,16 @@ class_name Axes
 ## 그래서 모듈을 넷으로 가른다. 축이 다르면 서로 경쟁하지 않는다.
 ## 표적 모듈은 표적 모듈끼리만 자리를 다툰다.
 
-const TARGET := "target"      ## 누구를 노리는가
-const ENGAGE := "engage"      ## 지금 싸우는가
+const TARGET := "target"      ## 누구를 쫓는가
 const POSITION := "position"  ## 어디에 서는가
-const SQUAD := "squad"        ## 누구와 맞추는가
+const DOCTRINE := "doctrine"  ## 언제 무엇을 하는가
+const PASSIVE := "passive"    ## 항상 켜져 있는 것
 
-const ORDER: Array[String] = [TARGET, ENGAGE, POSITION, SQUAD]
+## 상점에 나오는 축. PASSIVE 는 여기 없다 - 보급에서만 나온다.
+const ORDER: Array[String] = [TARGET, POSITION, DOCTRINE]
+
+## 슬롯에 들어갈 수 있는 전부. PASSIVE 를 포함한다.
+const ALL: Array[String] = [TARGET, POSITION, DOCTRINE, PASSIVE]
 
 ## 화면 표기. 영문 축 라벨 + 한글 모듈명으로 적는다.
 ##
@@ -26,16 +30,16 @@ const ORDER: Array[String] = [TARGET, ENGAGE, POSITION, SQUAD]
 ## 안 보인다. 축만 영문으로 두면 계기판 느낌이 나면서 읽기는 그대로다.
 const LABEL := {
 	TARGET: "TARGET",
-	ENGAGE: "ENGAGE",
 	POSITION: "POSITION",
-	SQUAD: "SQUAD",
+	DOCTRINE: "DOCTRINE",
+	PASSIVE: "PASSIVE",
 }
 
 const KO := {
 	TARGET: "표적",
-	ENGAGE: "교전",
 	POSITION: "위치",
-	SQUAD: "협력",
+	DOCTRINE: "교전 수칙",
+	PASSIVE: "상시",
 }
 
 ## 축별 강조색. 카드 외곽선과 슬롯 테두리에 쓴다.
@@ -43,23 +47,23 @@ const KO := {
 ## 화면이 통째로 형광펜이 된다. (view/card_node.gd 의 _neon 주석 참조)
 const COLOR := {
 	TARGET: Color(0.95, 0.72, 0.30),    ## 호박
-	ENGAGE: Color(0.92, 0.42, 0.42),    ## 적
 	POSITION: Color(0.38, 0.80, 0.86),  ## 청록
-	SQUAD: Color(0.52, 0.86, 0.52),     ## 녹
+	DOCTRINE: Color(0.92, 0.42, 0.42),  ## 적
+	PASSIVE: Color(0.78, 0.55, 0.95),   ## 보라 - 보급에서만 나오는 희귀품
 }
 
 
 ## 한 축이 이번 판단에서 내놓아야 하는 값의 이름.
 ##
-##   target   -> pick    표적 선정자 (rules.resolve_target 의 이름)
-##   engage   -> stance  이번 틱의 태세
-##   position -> stand   어디에 설 것인가
-##   squad    -> coop    아군을 어떻게 참조할 것인가
+##   target   -> pick     표적 선정자 (rules.resolve_target 의 이름)
+##   position -> stand    어디에 설 것인가
+##   doctrine -> stance   이번 틱의 태세
+##   passive  -> passive  상시 효과 이름 (core/passives.gd)
 const PAYLOAD := {
 	TARGET: "pick",
-	ENGAGE: "stance",
 	POSITION: "stand",
-	SQUAD: "coop",
+	DOCTRINE: "stance",
+	PASSIVE: "passive",
 }
 
 

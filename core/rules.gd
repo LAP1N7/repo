@@ -57,23 +57,24 @@ static func select(unit: Unit, state) -> Dictionary:
 
 	var trace: Dictionary = {}
 
-	# 1) SQUAD - 아군 참조 방식
-	var squad := _axis(unit, Axes.SQUAD, state, trace)
-	var coop := String(squad.get("value", "solo"))
-
-	# 2) TARGET - 누구를
-	var picked := _pick_target(unit, state, trace, coop)
+	# 1) TARGET - 누구를 쫓는가
+	var picked := _pick_target(unit, state, trace)
 	var target: Unit = picked.get("target", null)
 
-	# 3) ENGAGE - 지금 싸우는가
-	_ctx_target = target
-	var eng := _axis(unit, Axes.ENGAGE, state, trace)
-	_ctx_target = null
-	var stance := String(eng.get("value", "engage"))
-
-	# 4) POSITION - 어디에
+	# 2) POSITION - 어디에 서는가
 	var pos := _axis(unit, Axes.POSITION, state, trace)
 	var stand := String(pos.get("value", ""))
+
+	# 3) DOCTRINE - 언제 무엇을 하는가
+	#
+	# 표적을 먼저 계산하는 것은 순서가 아니라 의존성 때문이다. [추격 기동] 같은
+	# 조건이 표적을 알아야 판정된다. 우선순위는 조립 단계에서 지켜진다.
+	_ctx_target = target
+	var doc := _axis(unit, Axes.DOCTRINE, state, trace)
+	_ctx_target = null
+	var stance := String(doc.get("value", ""))
+	# 위협도 보정은 매 틱 다시 계산한다. 조건이 풀리면 꺼져야 하기 때문이다.
+	unit.threat_mod = _threat_mod(stance)
 
 	# 궁극기가 "전술 뒤" 면 축을 다 읽은 다음, 기본 판단보다는 먼저 본다.
 	if not unit.special_first:
@@ -82,7 +83,7 @@ static func select(unit: Unit, state) -> Dictionary:
 			late["trace"] = trace
 			return late
 
-	var built := _assemble(unit, state, target, stance, stand, coop)
+	var built := _assemble(unit, state, target, stance, stand)
 	if built.is_empty():
 		return {}
 
@@ -132,18 +133,8 @@ static func _axis(unit: Unit, axis: String, state, trace: Dictionary) -> Diction
 ## 협력 축이 여기에 개입한다. [협공] 은 아군이 이미 노리는 적을 그대로 쓰고,
 ## [분산] 은 그 적을 후보에서 뺀다. 표적 축보다 **먼저** 걸리는 이유는,
 ## 협력이 "부대 차원의 결정" 이고 표적은 "개인의 취향" 이기 때문이다.
-static func _pick_target(unit: Unit, state, trace: Dictionary, coop: String) -> Dictionary:
+static func _pick_target(unit: Unit, state, trace: Dictionary) -> Dictionary:
 	var rows: Array = []
-
-	# 협공: 아군이 노리는 적이 있으면 그쪽으로 확정한다.
-	if coop == "focus":
-		var shared := _ally_focus(unit, state)
-		if shared != null:
-			rows.append({ "slot": -1, "name": "협공", "hit": true, "why": "" })
-			trace[Axes.TARGET] = rows
-			return { "target": shared }
-
-	var banned: Unit = _ally_focus(unit, state) if coop == "spread" else null
 	var won: Dictionary = {}
 
 	for slot in unit.card_rules.size():
@@ -158,7 +149,7 @@ static func _pick_target(unit: Unit, state, trace: Dictionary, coop: String) -> 
 			rows.append({ "slot": slot, "name": name, "hit": false, "why": "조건 불성립" })
 			continue
 		var t := resolve_target(unit, String(rule.get("pick", "nearest_enemy")), state, "attack")
-		if t == null or (banned != null and t.index == banned.index):
+		if t == null:
 			rows.append({ "slot": slot, "name": name, "hit": false, "why": "대상 없음" })
 			continue
 		rows.append({ "slot": slot, "name": name, "hit": true, "why": "" })
@@ -172,7 +163,10 @@ static func _pick_target(unit: Unit, state, trace: Dictionary, coop: String) -> 
 	var ai := Innates.base_ai(unit.type_id)
 	if String(ai["act"]) == "heal":
 		return { "target": resolve_target(unit, "lowest_hp_ally", state, "heal") }
-	return { "target": resolve_target(unit, "nearest_enemy", state, "attack") }
+	# 표적 모듈이 없으면 **위협도가 가장 높은 적**을 친다. 예전 기본값은 "가장
+	# 가까운 적" 이었는데 그러면 도발도 은신도 아무 의미가 없다. 위협 관리가
+	# 성립하려면 기본 판단이 위협을 보고 있어야 한다.
+	return { "target": resolve_target(unit, "highest_threat_enemy", state, "attack") }
 
 
 ## 아군이 이번 판에 노리고 있는 적. 없으면 null.
@@ -190,7 +184,7 @@ static func _ally_focus(unit: Unit, state) -> Unit:
 ##
 ## 여기가 `교전 > 위치 > 표적` 우선순위가 실제로 지켜지는 곳이다.
 static func _assemble(unit: Unit, state, target: Unit, stance: String,
-		stand: String, coop: String) -> Dictionary:
+		stand: String) -> Dictionary:
 	var ai := Innates.base_ai(unit.type_id)
 	var act_kind := String(ai["act"])
 	var power := int(ai["power"])
@@ -198,18 +192,24 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 	var bonus := 1 if stand == "march" else 0
 
 	# ── 교전이 위치와 표적을 이긴다 ──────────────────────────────────────
+	var near_d: int = _nearest_distance(unit, state)
 	match stance:
 		"wait":
-			return _rule(unit, "대기", "hold", target, 0, 0)
+			return _rule(unit, "대기", "hold", unit, 0, 0)
 		"defend":
 			return _rule(unit, "방어", "defend", unit, 0, 0)
-		"avoid":
-			var away := resolve_target(unit, "nearest_enemy", state, "")
-			if away != null and state.plan_move(unit, away, false, bonus) != unit.pos:
-				return _rule(unit, "회피", "move_away", away, 0, bonus)
-			# 물러날 칸이 없으면 버틴다. 회피가 실패했다고 공격으로 넘어가면
-			# "물러나라" 는 지시가 조용히 뒤집힌다.
-			return _rule(unit, "회피 불가", "hold", target, 0, 0)
+		"ambush":
+			# 잠복. 멈춰 있는 동안 맞지도 때리지도 않는다.
+			unit.ambush_ticks = maxi(unit.ambush_ticks, 1)
+			return _rule(unit, "잠복", "hold", unit, 0, 0)
+		"avoid_near":
+			if near_d <= 1:
+				return _retreat(unit, state, bonus)
+		"avoid_mid":
+			if near_d <= 2:
+				return _retreat(unit, state, bonus)
+		"avoid_boost":
+			return _retreat(unit, state, bonus + 1)
 
 	# 표적이 없어도 자리는 지킨다.
 	#
@@ -231,18 +231,21 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			# 원거리는 적이 코앞이면 한 칸 물러나며 쏠 자리를 만든다.
 			# 이게 기본 AI 의 flee_within 이다. 태세가 추격이면 안 물러난다.
 			var flee := int(ai["flee_within"])
-			if flee > 0 and dist <= flee and stance != "pursue":
+			# [광전] 은 물러나지 않는다. 추격 자세도 마찬가지다.
+			if stance == "engage" or stand == "chase":
+				flee = 0
+			if flee > 0 and dist <= flee:
 				var near := resolve_target(unit, "nearest_enemy", state, "")
 				if near != null and state.plan_move(unit, near, false, bonus) != unit.pos:
 					return _rule(unit, "간격 확보", "move_away", near, 0, bonus)
 			return _rule(unit, "공격", "attack", target, power, 0)
 
 	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
-	return _move_by_stand(unit, state, target, stance, stand, bonus, coop)
+	return _move_by_stand(unit, state, target, stand, bonus)
 
 
-static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
-		stand: String, bonus: int, coop: String = "solo") -> Dictionary:
+static func _move_by_stand(unit: Unit, state, target: Unit,
+		stand: String, bonus: int) -> Dictionary:
 	var ai := Innates.base_ai(unit.type_id)
 
 	# ── 협력이 위치 모듈보다 먼저 걸린다 ─────────────────────────────────
@@ -251,8 +254,8 @@ static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
 	#
 	# 위치 모듈이 있으면 그쪽이 이긴다 - 플레이어가 명시적으로 자리를 지정한
 	# 것이므로, 협력이 그걸 덮으면 지정이 무의미해진다.
-	if stand == "" and coop != "solo":
-		var mate := _coop_anchor(unit, state, coop)
+	if stand in ["follow_guard", "follow_lead", "protect_support", "escort", "rally"]:
+		var mate := _coop_anchor(unit, state, stand)
 		if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1:
 			# 아군에게 갈 때는 1칸 옆까지 간다. 사거리로 재면 궁수가 3칸 밖에서
 			# "다 왔다" 고 판단해 협력 모듈이 아무 일도 안 한다.
@@ -287,7 +290,7 @@ static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
 			return _approach(unit, state, target, bonus, "전진")
 
 	# 위치 모듈이 없다. 직업 기본 AI 가 정한다.
-	if String(ai["stand"]) == "advance" or stance == "pursue":
+	if String(ai["stand"]) == "advance" or stand == "chase":
 		return _approach(unit, state, target, bonus, "전진")
 	return _rule(unit, "제자리", "hold", target, 0, 0)
 
@@ -335,6 +338,26 @@ static func _coop_anchor(unit: Unit, state, coop: String) -> Unit:
 					best = a
 			return best
 	return null
+
+
+## 태세가 붙이는 위협도 보정.
+static func _threat_mod(stance: String) -> int:
+	match stance:
+		"taunt":
+			return Threat.TAUNT
+		"aggressive":
+			return Threat.AGGRESSIVE
+		"stealth":
+			return Threat.STEALTH
+	return 0
+
+
+## 물러난다. 갈 곳이 없으면 버틴다 - 실패했다고 공격으로 넘어가면 지시가 뒤집힌다.
+static func _retreat(unit: Unit, state, bonus: int) -> Dictionary:
+	var away := resolve_target(unit, "nearest_enemy", state, "")
+	if away != null and state.plan_move(unit, away, false, bonus) != unit.pos:
+		return _rule(unit, "후퇴", "move_away", away, 0, bonus)
+	return _rule(unit, "퇴로 없음", "hold", unit, 0, 0)
 
 
 static func _guard_ally(unit: Unit, state) -> Unit:
@@ -594,6 +617,80 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 				if e.special_ready():
 					return e
 			return null
+
+		"highest_threat_enemy":
+			# 위협도가 가장 높은 적. 도발·은신이 실제로 작동하는 자리다.
+			var ht: Unit = null
+			var hs: int = -9999
+			for e in enemies:
+				var sc := Threat.score(unit, e)
+				if sc > hs:
+					hs = sc
+					ht = e
+			return ht
+
+		"farthest_in_range_enemy":
+			# 사거리 안에서 가장 먼 적. 사거리 밖까지 세는 [저격] 과 달리
+			# **지금 쏠 수 있는 것 중** 가장 먼 것이라 카이팅과 맞물린다.
+			var fr: Unit = null
+			var fd: int = -1
+			for e in enemies:
+				var d: int = Grid.manhattan(unit.pos, e.pos)
+				if d <= unit.atk_range and d > fd:
+					fd = d
+					fr = e
+			return fr
+
+		"ranged_enemy":
+			for e in enemies:
+				if e.atk_range >= 2:
+					return e
+			return null
+
+		"melee_enemy":
+			for e in enemies:
+				if e.atk_range <= 1:
+					return e
+			return null
+
+		"lowest_hp_abs_enemy":
+			# 남은 HP 절대값. 비율(처형)과 다르다 - 두꺼운 적은 비율이 낮아도
+			# 남은 양이 많아서 못 끊는다.
+			var la: Unit = null
+			for e in enemies:
+				if la == null or e.hp < la.hp:
+					la = e
+			return la
+
+		"toughest_enemy":
+			var tg: Unit = null
+			for e in enemies:
+				if tg == null or e.max_hp > tg.max_hp:
+					tg = e
+			return tg
+
+		"unfocused_enemy":
+			# 아군이 쫓지 않는 적. 아군이 아무도 안 붙었으면 성립하지 않는다.
+			var shared: Unit = state.focus_target_for(unit)
+			if shared == null:
+				return null
+			for e in enemies:
+				if e.index != shared.index:
+					return e
+			return null
+
+		"far_from_allies_enemy":
+			# 아군 무리에서 가장 떨어진 적. 기동대가 이걸로 각개격파한다.
+			var best: Unit = null
+			var bd: int = -1
+			for e in enemies:
+				var sum := 0
+				for a in state.living_allies_of(unit):
+					sum += Grid.manhattan(a.pos, e.pos)
+				if sum > bd:
+					bd = sum
+					best = e
+			return best
 
 		"healer_enemy":
 			# 회복하는 적 우선. 방벽 뒤의 악사를 끊는 표적 교리다.

@@ -82,7 +82,7 @@ const TABLE: Dictionary = {
 	# 한 놈씩 확실히 끊는다. 표적이 바뀌면 이점이 사라진다.
 	"annihilate": {
 		"name": "섬멸 교리",
-		"core": ["execute", "coop_fire"],
+		"core": ["execute", "cluster"],
 		"effect": "same_target_pct",
 		"value": 12,
 		"text": "같은 표적을 노린 아군 1명당 +12%",
@@ -91,7 +91,7 @@ const TABLE: Dictionary = {
 	# 측면으로 돌아 적의 회복원을 끊는다. 우회하는 동안 정면이 비어 있다.
 	"interdict": {
 		"name": "저지 교리",
-		"core": ["cut_support", "flank"],
+		"core": ["cut_support", "wary_step"],
 		"effect": "attack_pct",
 		"value": 12,
 		"text": "공격력 +12%",
@@ -100,7 +100,7 @@ const TABLE: Dictionary = {
 	# 정면으로 밀고 들어간다. 가장 단순하고 가장 먼저 맞는다.
 	"breakthrough": {
 		"name": "돌파 교리",
-		"core": ["front_line", "pursue"],
+		"core": ["front_line", "battle_stance"],
 		"effect": "damage_taken_pct",
 		"value": -18,
 		"text": "받는 피해 -18%",
@@ -118,7 +118,7 @@ const TABLE: Dictionary = {
 	# 방패를 따라가며 앞선을 민다. 방패병이 죽으면 통째로 무너진다.
 	"vanguard": {
 		"name": "선봉 교리",
-		"core": ["follow_guard", "hold_the_line"],
+		"core": ["follow_guard", "taunt"],
 		"effect": "moved_attack_pct",
 		"value": 15,
 		"text": "이동한 다음 틱의 공격 +15%",
@@ -127,7 +127,7 @@ const TABLE: Dictionary = {
 	# 회복원을 지키며 버틴다. 화력을 포기한 만큼 오래 선다.
 	"lifeline": {
 		"name": "생명선 교리",
-		"core": ["protect_support", "behind_guard"],
+		"core": ["protect_support", "battle_stance"],
 		"effect": "damage_taken_pct",
 		"value": -15,
 		"text": "받는 피해 -15%",
@@ -136,7 +136,7 @@ const TABLE: Dictionary = {
 	# 궁극기를 먼저 끊는다. 그 한 틱을 위해 다른 표적을 전부 미룬다.
 	"preempt": {
 		"name": "선제 교리",
-		"core": ["preempt_target", "follow_lead"],
+		"core": ["raider", "stealth"],
 		"effect": "crit_pct",
 		"value": 12,
 		"text": "치명타 확률 +12%",
@@ -175,6 +175,19 @@ static func active_ids(ids: Array) -> Dictionary:
 	return out
 
 
+## 세 축을 하나씩 채웠을 때 켜지는 교리.
+##
+## 축 교리(한 축 몰빵)와 **정반대 방향**이다. 한쪽은 극단을, 다른 쪽은 균형을
+## 보상한다. 셋 다 보상을 받으니 어떤 상점이 떠도 목표가 생긴다.
+const BALANCED := {
+	"name": "균형 편제",
+	"effect": "attack_pct",
+	"value": 10,
+	"text": "공격력 +10%",
+	"flavor": "한쪽으로 치우치지 않은 부대는 어느 판에서도 무너지지 않는다.",
+}
+
+
 ## 장착 규칙 목록(카드 사전 배열)에서 활성 교리를 전부 찾는다.
 ##
 ## 이름 붙은 조합 교리와 축 교리 둘 다 본다. 겹치면 둘 다 켜지고 효과는
@@ -187,6 +200,18 @@ static func active(rules: Array) -> Dictionary:
 			ids.append(cid)
 	var out := active_ids(ids)
 	out.merge(active_axis(rules))
+	# 세 축을 하나씩 채웠는가.
+	var seen: Dictionary = {}
+	for r in rules:
+		var ax := String((r as Dictionary).get("axis", ""))
+		if ax != "":
+			seen[ax] = true
+	var full := true
+	for ax in Axes.ORDER:
+		if not seen.has(ax):
+			full = false
+	if full:
+		out["balanced"] = BALANCED
 	return out
 
 

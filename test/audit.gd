@@ -39,7 +39,7 @@ func _check_axis_and_payload() -> void:
 	for cid in Cards.TABLE:
 		var c: Dictionary = Cards.TABLE[cid]
 		var axis := String(c.get("axis", ""))
-		if not Axes.ORDER.has(axis):
+		if not Axes.ALL.has(axis):
 			_fail("%s: 축이 없거나 알 수 없다 ('%s')" % [cid, axis])
 			continue
 		var want := String(Axes.PAYLOAD[axis])
@@ -69,14 +69,20 @@ const CONDS := [
 	"ally_died_last_tick", "enemy_special_ready", "target_hp_below",
 ]
 const PICKS := [
-	"nearest_enemy", "farthest_enemy", "backline_enemy", "lowest_hp_enemy",
-	"healer_enemy", "unguarded_enemy", "strongest_enemy", "focused_enemy",
-	"special_ready_enemy",
+	"nearest_enemy", "farthest_enemy", "farthest_in_range_enemy", "backline_enemy",
+	"lowest_hp_enemy", "lowest_hp_abs_enemy", "toughest_enemy", "healer_enemy",
+	"ranged_enemy", "melee_enemy", "unguarded_enemy", "strongest_enemy",
+	"focused_enemy", "unfocused_enemy", "far_from_allies_enemy",
+	"highest_threat_enemy", "special_ready_enemy",
 ]
-const STANCES := ["engage", "avoid", "wait", "pursue", "defend"]
-const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "flank", "march"]
-const COOPS := ["solo", "focus", "spread", "escort", "rally",
-	"follow_guard", "follow_lead", "protect_support"]
+const STANCES := ["engage", "wait", "defend", "ambush",
+	"avoid_near", "avoid_mid", "avoid_boost", "taunt", "aggressive", "stealth"]
+const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "march", "chase",
+	"follow_guard", "follow_lead", "protect_support", "escort", "rally"]
+
+## 상시 효과 이름. core/passives.gd 가 이 이름으로 분기한다.
+const PASSIVES := ["scatter", "bombard", "whirl", "riposte", "scope", "lone_armor",
+	"fast_heal", "assault", "plating", "chain", "aegis", "vigil"]
 
 
 func _check_vocabulary() -> void:
@@ -88,15 +94,15 @@ func _check_vocabulary() -> void:
 			Axes.TARGET:
 				if not PICKS.has(String(c.get("pick", ""))):
 					_fail("%s: 알 수 없는 표적 '%s'" % [cid, c.get("pick", "")])
-			Axes.ENGAGE:
+			Axes.DOCTRINE:
 				if not STANCES.has(String(c.get("stance", ""))):
 					_fail("%s: 알 수 없는 태세 '%s'" % [cid, c.get("stance", "")])
+			Axes.PASSIVE:
+				if not PASSIVES.has(String(c.get("passive", ""))):
+					_fail("%s: 알 수 없는 상시 효과 '%s'" % [cid, c.get("passive", "")])
 			Axes.POSITION:
 				if not STANDS.has(String(c.get("stand", ""))):
 					_fail("%s: 알 수 없는 자리 '%s'" % [cid, c.get("stand", "")])
-			Axes.SQUAD:
-				if not COOPS.has(String(c.get("coop", ""))):
-					_fail("%s: 알 수 없는 협력 '%s'" % [cid, c.get("coop", "")])
 
 
 # ── 교리 ─────────────────────────────────────────────────────────────────
