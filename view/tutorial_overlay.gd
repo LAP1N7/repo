@@ -85,7 +85,11 @@ func setup(p_tut: Tutorial, p_screen: Node = null) -> void:
 
 	_portrait = TextureRect.new()
 	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# 일러스트는 2:3(600x900) 인데 세울 자리는 420x720 이라 비가 안 맞는다.
+	# CENTERED 로 맞추면 위아래에 빈 띠가 생겨 인물이 허공에 뜬 것처럼 보인다.
+	# 자리를 꽉 채우고 남는 좌우를 잘라낸다 - 얼굴은 가운데 있으므로 살아남는다.
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.clip_contents = true
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_portrait)
 
@@ -156,15 +160,9 @@ func _load_portrait(id: String) -> void:
 	_portrait.texture = null
 	if id == "":
 		return
-	# 전신 LD 초상(ASSETS.md C-2)을 먼저 찾고, 없으면 컷인 일러스트를 돌려쓴다.
-	# 둘 다 없으면 실루엣으로 대신한다 - 에셋이 없어도 튜토리얼은 돌아간다.
-	for path in ["res://assets/art/tutorial/%s.png" % id,
-			"res://assets/art/cutin/%s.png" % id]:
-		if ResourceLoader.exists(path):
-			var t := load(path)
-			if t is Texture2D:
-				_portrait.texture = t
-				return
+	# 직업별 LD 일러스트가 기본이다. 튜토리얼 전용 컷이 따로 들어오면 그게 이긴다.
+	# 아무것도 없으면 실루엣으로 대신한다 - 에셋이 없어도 튜토리얼은 돌아간다.
+	_portrait.texture = UiKit.art(["tutorial", "standing", "cutin"], id)
 
 
 func _layout(side: String) -> void:

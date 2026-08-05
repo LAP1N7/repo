@@ -98,6 +98,26 @@ static func title_font() -> Font:
 	return font_role("title")
 
 
+## 캐릭터 일러스트를 찾아 온다. 없으면 null - 아트가 없어도 게임은 돌아간다.
+##
+## dirs 는 우선순위 순서다. 앞쪽에 전용 컷을 두고 뒤에 공용 일러스트를 두면
+## "전용이 있으면 그걸, 없으면 공용을" 이 된다.
+##
+## 확장자를 여기서만 안다. 원본은 png 로 받지만 웹 빌드에 얹으려고 webp 로
+## 굽는다(6장 5.1MB -> 0.9MB). 파일을 다시 png 로 되돌려도 호출부는 안 바뀐다.
+static func art(dirs: Array, id: String) -> Texture2D:
+	if id == "":
+		return null
+	for d in dirs:
+		for ext in [".webp", ".png"]:
+			var path: String = "res://assets/art/%s/%s%s" % [d, id, ext]
+			if ResourceLoader.exists(path):
+				var t := load(path)
+				if t is Texture2D:
+					return t
+	return null
+
+
 ## size 를 주면 그 크기에 맞는 폰트를 돌려준다. 0 이면 큰 글씨용.
 static func font(size: int = 0) -> Font:
 	return font_role("small" if (size > 0 and size <= small_max()) else "large")
