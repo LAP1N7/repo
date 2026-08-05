@@ -94,6 +94,14 @@ var kill_pending: bool = false
 ## 인덱스로 들면 순환이 생기지 않는다.
 var last_attacker_index: int = -1
 
+## 이번 교전에서 이 대원이 **입힌** 피해와 **회복시킨** 양의 누적.
+##
+## 순수 표시용이라 전투 판정에는 쓰지 않는다. 그런데 이게 없으면 "누가 실제로
+## 일했는가" 를 알 방법이 없다. 로그를 한 줄씩 세는 것 말고는.
+## 방어 태세로 깎인 뒤의 **실제 적용치**를 센다.
+var damage_dealt: int = 0
+var healing_done: int = 0
+
 ## 강화 단계. 표시용이며 스탯에는 이미 반영되어 있다.
 var upgrade: int = 0
 

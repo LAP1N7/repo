@@ -339,6 +339,7 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 			var dmg: int = target.take_damage(
 				u.power_damage(int(card.get("power", 100))), u)
 			last_damage_tick = tick
+			u.damage_dealt += dmg
 			# [불굴의 의지] 로 버티는 중이면 갚은 만큼 센다. (_hit 와 같은 규칙)
 			if u.undying_ticks > 0:
 				u.undying_damage += dmg
@@ -355,8 +356,12 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 				_recharge_on_death()
 
 		"heal":
+			# 규칙이 heal_amount 를 지정하면 그 값을 쓴다. 무료 기본기를
+			# 유료 모듈보다 약하게 두기 위한 장치다.
 			var amount: int = target.heal(
-				UnitData.BARD_HEAL + int(card.get("heal_bonus", 0)))
+				int(card.get("heal_amount", UnitData.BARD_HEAL))
+				+ int(card.get("heal_bonus", 0)))
+			u.healing_done += amount
 			_emit({
 				"type": "heal", "unit": u.index, "target": target.index,
 				"amount": amount, "target_hp": target.hp,
@@ -407,6 +412,7 @@ func blink_landing(mover: Unit, target: Unit) -> Vector2i:
 func _hit(attacker: Unit, victim: Unit, percent: int, hits: Array) -> void:
 	var dmg: int = victim.take_damage(attacker.power_damage(percent), attacker)
 	last_damage_tick = tick
+	attacker.damage_dealt += dmg
 	_mark_focus(attacker, victim)
 	if not victim.alive:
 		attacker.kill_pending = true
@@ -536,6 +542,7 @@ func _execute_special(u: Unit, card: Dictionary, target: Unit, act: String) -> v
 			for a in living_allies_of(u):
 				# living_allies_of 가 무타입 Array 라 반환형 추론이 안 된다. 명시한다.
 				var amount: int = a.heal(arg)
+				u.healing_done += amount
 				if amount > 0:
 					healed.append({ "target": a.index, "amount": amount, "target_hp": a.hp })
 			_emit({
