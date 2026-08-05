@@ -200,5 +200,7 @@
 	"loadout.base_hint": "대원은 모듈이 없어도 자기 직업의 일을 합니다. 모듈은 그 판단을 수정합니다.",
 	"battle.axis_hint": "네 축을 순서대로 통과해 이번 틱의 행동 하나가 정해집니다.",
 	"battle.trace_base": "기본 AI",
-	"shop.note_doctrine": "%s 완성"
+	"shop.note_doctrine": "%s 완성",
+	"battle.squad_work": "피해 %d · 회복 %d",
+	"battle.squad_ult": "궁극기 · 교전당 1회"
 }

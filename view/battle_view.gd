@@ -13,7 +13,13 @@ signal won()
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다.
 var tut: Tutorial = null
 
-const BOARD_ORIGIN := Vector2(48, 176)
+## 판을 그리는 배율. 좌표계(타일 64px)는 그대로 두고 보이는 크기만 키운다.
+##
+## 이렇게 하면 Grid 의 거리·경로 계산이 한 줄도 안 바뀐다. 타일 크기 자체를
+## 키우면 BOARD_ORIGIN 을 쓰는 모든 자리와 뷰의 픽셀 상수를 전부 다시 재야 한다.
+const BOARD_SCALE := 1.42
+
+const BOARD_ORIGIN := Vector2(60, 118)
 const TILE: int = Grid.TILE
 const ACT_TIME: float = 0.22
 const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
@@ -59,6 +65,12 @@ var speed_buttons: Array[Button] = []
 var result_panel: Control
 var lbl_result: Label
 var lbl_result_sub: Label
+## 하단 대원 바. 얼굴 · HP · 기여도가 여기 산다.
+var squad_root: Control
+
+## 대원별 카드 노드. unit index -> _SquadCard
+var squad_cards: Dictionary = {}
+
 var rules_root: Control
 
 ## 이번 틱의 판단 네 줄이 뜨는 곳. (_show_trace 주석 참조)
@@ -90,6 +102,7 @@ func setup(p_run: RunState) -> void:
 
 	board = Node2D.new()
 	board.position = BOARD_ORIGIN
+	board.scale = Vector2(BOARD_SCALE, BOARD_SCALE)
 	# 세로로 긴 스프라이트는 위 칸을 침범한다. Y 정렬을 켜면 화면 아래쪽 유닛이
 	# 항상 앞에 그려져서 앞줄이 뒷줄을 가리는 올바른 겹침이 나온다.
 	board.y_sort_enabled = true
@@ -97,6 +110,7 @@ func setup(p_run: RunState) -> void:
 
 	fx = Node2D.new()
 	fx.position = BOARD_ORIGIN
+	fx.scale = Vector2(BOARD_SCALE, BOARD_SCALE)
 	add_child(fx)
 
 	_build_ui()
@@ -119,22 +133,23 @@ func _draw() -> void:
 
 	for y in Grid.H:
 		for x in Grid.W:
-			var r := Rect2(BOARD_ORIGIN + Vector2(x * TILE, y * TILE), Vector2(TILE, TILE))
+			var r := Rect2(BOARD_ORIGIN + Vector2(x * TILE, y * TILE) * BOARD_SCALE,
+				Vector2(TILE, TILE) * BOARD_SCALE)
 			draw_rect(r, COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
 
 	for p in Grid.PLAYER_SLOTS:
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE),
+		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE) * BOARD_SCALE,
 			Vector2(TILE, TILE)), COL_PLAYER_ZONE)
 	for p in Grid.ENEMY_SLOTS:
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE),
+		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE) * BOARD_SCALE,
 			Vector2(TILE, TILE)), COL_ENEMY_ZONE)
 
 	for x in Grid.W + 1:
-		draw_line(BOARD_ORIGIN + Vector2(x * TILE, 0),
-			BOARD_ORIGIN + Vector2(x * TILE, Grid.H * TILE), UiKit.LINE, 1.0)
+		draw_line(BOARD_ORIGIN + Vector2(x * TILE, 0) * BOARD_SCALE,
+			BOARD_ORIGIN + Vector2(x * TILE, Grid.H * TILE) * BOARD_SCALE, UiKit.LINE, 1.0)
 	for y in Grid.H + 1:
-		draw_line(BOARD_ORIGIN + Vector2(0, y * TILE),
-			BOARD_ORIGIN + Vector2(Grid.W * TILE, y * TILE), UiKit.LINE, 1.0)
+		draw_line(BOARD_ORIGIN + Vector2(0, y * TILE) * BOARD_SCALE,
+			BOARD_ORIGIN + Vector2(Grid.W * TILE, y * TILE) * BOARD_SCALE, UiKit.LINE, 1.0)
 
 
 func tile_center(p: Vector2i) -> Vector2:
@@ -155,7 +170,7 @@ func _build_ui() -> void:
 	lbl_stage = UiKit.label(ui, Vector2(48, 56), Vector2(700, 24), "", 14, UiKit.BAD)
 	lbl_tick = UiKit.label(ui, Vector2(400, 22), Vector2(160, 24), "", 15, UiKit.MUTED)
 	lbl_tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 13, UiKit.MUTED)
+	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 12, UiKit.FAINT)
 
 	var cy := 592.0
 	btn_start = UiKit.button(ui, Vector2(48, cy), Vector2(200, 42), UiText.t("battle.start", "▶  전투 시작"), 15)
@@ -163,16 +178,17 @@ func _build_ui() -> void:
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
 
-	UiKit.label(ui, Vector2(260, cy + 11), Vector2(46, 22), UiText.t("battle.speed", "배속"), 13, UiKit.MUTED)
-	var sx := 304.0
+	UiKit.label(ui, Vector2(986, 24), Vector2(60, 20),
+		UiText.t("battle.speed", "배속"), 11, UiKit.FAINT)
+	var sx := 1040.0
 	for m in SPEEDS:
-		var b := UiKit.button(ui, Vector2(sx, cy + 5), Vector2(54, 32), "%dx" % int(m), 14)
+		var b := UiKit.button(ui, Vector2(sx, 20), Vector2(42, 26), "%dx" % int(m), 12, 4)
 		b.pressed.connect(_on_speed_pressed.bind(m))
 		speed_buttons.append(b)
 		sx += 58.0
 
 	# 소리 토글. 설정은 Sfx 의 정적 변수라 화면을 넘어가도 유지된다.
-	btn_sound = UiKit.button(ui, Vector2(sx + 8, cy + 5), Vector2(86, 32), "", 12)
+	btn_sound = UiKit.button(ui, Vector2(sx + 6, 20), Vector2(64, 26), "", 11, 4)
 	btn_sound.pressed.connect(func():
 		Sfx.enabled = not Sfx.enabled
 		_refresh_sound_button()
@@ -193,6 +209,17 @@ func _build_ui() -> void:
 	btn_next.visible = false
 	btn_next.pressed.connect(func(): won.emit())
 
+	# ── 하단 대원 바 ────────────────────────────────────────────────────
+	# 명일방주 하단 UI 의 어법이다. 오른쪽에 글자로 늘어놓던 출전 정보를 얼굴
+	# 카드 셋으로 압축한다. 판을 보다가 눈을 조금만 내리면 "누가 얼마나 남았고
+	# 얼마나 일했는가" 가 한눈에 들어와야 한다.
+	#
+	# 알고리즘 전문은 여기 안 적는다 - 세 명분을 다 적으면 결국 지금과 같은
+	# 글자 벽이 된다. 얼굴에 마우스를 올리면 그때 사선 판으로 펼친다.
+	squad_root = Control.new()
+	squad_root.position = Vector2(60, 560)
+	ui.add_child(squad_root)
+
 	rules_root = Control.new()
 	rules_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(rules_root)
@@ -205,27 +232,27 @@ func _build_ui() -> void:
 	trace_root = Control.new()
 	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
 	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
-	trace_root.position = Vector2(1000, 436)
+	trace_root.position = Vector2(660, 96)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
-	log_root.position = Vector2(600, 436)
+	log_root.position = Vector2(660, 300)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
-	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 22), UiText.t("battle.log_head", "전투 로그"), 15, UiKit.MUTED)
+	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 22), UiText.t("battle.log_head", "교전 기록"), 14, UiKit.MUTED)
 	var logbg := Panel.new()
 	logbg.position = Vector2(0, 24)
 	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
 	# 600 + 388 = 988. 12px 여백을 둔다.
-	logbg.size = Vector2(388, 236)
+	logbg.size = Vector2(560, 236)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(368, 224), "", 11)
+	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(540, 224), "", 11)
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
 	log_label.add_theme_constant_override("line_spacing", -6)
@@ -374,6 +401,43 @@ func _slot_row(unit_i: int, slot: int, px: float, y: float,
 ## 절대 수치가 아니라 **아군 중 최대치 대비 비율**로 그린다. 전투마다 총 피해량이
 ## 다르므로 절대 길이로 그리면 어떤 판에서는 전부 꽉 차고 어떤 판에서는 전부
 ## 비어 보인다. 알고 싶은 것은 "이 대원이 우리 팀에서 얼마나 일했는가" 다.
+## 하단 대원 바를 만든다. 편성이 확정된 뒤 한 번만.
+func _build_squad_bar() -> void:
+	for c in squad_root.get_children():
+		c.queue_free()
+	squad_cards.clear()
+	if battle == null:
+		return
+
+	var i := 0
+	for u in battle.units:
+		if u.team != Unit.TEAM_PLAYER:
+			continue
+		var card := _SquadCard.new()
+		card.unit = u
+		card.position = Vector2(i * 268.0, 0)
+		card.size = Vector2(252, 96)
+		card.pivot_offset = Vector2(126, 48)
+		squad_root.add_child(card)
+		squad_cards[u.index] = card
+		i += 1
+
+
+## 매 틱 HP·기여도만 갱신한다. 노드를 다시 만들지 않는다 - 호버 상태가 날아간다.
+func _refresh_squad() -> void:
+	if battle == null:
+		return
+	var top := 1
+	for u in battle.units:
+		if u.team == Unit.TEAM_PLAYER:
+			top = maxi(top, u.damage_dealt + u.healing_done)
+	for idx in squad_cards:
+		var c = squad_cards[idx]
+		if is_instance_valid(c):
+			c.contrib_top = top
+			c.queue_redraw()
+
+
 func _refresh_contrib() -> void:
 	if battle == null:
 		return
@@ -527,7 +591,7 @@ func _reset() -> void:
 	battle = Battle.new()
 	battle.setup(run.stage_id, run.to_party())
 	_build_unit_views()
-	_build_rules_panel()
+	_build_squad_bar()
 	_clear_log()
 	lbl_tick.text = UiText.t("battle.m09", "틱 0 / %d") % Battle.MAX_TICKS
 	_refresh_ui()
@@ -631,6 +695,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 			"tick_begin":
 				lbl_tick.text = UiText.t("battle.m10", "틱 %d / %d") % [e["tick"], Battle.MAX_TICKS]
 				_refresh_contrib()
+				_refresh_squad()
 
 			"rule":
 				var innate := bool(e.get("innate", false))
@@ -786,7 +851,7 @@ func _play_special(e: Dictionary) -> void:
 ## 지점은 data/cutin_shots.gd 에 있다. 여기서 수치를 잡으면 일러스트를 갈 때마다
 ## 연출 코드를 고쳐야 한다.
 ##
-## 도입부 1.59초 + 공개 1.53초 = 총 3.1초. 훑는 시간과 읽는 시간이 반반이다.
+## 도입부 2.09초 + 공개 1.53초 = 총 3.6초. 훑는 쪽이 조금 더 길다.
 const CUTIN_X: float = 384.0        ## 1280 의 30%. 일러스트가 차지하는 폭.
 const CUTIN_SKEW: float = 44.0      ## 사선 프레임의 기울기(위가 넓고 아래가 좁다).
 const CUTIN_ART: Vector2 = Vector2(600, 900)
@@ -935,11 +1000,14 @@ func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") 
 	if en != "":
 		var back := Label.new()
 		back.text = en
-		back.position = Vector2(name_x + 8.0, 262)
-		back.size = Vector2(bw, 96)
+		# 한글 이름과 같은 줄에 두면 글자가 겹쳐 둘 다 못 읽는다. 배경으로 쓰려면
+		# **읽히지 않을 만큼** 크고 흐려야 한다. 크기를 키우고 알파를 절반으로
+		# 낮추면 글자가 아니라 무늬가 되고, 그때부터 뒤판 역할을 한다.
+		back.position = Vector2(name_x - 40.0, 178)
+		back.size = Vector2(bw + 200.0, 240)
 		back.add_theme_font_override("font", UiKit.title_font())
-		back.add_theme_font_size_override("font_size", 86)
-		back.add_theme_color_override("font_color", Color(1, 1, 1, 0.10))
+		back.add_theme_font_size_override("font_size", 168)
+		back.add_theme_color_override("font_color", Color(1, 1, 1, 0.055))
 		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(back)
 
@@ -1109,6 +1177,20 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	spark.color = Color(tint.r, tint.g, tint.b, 0.55)
 	view.add_child(spark)
 
+	# 확대 구간을 가로지르는 스캔선. 렌즈가 훑고 있다는 신호다.
+	# 파티클은 "공기 중에 뭔가 있다" 이고 이 선은 "카메라가 보고 있다" 라서
+	# 둘이 겹치면 층이 하나 더 생긴다.
+	var scan := ColorRect.new()
+	scan.color = Color(tint.r, tint.g, tint.b, 0.16)
+	scan.size = Vector2(1280, 3)
+	scan.position = Vector2(0, -20)
+	scan.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(scan)
+	var scan_tw := create_tween()
+	scan_tw.set_ignore_time_scale(true)
+	scan_tw.set_loops(3)
+	scan_tw.tween_property(scan, "position", Vector2(0, 740), 0.7)		.from(Vector2(0, -20))
+
 	var weapon: Vector2 = shot["weapon"]
 	var eye: Vector2 = shot["eye"]
 	# 얼굴은 눈보다 조금 아래를 잡는다. 눈만 노리면 턱이 잘려 얼굴로 안 읽힌다.
@@ -1125,14 +1207,14 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	# 1) 무기 끝. 완전히 정지시키지 않고 아주 천천히 밀어 준다.
 	#    멈춘 그림은 정지 화면으로 읽히고, 조금이라도 흐르면 살아 있는 것으로 읽힌다.
 	tw.parallel()
-	_cam_to(tw, art, weapon, 4.2, 0.50, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	_cam_to(tw, art, weapon, 4.2, 0.65, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
 
 	# 2) 얼굴까지 위로. 이 구간이 가장 길다 - 두 지점이 한 인물이라는 것을
 	#    이어 붙이는 게 목적이라, 끊기면 딴 그림 두 장으로 보인다.
-	_cam_to(tw, art, face, 3.4, 0.62, Tween.TRANS_CUBIC, Tween.EASE_IN_OUT)
+	_cam_to(tw, art, face, 3.4, 0.80, Tween.TRANS_CUBIC, Tween.EASE_IN_OUT)
 
 	# 3) 눈. 짧고 세게 박는다.
-	_cam_to(tw, art, eye, 5.4, 0.40, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	_cam_to(tw, art, eye, 5.4, 0.52, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	await tw.finished
 
 	# 번쩍. 이 흰 화면이 도입부와 전체 공개 사이의 이음매를 덮는다.
@@ -1439,3 +1521,151 @@ func _show_result() -> void:
 			lbl_result.add_theme_color_override("font_color", UiKit.ACCENT)
 			lbl_result_sub.text = UiText.t("battle.timeout_sub", "%d틱 안에 끝내지 못했다.  적 %d명 생존.") % [
 				Battle.MAX_TICKS, battle.living_count(Unit.TEAM_ENEMY)]
+
+
+## 하단 대원 카드 한 장. 얼굴 · HP · 기여도.
+##
+## ── 왜 알고리즘을 평소엔 안 적는가 ───────────────────────────────────────
+## 세 명분 슬롯을 다 적으면 결국 글자 벽이 된다. 예전 오른쪽 패널이 정확히
+## 그랬다 - 화면의 절반이 글자였고, 정작 판은 40%밖에 안 썼다.
+##
+## 전투 중에 항상 필요한 것은 "누가 얼마나 남았고 얼마나 일했는가" 뿐이다.
+## 알고리즘은 **궁금해졌을 때** 보면 된다. 그래서 얼굴에 마우스를 올린 그 한
+## 명분만 사선 판으로 펼친다.
+##
+## ── 왜 기울이는가 ────────────────────────────────────────────────────────
+## Balatro 의 카드처럼 마우스 쪽으로 살짝 기운다. 정지한 판이 손에 잡히는
+## 물건처럼 느껴지는 데 이 한 겹이 크게 작용한다. 각도는 작게 둔다 - 크게 주면
+## 글자가 읽기 힘들어지고, 이건 읽으라고 펼치는 판이다.
+class _SquadCard extends Control:
+	var unit: Unit
+	var contrib_top: int = 1
+
+	var _hover: bool = false
+	var _tilt: float = 0.0
+	var _lift: float = 0.0
+	var _mx: float = 0.5
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_entered.connect(func(): _hover = true)
+		mouse_exited.connect(func(): _hover = false)
+
+	func _process(delta: float) -> void:
+		# 마우스가 카드의 어느 쪽에 있는지에 따라 기우는 방향이 바뀐다.
+		if _hover:
+			var local := get_local_mouse_position()
+			_mx = clampf(local.x / maxf(size.x, 1.0), 0.0, 1.0)
+		var k: float = clampf(delta * 12.0, 0.0, 1.0)
+		_tilt = lerp(_tilt, (_mx - 0.5) * 0.10 if _hover else 0.0, k)
+		_lift = lerp(_lift, -10.0 if _hover else 0.0, k)
+		rotation = _tilt
+		position.y = 0.0 + _lift
+		z_index = 40 if _hover else 0
+		queue_redraw()
+
+	func _draw() -> void:
+		if unit == null:
+			return
+		var s := size
+		var col: Color = unit.color
+		var neon := Color.from_hsv(col.h, minf(col.s, 0.45),
+			clampf(col.v * 1.2 + 0.15, 0.0, 1.0), 1.0)
+
+		# ── 판. 오른쪽 아래를 사선으로 깎는다 ────────────────────────────
+		var cut := 16.0
+		var shape := PackedVector2Array([
+			Vector2(0, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y),
+		])
+		draw_colored_polygon(shape, Color(0.09, 0.10, 0.13, 0.94))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(neon.r, neon.g, neon.b, 0.55 if _hover else 0.28), 1.6, true)
+
+		# 왼쪽 직업 색 바. 멀리서도 누구인지 갈린다.
+		draw_rect(Rect2(0, 0, 3, s.y), neon)
+
+		# ── 얼굴 ─────────────────────────────────────────────────────────
+		var face := UiKit.art(["portraits"], unit.type_id)
+		if face != null:
+			draw_texture_rect(face, Rect2(8, 4, 88, 88), false)
+		else:
+			draw_circle(Vector2(52, 48), 34, col)
+
+		var fs := UiKit.font(11)
+		var fb := UiKit.font(16)
+		var dead := not unit.alive
+
+		# 이름과 HP 숫자
+		draw_string(fb, Vector2(106, 26), unit.display_name,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
+			Color(0.45, 0.45, 0.5) if dead else UiKit.TEXT)
+		draw_string(fs, Vector2(106, 46), "%d / %d" % [maxi(0, unit.hp), unit.max_hp],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.MUTED)
+
+		# ── HP 막대 ──────────────────────────────────────────────────────
+		var bw := s.x - 118.0
+		draw_rect(Rect2(106, 54, bw, 7), Color(0.16, 0.17, 0.21))
+		var ratio: float = 0.0 if unit.max_hp <= 0 else clampf(
+			float(unit.hp) / float(unit.max_hp), 0.0, 1.0)
+		# 빨강은 위험 신호로 남겨 둔다. 평소엔 직업 색이라 누구 막대인지 읽힌다.
+		var hpc: Color = UiKit.BAD if ratio < 0.35 else neon
+		draw_rect(Rect2(106, 54, bw * ratio, 7), hpc)
+
+		# ── 기여도 ───────────────────────────────────────────────────────
+		var work := unit.damage_dealt + unit.healing_done
+		draw_rect(Rect2(106, 68, bw, 4), Color(0.14, 0.15, 0.19))
+		draw_rect(Rect2(106, 68, bw * float(work) / float(maxi(1, contrib_top)), 4),
+			UiKit.GOOD if unit.healing_done > unit.damage_dealt else UiKit.ACCENT)
+		draw_string(fs, Vector2(106, 88),
+			UiText.t("battle.squad_work", "피해 %d · 회복 %d") % [
+				unit.damage_dealt, unit.healing_done],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)
+
+		if dead:
+			draw_rect(Rect2(0, 0, s.x, s.y), Color(0, 0, 0, 0.55))
+
+		if _hover:
+			_draw_algorithm(s, neon, fs)
+
+	## 사선 투명 판에 이 대원의 알고리즘을 펼친다.
+	##
+	## 카드 **위쪽**으로 펼친다. 아래는 화면 끝이라 잘리고, 옆으로 펼치면 다른
+	## 대원 카드를 덮는다. 위는 판(격자)인데 그건 지금 안 보고 있는 쪽이다.
+	func _draw_algorithm(s: Vector2, neon: Color, fs: Font) -> void:
+		var rows: Array = []
+		for i in unit.card_rules.size():
+			var r: Dictionary = unit.card_rules[i]
+			if r.is_empty():
+				continue
+			rows.append([String(r.get("axis", "")), String(r.get("name", "")),
+				String(r.get("text", ""))])
+		if unit.special != "" and Specials.TABLE.has(unit.special):
+			rows.append(["", String(Specials.TABLE[unit.special]["name"]),
+				UiText.t("battle.squad_ult", "궁극기 · 교전당 1회")])
+		rows.append(["", UiText.t("battle.m04", "기본기"), Innates.describe(unit.type_id)])
+
+		var h := 26.0 + rows.size() * 22.0
+		var w := 460.0
+		var top := -h - 12.0
+		var skew := 18.0
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(skew, top), Vector2(w, top),
+			Vector2(w - skew, top + h), Vector2(0, top + h),
+		]), Color(0.05, 0.06, 0.09, 0.93))
+		draw_line(Vector2(skew, top), Vector2(w, top), neon, 1.6)
+		draw_line(Vector2(0, top + h), Vector2(w - skew, top + h),
+			Color(neon.r, neon.g, neon.b, 0.4), 1.0)
+
+		var y := top + 20.0
+		for r in rows:
+			var axis := String(r[0])
+			if axis != "":
+				draw_string(UiKit.font_role("large"), Vector2(22, y), Axes.label(axis),
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Axes.color(axis))
+			draw_string(fs, Vector2(112, y), String(r[1]),
+				HORIZONTAL_ALIGNMENT_LEFT, 110, 11, UiKit.TEXT)
+			draw_string(fs, Vector2(224, y), String(r[2]),
+				HORIZONTAL_ALIGNMENT_LEFT, w - 246, 10, UiKit.MUTED)
+			y += 22.0
