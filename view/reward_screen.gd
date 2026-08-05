@@ -194,7 +194,11 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 			var id: String = r["id"]
 			var is_sp := RunState.is_special(id)
 			var d: Dictionary = Specials.TABLE[id] if is_sp else Cards.TABLE[id]
-			title = UiText.t("reward.rare_special", "희귀 특수") if is_sp else UiText.t("reward.rare_card", "희귀 전술")
+			# 궁극기는 직업 전용이다. 어느 대원 것인지 모르면 고를 수가 없다.
+			if is_sp:
+				title = UiText.t("reward.rare_special", "희귀 궁극기 · %s") 					% UnitData.TABLE[d["unit"]]["name"]
+			else:
+				title = UiText.t("reward.rare_card", "희귀 전술 모듈")
 			accent = UiKit.ACCENT
 			# 이미 가진 카드면 합성된다는 걸 고르기 **전에** 알려 준다.
 			var fate := UiText.t("reward.m02", "규칙 슬롯에 꽂는다")
@@ -202,12 +206,13 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 				fate = UiText.t("reward.m03", "%s 전용 · 전투당 1회") % UnitData.TABLE[d["unit"]]["name"]
 			elif run.can_merge(id):
 				fate = UiText.t("reward.m04", "이미 가지고 있다 → 받으면 %d단계로 합성") % (run.card_level(id) + 1)
-			body = "%s
+			# 제목이 이미 "희귀 ..." 라 본문에서 또 희귀하다고 말할 필요가 없다.
+			# 한 줄이 더 붙으면 패널 밖으로 흘러나간다.
+			body = UiText.t("reward.m05", "%s
 
 %s
 
-%s
-상점에서는 거의 안 나온다." % [
+%s") % [
 				d["name"], d["text"], fate,
 			]
 

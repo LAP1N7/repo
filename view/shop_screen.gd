@@ -50,7 +50,7 @@ func setup(p_run: RunState) -> void:
 	UiKit.label(self, Vector2(40, 60), Vector2(760, 22),
 		UiText.t("shop.sub", "예산 안에서 규칙 카드를 산다. 산 카드만 유닛에게 꽂을 수 있다."), 13, UiKit.MUTED)
 
-	lbl_budget = UiKit.label(self, Vector2(980, 26), Vector2(260, 34), "", 24, UiKit.ACCENT)
+	lbl_budget = UiKit.label(self, Vector2(900, 26), Vector2(340, 34), "", 24, UiKit.ACCENT)
 	lbl_budget.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	# 스테이지 선택. 여기 말고는 고를 데가 없다 - 런이 시작되는 지점이기 때문이다.
@@ -90,7 +90,8 @@ func setup(p_run: RunState) -> void:
 
 	# 안내문은 버튼 줄 **아래**다. 합성 버튼을 (460,355)에 넣으면서 같은 자리에
 	# 있던 이 라벨과 겹쳐 글자가 서로 위에 얹혔다.
-	UiKit.label(self, Vector2(40, 400), Vector2(900, 22),
+	# 보유 목록 헤더가 HAND_Y-34 = 402 에 온다. 안내문을 거기 두면 겹친다.
+	UiKit.label(self, Vector2(40, 336), Vector2(900, 22),
 		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 는 이번 런 전체에서 배제 - 다음 스테이지에도 안 나온다."), 12, UiKit.MUTED)
 
 	var b_help := UiKit.button(self, Vector2(880, 655), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)

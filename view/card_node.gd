@@ -224,14 +224,15 @@ func _draw() -> void:
 
 	var pad := 9.0
 	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
-	var name_size := 14 if not _is_mini() else 11
+	# 미니 폭은 92px 다. 11 로 두면 "불굴의 의지" 가 "불굴의 의" 로 잘린다.
+	var name_size := 14 if not _is_mini() else 10
 	var text_size := 11 if not _is_mini() else 10
 	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
 
 	# 코스트 배지
 	# 미니 배지를 11 → 9 로 줄였다. "최후의 수호" 가 "최후의 수" 로 잘리던
 	# 2글자분 폭이 여기서 나온다.
-	var badge_r := 13.0 if not _is_mini() else 9.0
+	var badge_r := 13.0 if not _is_mini() else 8.0
 	var badge_at := Vector2(s.x - pad - badge_r, pad + badge_r + 4.0)
 	draw_circle(badge_at, badge_r, ccol)
 	var cost_txt := str(cost)
@@ -284,13 +285,24 @@ func _draw() -> void:
 	# 그 뒤에 남은 높이를 줄 높이로 나눠 조건·행동에 절반씩 준다.
 	# 이제 전술에도 태그 한 줄이 붙으므로 본문 시작 높이를 맞춘다.
 	# 미니는 태그가 없으니 예전 높이 그대로 둔다.
-	var ty: float = s.y * (0.42 if _is_mini() else 0.48)
+	# 미니 카드도 궁극기면 태그 한 줄(pad+38)이 붙는다. 0.42(=50px)로 시작하면
+	# 그 태그와 조건 첫 줄이 겹친다. 궁극기만 조금 내려서 시작한다.
+	var ty: float = s.y * ((0.47 if special else 0.42) if _is_mini() else 0.48)
 	var line_h := float(text_size) + 3.0
+
+	# 아래로 침범하면 안 되는 선. 큰 카드는 [배제] 버튼과 안내문이 하단을 쓴다.
+	var floor_y: float = s.y - (36.0 if _ban_btn else 12.0)
+	if note != "":
+		floor_y -= 14.0
+
 	var cap := 0
 	if _is_mini():
 		var room: float = s.y - 10.0 - ty - 6.0
 		cap = maxi(1, int(room / line_h) / 2)
 	else:
+		# 라벨 두 개(15+15)와 사이 여백(8)을 뺀 나머지를 조건·행동이 나눠 쓴다.
+		var room2: float = floor_y - ty - 38.0
+		cap = maxi(1, int(room2 / line_h) / 2)
 		draw_string(fs, Vector2(pad, ty), UiText.t("card.cond", "조건"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.MUTED * dim)
 		ty += 15.0

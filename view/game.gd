@@ -46,8 +46,13 @@ func _ready() -> void:
 		run.start_run(int(OS.get_environment("GG_STAGE")))
 
 	# 개발용 훅. 화면 캡처와 백업 영상 촬영에 쓴다.
-	#   GG_SCREEN=loadout | loadout_full | battle | reward
+	#   GG_SCREEN=shop | loadout | loadout_full | battle | reward
 	match OS.get_environment("GG_SCREEN"):
+		"shop":
+			# 상점 자체를 찍기 위한 훅. 예산을 반쯤 쓴 상태로 둔다.
+			_autofill_shop()
+			run.start(run.stage_id)
+			goto_shop()
 		"loadout":
 			_autofill_shop()
 			goto_loadout()

@@ -18,12 +18,25 @@ var tut: Tutorial = null
 const TILE: float = 62.0
 const GRID_AT := Vector2(48, 124)
 const RIGHT_X: float = 560.0
-const HAND_Y: float = 556.0
+## 3번째 대원 행의 바닥(138 + 128*2 + 129 = 523)보다 아래여야 한다.
+const HAND_Y: float = 572.0
 
 ## 유닛 한 명이 차지하는 세로 높이. 헤더 28 + 슬롯 3×27 + 기본기 줄 18 + 여백.
 ## 줄이면 기본기 줄이 다음 유닛 헤더를 덮는다.
 const ROSTER_Y: float = 138.0
-const ROW_H: float = 136.0
+## ── 행 내부 간격 ────────────────────────────────────────────────────────
+## 대원 3명이 보유 목록(HAND_Y-30 = 542) 위에 다 들어가야 한다.
+##
+##   행 시작        y
+##   슬롯 3칸       y+30, y+55, y+80   (높이 24)
+##   기본 알고리즘   y+110              (높이 18)  -> 행 바닥 y+128
+##
+## ROSTER_Y(138) + ROW_H*2 + 128 <= 542 이어야 하므로 ROW_H 는 최대 134 다.
+## 그리고 ROW_H 는 행 바닥(128)보다 커야 행끼리 안 겹친다.
+const ROW_H: float = 134.0
+const SLOT_H: float = 24.0
+const SLOT_STEP: float = 25.0
+const INNATE_DY: float = 110.0
 
 var run: RunState
 
@@ -102,7 +115,9 @@ HP%d 공%d" % [s["name"], s["hp"], s["atk"]], 10, 3)
 
 
 	# 손패가 바닥을 다 쓰고 규칙 슬롯이 y=520 까지 내려오므로, 경고는 헤더 옆에 둔다.
-	lbl_warn = UiKit.label(self, Vector2(48, 82), Vector2(820, 22), "", 13, UiKit.BAD)
+	# 진영 라벨이 y=96 에 온다. 경고문을 82 에 두면 두 줄이 붙어 읽기 힘들고,
+	# 경고문이 길어지면 그대로 겹친다. 부제(y=62) 바로 아래로 올린다.
+	lbl_warn = UiKit.label(self, Vector2(48, 74), Vector2(1180, 20), "", 12, UiKit.BAD)
 
 	refresh()
 
@@ -288,22 +303,22 @@ func _build_roster() -> void:
 		var slots: Array = run.unit_cards[i]
 		var slot_buttons_row: Dictionary = {}
 		for k in RunState.SLOTS_PER_UNIT:
-			var by := y + 30.0 + k * 27.0
+			var by := y + 30.0 + k * SLOT_STEP
 			if k < slots.size():
 				var c: Dictionary = Cards.TABLE[slots[k]]
-				var b := UiKit.button(roster_root, Vector2(RIGHT_X + 12, by), Vector2(560, 26),
+				var b := UiKit.button(roster_root, Vector2(RIGHT_X + 12, by), Vector2(560, SLOT_H),
 					"%d.  %s  ·  %s" % [k + 1, c["name"], c["text"]], 12)
 				b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 				b.tooltip_text = UiText.t("loadout.m12", "누르면 손패로 돌아온다")
 				b.pressed.connect(func(): run.unequip(i, k); refresh())
 				slot_buttons_row[k] = b
 
-				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, 26), "▲", 11, 2)
+				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, SLOT_H), "▲", 11, 2)
 				up.disabled = k == 0
 				up.tooltip_text = UiText.t("loadout.m13", "우선순위를 올린다")
 				up.pressed.connect(func(): run.move_slot(i, k, -1); refresh())
 
-				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, 26), "▼", 11, 2)
+				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, SLOT_H), "▼", 11, 2)
 				dn.disabled = k >= slots.size() - 1
 				dn.tooltip_text = UiText.t("loadout.m14", "우선순위를 내린다")
 				dn.pressed.connect(func(): run.move_slot(i, k, 1); refresh())
@@ -321,14 +336,14 @@ func _build_roster() -> void:
 				row.modulate = Color(1.0, 0.45, 0.42)
 		if not dead.is_empty():
 			var warn := Shadow.warnings(slots, int(s["range"]))
-			var wl := UiKit.label(roster_root, Vector2(RIGHT_X + 12, y + 30.0 + 3 * 27.0 - 8),
+			var wl := UiKit.label(roster_root, Vector2(RIGHT_X + 12, y + INNATE_DY - 8),
 				Vector2(640, 18), "[!] " + warn[0], 10, UiKit.BAD)
 			wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 		# 직업 고유 기본기를 슬롯 바로 아래에 회색으로 붙인다.
 		# "카드 3장이 전부 어긋나면 여기로 떨어진다" 는 관계가 화면에 그대로 보여야 한다.
 		var own: Array = Innates.TABLE.get(tid, [])
-		var iy := y + 30.0 + RunState.SLOTS_PER_UNIT * 27.0
+		var iy := y + INNATE_DY
 		var txt := UiText.t("loadout.m16", "기본기 ↓  ")
 		if own.is_empty():
 			txt += UiText.t("loadout.m17", "(공통 골격만)")
