@@ -122,7 +122,7 @@ func goto_title() -> void:
 		run.start_run(1)
 		play_story("pre", run.stage_id, goto_shop)
 	)
-	s.show_help.connect(func(): goto_help(true))
+	s.show_help.connect(goto_story_preview)
 	s.start_tutorial.connect(start_tutorial)
 
 
@@ -218,6 +218,17 @@ func play_story(when: String, stage: int, next: Callable) -> void:
 	_swap(s)
 	s.setup(Story.beats(when, stage))
 	s.done.connect(next)
+
+
+## 대본 전체를 처음부터 끝까지 재생한다. 타이틀에서만 들어온다.
+##
+## 게임을 거치지 않고 이야기만 본다. 대사를 고치는 동안 다섯 판을 다시 이길
+## 수는 없다. (core/story.gd 의 all_beats 주석 참조)
+func goto_story_preview() -> void:
+	var s := SCN_STORY.instantiate() as StoryScreen
+	_swap(s)
+	s.setup(Story.all_beats())
+	s.done.connect(goto_title)
 
 
 func goto_shop() -> void:

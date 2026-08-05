@@ -46,6 +46,31 @@ static func has(when: String, stage: int) -> bool:
 const EFFECTS := ["glitch", "sync", "log", "collapse"]
 
 
+## 대본 전체를 재생 순서대로 이어 붙인다. 스토리 몰아보기가 쓴다.
+##
+## ── 왜 필요한가 ──────────────────────────────────────────────────────────
+## 스토리는 다섯 판을 다 이겨야 끝까지 볼 수 있다. 대사 한 줄을 고칠 때마다
+## 그걸 다시 하는 건 말이 안 된다. 대본을 짜는 동안은 게임을 건너뛰고 이야기만
+## 볼 수 있어야 한다.
+##
+## 구간 사이에 표지 장면을 끼운다. 어느 대목을 보고 있는지가 안 보이면 몰아볼
+## 때 위치를 잃는다.
+static func all_beats() -> Array:
+	var out: Array = []
+	for stage in [1, 2, 3, 4, 5]:
+		for when in ["pre", "post"]:
+			var b := beats(when, stage)
+			if b.is_empty():
+				continue
+			out.append({
+				"speaker": "",
+				"text": "%d단계 %s" % [stage, "진입 전" if when == "pre" else "완료 후"],
+				"marker": true,
+			})
+			out.append_array(b)
+	return out
+
+
 ## 4스테이지 로그 화면에 흐르는 줄들.
 ##
 ## 시설 관리 기록이 평범하게 쌓이다가 어느 지점부터 눈이 못 따라갈 속도로

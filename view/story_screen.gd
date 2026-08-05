@@ -125,6 +125,12 @@ func _show(i: int) -> void:
 	(_fx as _Glitch).t0 = _t
 	_fx.queue_redraw()
 
+	# 몰아보기의 구간 표지. 대사가 아니라 목차라 색과 크기를 달리한다.
+	var marker := bool(b.get("marker", false))
+	_lbl_text.add_theme_color_override("font_color",
+		UiKit.ACCENT if marker else UiKit.TEXT)
+	_lbl_text.add_theme_font_size_override("font_size", 22 if marker else 17)
+
 	# collapse 는 판을 지운다. "모든 표시가 사라진다" 를 글로 적는 대신 실제로
 	# 사라지게 한다 - 이 이야기의 마지막 장면이 그걸 요구한다.
 	_bubble.modulate.a = 0.25 if fx == "collapse" else 1.0

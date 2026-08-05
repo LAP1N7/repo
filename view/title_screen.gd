@@ -65,7 +65,12 @@ func setup() -> void:
 	var b2 := UiKit.button(self, Vector2(490, 462), Vector2(300, 46), UiText.t("title.tutorial", "튜토리얼"), 17)
 	b2.pressed.connect(func(): start_tutorial.emit())
 
-	var b3 := UiKit.button(self, Vector2(490, 520), Vector2(300, 36), UiText.t("title.help", "규칙 요약"), 14)
+	# ── 왜 규칙 요약 대신 스토리인가 ────────────────────────────────────
+	# 규칙 요약은 상점 화면에도 [게임 방법] 으로 있다. 같은 것을 두 군데 둘
+	# 이유가 없고, 지금 더 급한 건 대본을 고칠 때마다 다섯 판을 다시 이기지
+	# 않고 이야기만 확인하는 길이다.
+	var b3 := UiKit.button(self, Vector2(490, 520), Vector2(300, 36),
+		UiText.t("title.story", "스토리 몰아보기"), 14)
 	b3.pressed.connect(func(): show_help.emit())
 
 	# 콘텐츠 개수(스테이지 5개 · 카드 18종 …)는 뺐다.
