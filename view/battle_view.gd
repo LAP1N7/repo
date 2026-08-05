@@ -20,7 +20,9 @@ var tut: Tutorial = null
 ## 8x6 타일 x 64px = 512x384 가 원래 크기다. 1.42배로 키웠더니 판이 세로
 ## 545px 이 되어 화면 아래 조작줄까지 내려왔다. 1.15 면 589x442 로, 왼쪽 절반을
 ## 채우면서 아래에 대원 바 자리를 남긴다.
-const BOARD_SCALE := 1.15
+## 판 세로가 대원 바를 넘으면 안 된다. 6행 x 64 x 배율 + 상단 104 가 바의
+## y(560)보다 작아야 한다. 1.30 은 603 이라 바를 덮었다.
+const BOARD_SCALE := 1.16
 
 const BOARD_ORIGIN := Vector2(48, 104)
 const TILE: int = Grid.TILE
@@ -169,6 +171,10 @@ func _build_ui() -> void:
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(ui)
 
+	# 다른 화면과 같은 톤 프레임. 전투만 빠져 있어서 국면이 바뀔 때 화면이
+	# 통째로 다른 게임처럼 보였다. 강조색은 교전 단계의 색(적)이다.
+	UiKit.frame(ui, UiKit.BAD)
+
 	UiKit.phase_header(ui, Vector2(48, 16), 2)
 	lbl_stage = UiKit.label(ui, Vector2(48, 56), Vector2(700, 24), "", 14, UiKit.BAD)
 	lbl_tick = UiKit.label(ui, Vector2(400, 22), Vector2(160, 24), "", 15, UiKit.MUTED)
@@ -178,7 +184,7 @@ func _build_ui() -> void:
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
 	var cy := 566.0
 	var bx := 860.0
-	btn_start = UiKit.button(ui, Vector2(bx, cy + 58), Vector2(370, 40), UiText.t("battle.start", "▶  전투 시작"), 15)
+	btn_start = UiKit.button(ui, Vector2(bx, cy), Vector2(372, 44), UiText.t("battle.start", "▶  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
@@ -204,13 +210,13 @@ func _build_ui() -> void:
 
 	# 이 줄은 x=600(로그 패널) 전에 끝나야 한다. 셋을 176 폭으로 줄이면
 	# 48 + 176*3 + 8*2 = 592 로 딱 들어간다.
-	var b1 := UiKit.button(ui, Vector2(bx, cy + 46), Vector2(180, 34), UiText.t("battle.to_loadout", "←  편성 고치기"), 14)
+	var b1 := UiKit.button(ui, Vector2(bx, cy + 52), Vector2(180, 40), UiText.t("battle.to_loadout", "←  편성 고치기"), 14)
 	b1.pressed.connect(func(): to_loadout.emit())
-	var b2 := UiKit.button(ui, Vector2(bx + 190, cy + 46), Vector2(180, 34), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
+	var b2 := UiKit.button(ui, Vector2(bx + 192, cy + 52), Vector2(180, 40), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
 	b2.pressed.connect(func(): to_shop.emit())
 
 	# 이기면 보상 화면으로. 아직 못 이겼으면 숨긴다.
-	btn_next = UiKit.button(ui, Vector2(bx, cy), Vector2(370, 52), UiText.t("battle.to_reward", "보급 수령  ▶"), 19)
+	btn_next = UiKit.button(ui, Vector2(bx, cy), Vector2(372, 44), UiText.t("battle.to_reward", "보급 수령  ▶"), 19)
 	btn_next.visible = false
 	btn_next.pressed.connect(func(): won.emit())
 
@@ -222,7 +228,7 @@ func _build_ui() -> void:
 	# 알고리즘 전문은 여기 안 적는다 - 세 명분을 다 적으면 결국 지금과 같은
 	# 글자 벽이 된다. 얼굴에 마우스를 올리면 그때 사선 판으로 펼친다.
 	squad_root = Control.new()
-	squad_root.position = Vector2(48, 566)
+	squad_root.position = Vector2(48, 560)
 	ui.add_child(squad_root)
 
 	rules_root = Control.new()
@@ -237,27 +243,27 @@ func _build_ui() -> void:
 	trace_root = Control.new()
 	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
 	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
-	trace_root.position = Vector2(668, 380)
+	trace_root.position = Vector2(666, 386)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
-	log_root.position = Vector2(668, 104)
+	log_root.position = Vector2(666, 104)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
-	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 22), UiText.t("battle.log_head", "교전 기록"), 14, UiKit.MUTED)
+	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 20), UiText.t("battle.log_head", "교전 기록"), 13, UiKit.MUTED)
 	var logbg := Panel.new()
 	logbg.position = Vector2(0, 24)
 	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
 	# 600 + 388 = 988. 12px 여백을 둔다.
-	logbg.size = Vector2(564, 244)
+	logbg.size = Vector2(420, 252)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(544, 232), "", 11)
+	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(400, 240), "", 11)
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
 	log_label.add_theme_constant_override("line_spacing", -6)
@@ -271,21 +277,21 @@ func _build_result_panel() -> void:
 	result_panel = Control.new()
 	# 판(x48~637 · y104~546)의 한가운데. 예전 (48,300)은 왼쪽 위에 걸쳐서
 	# 유닛을 반쯤 덮고 판 밖으로도 삐져나갔다.
-	result_panel.position = Vector2(48, 236)
-	result_panel.size = Vector2(590, 180)
+	result_panel.position = Vector2(48, 240)
+	result_panel.size = Vector2(594, 180)
 	result_panel.visible = false
 	result_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(result_panel)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.04, 0.045, 0.07, 0.9)
-	bg.size = Vector2(590, 180)
+	bg.size = Vector2(594, 180)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	result_panel.add_child(bg)
 
-	lbl_result = UiKit.label(result_panel, Vector2(0, 34), Vector2(590, 60), "", 46)
+	lbl_result = UiKit.label(result_panel, Vector2(0, 34), Vector2(594, 60), "", 46)
 	lbl_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_result_sub = UiKit.label(result_panel, Vector2(0, 104), Vector2(590, 30), "", 15, UiKit.MUTED)
+	lbl_result_sub = UiKit.label(result_panel, Vector2(0, 104), Vector2(594, 30), "", 15, UiKit.MUTED)
 	lbl_result_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
@@ -1026,6 +1032,8 @@ func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") 
 	hudline.position = Vector2(name_x, 294)
 	hudline.size = Vector2(bw, 92)
 	hudline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hudline.pivot_offset = Vector2.ZERO
+	hudline.scale = Vector2(0.0, 1.0)     # 띠와 같이 가로로 펴진다
 	layer.add_child(hudline)
 
 	var lbl := Label.new()
@@ -1064,8 +1072,13 @@ func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") 
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(ghost, "position", Vector2(10, -4), 0.30)\
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(band, "scale", Vector2.ONE, 0.14)\
-		.set_delay(0.06).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	# 이름판이 왼쪽에서 오른쪽으로 **베어 나가듯** 펴진다. 위아래로 커지면
+	# 그냥 나타난 판이 되는데, 가로로만 펴지면 사선을 따라 그어지는 것처럼
+	# 보여서 띠의 기울기 자체가 연출의 일부가 된다.
+	tw.tween_property(band, "scale", Vector2.ONE, 0.18)\
+		.set_delay(0.04).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.tween_property(hudline, "scale", Vector2.ONE, 0.20)\
+		.set_delay(0.08).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "position", Vector2(name_x + 30.0, 296), 0.20)\
 		.set_delay(0.06).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), 0.12)\

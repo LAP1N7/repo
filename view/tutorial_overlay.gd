@@ -96,8 +96,17 @@ func setup(p_tut: Tutorial, p_screen: Node = null) -> void:
 	_bubble = Panel.new()
 	# PASS 여야 안의 [계속] 버튼이 클릭을 받고, 나머지 영역은 오버레이로 흘러간다.
 	_bubble.mouse_filter = Control.MOUSE_FILTER_PASS
-	_bubble.add_theme_stylebox_override("panel",
-		UiKit.box(Color(0.09, 0.10, 0.14, 0.97), UiKit.ACCENT, 10))
+	# ── 말풍선도 다른 화면과 같은 어법으로 ──────────────────────────────
+	# 둥근 모서리 패널 하나만 다른 시대의 UI 처럼 보였다. 카드·보상·컷인이 전부
+	# 사선 프레임인데 튜토리얼만 둥글면, 배우는 화면과 실제 화면이 다른 게임처럼
+	# 느껴진다. 처음 보는 사람이 여기서 UI 읽는 법을 익히므로 여기가 제일
+	# 같아야 한다.
+	_bubble.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	var skin := _BubbleSkin.new()
+	skin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	skin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble.add_child(skin)
+	_bubble.move_child(skin, 0)
 	add_child(_bubble)
 
 	_lbl_name = UiKit.label(_bubble, Vector2(18, 12), Vector2(300, 22), "", 14, UiKit.ACCENT)
@@ -384,3 +393,32 @@ func _gui_input(e: InputEvent) -> void:
 	# 전부 먹는다. 진행은 [계속] 버튼이나 앵커로만 한다 -
 	# 아무 데나 눌러 넘어가면 대사를 안 읽고 지나치게 된다.
 	accept_event()
+
+
+## 말풍선 껍데기. 사선으로 깎은 판 + 얇은 HUD 선.
+##
+## 카드와 같은 규칙이다 - 왼쪽 위와 오른쪽 아래만 깎는다. 네 귀퉁이를 다 깎으면
+## 팔각형이 되어 말풍선으로 안 읽히고, 대각으로 둘만 깎으면 방향이 생긴다.
+class _BubbleSkin extends Control:
+	func _draw() -> void:
+		var s := size
+		if s.x < 4.0 or s.y < 4.0:
+			return
+		var cut := 14.0
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		])
+		draw_colored_polygon(shape, Color(0.07, 0.08, 0.11, 0.97))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, UiKit.ACCENT, 1.8, true)
+		draw_polyline(line, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.18),
+			5.0, true)
+		# 위쪽 눈금. 계기판에 얹힌 표식처럼 보이게 하는 최소한이다.
+		for i in 6:
+			var x := 30.0 + i * 16.0
+			if x > s.x - 20.0:
+				break
+			draw_line(Vector2(x, 4), Vector2(x, 9),
+				Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.35), 1.0)

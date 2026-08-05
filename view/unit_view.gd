@@ -20,7 +20,12 @@ extends Node2D
 ## 유닛 하나가 세로로 차지하는 총 높이가 타일(64px)을 넘으면 위아래로 붙은 유닛끼리
 ## 이름과 HP 바가 겹친다. 이름 상단 ~-32, 게이지 하단 ~+31 로 딱 맞춰 둔 값이다.
 ## 건드릴 때 반드시 세로 합계를 다시 계산할 것.
-const R: float = 18.0
+## 유닛 반지름. 타일이 64px 이므로 칸을 거의 채운다.
+##
+## 18 은 칸의 절반도 안 됐다. 판을 확대했더니 그 차이가 더 벌어져서, 큰 칸
+## 한가운데에 작은 점이 찍힌 것처럼 보였다. 격자 게임에서 말이 칸보다 훨씬
+## 작으면 "어느 칸에 있는가" 가 눈에 안 들어온다.
+const R: float = 26.0
 const HP_W: float = 44.0
 const NAME_SIZE: int = 11
 const CHIP_SIZE: int = 12
@@ -386,16 +391,27 @@ func _draw() -> void:
 	# ── 그림자. 스프라이트가 타일 위에 떠 보이지 않게 한다.
 	draw_circle(Vector2(0, R * 0.72), R * 0.62, Color(0, 0, 0, 0.28))
 
+	# ── 진영은 바닥 표식으로 가른다 ──────────────────────────────────────
+	# 예전에는 몸통을 파랑/빨강으로 칠했다. 그런데 직업 색도 몸통에 있어서
+	# 두 정보가 같은 자리를 두고 다퉜고, 결국 "빨간 동그라미 / 파란 동그라미"
+	# 로만 읽혔다 - 직업이 안 보였다.
+	#
+	# 진영은 발밑에, 직업은 몸통에 둔다. 자리가 갈리면 둘 다 읽힌다.
+	# 아군은 채운 호, 적은 점선 호다. 색을 못 가리는 사람에게도 모양이 남는다.
+	var seg: int = 28 if unit.team == Unit.TEAM_PLAYER else 12
+	draw_arc(Vector2(0, R * 0.78), R * 0.86, 0.0, TAU, seg,
+		Color(ring.r, ring.g, ring.b, 0.9), 3.0)
+
 	if has_art():
 		# 아트가 있으면 본체는 스프라이트가 그린다. 팀 구분은 발밑 고리로만 남긴다.
-		draw_arc(Vector2(0, R * 0.72), R * 0.72, 0, TAU, 28,
-			Color(ring.r, ring.g, ring.b, 0.85), 2.0)
+		pass   # 발밑 고리는 위에서 이미 그렸다
 	else:
 		var body: Color = unit.color
 		if flash > 0.0:
 			body = body.lerp(Color.WHITE, flash)
-		draw_circle(Vector2.ZERO, R + 4.0, ring)
+		# 몸통은 **직업 색**이다. 진영은 발밑 고리가 말한다.
 		draw_circle(Vector2.ZERO, R, body)
+		draw_arc(Vector2.ZERO, R, 0.0, TAU, 32, body.lightened(0.35), 2.0)
 
 		# 사거리가 긴 유닛은 안쪽에 표식을 넣어 구분한다 (도형만으로 역할이 읽히게)
 		if unit.atk_range >= 3:
