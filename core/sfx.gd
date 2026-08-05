@@ -118,7 +118,9 @@ func _retry_music() -> void:
 		return
 	if _music == null or not is_instance_valid(_music) or _music.playing:
 		return
-	if float(Time.get_ticks_msec()) / 1000.0 - _music_started_at < 0.6:
+	# Sample 경로에서는 playing 이 곧바로 false 로 돌아오는 경우가 있다.
+	# 간격이 짧으면 소리는 나는데 매번 처음부터 다시 트는 상태가 된다.
+	if float(Time.get_ticks_msec()) / 1000.0 - _music_started_at < 2.0:
 		return
 	resume_music()
 
@@ -160,9 +162,14 @@ static func resume_music() -> void:
 		return
 	if _music == null or not is_instance_valid(_music) or _music.playing:
 		return
+	# 트리 밖에서 play() 를 부르면 엔진이 거절한다. 위 add_child 주석 참조.
+	if not _music.is_inside_tree():
+		return
 	_music_started_at = float(Time.get_ticks_msec()) / 1000.0
 	_music_tries += 1
 	_music.play()
+	print("BGM   play() %d회 → playing=%s  경로=%d  볼륨=%.0fdB  버스=%s" % [
+		_music_tries, _music.playing, _music.playback_type, _music.volume_db, _music.bus])
 
 
 ## 배경음악이 왜 안 울리는지 한 줄로 말한다.
@@ -183,9 +190,13 @@ static func diagnose() -> String:
 		return "소리가 꺼져 있습니다"
 	if not audio_open():
 		return "브라우저 잠금 (조작 대기)"
+	if not _music.is_inside_tree():
+		return "재생기가 화면 트리에 없습니다"
 	if not _music.playing:
-		return "재생기 정지 (%s · 경로 %d · 시도 %d회)" % [
-			_music.stream.get_class() if _music.stream != null else "스트림 없음",
+		var st := _music.stream
+		return "재생기 정지 (%s · %.0f초 · 경로 %d · 시도 %d회)" % [
+			st.get_class() if st != null else "스트림 없음",
+			st.get_length() if st != null else 0.0,
 			_music.playback_type, _music_tries]
 	return "재생 중 · %.0f초 · %+.0fdB" % [
 		_music.get_playback_position(), _music.volume_db]
@@ -233,16 +244,23 @@ func play_music(name: String) -> void:
 	# 답은 음악도 효과음과 **같은 종류의 자원**으로 만드는 것이다. 74초를
 	# 통으로 올리면 6.5MB 지만 임포터가 QOA 로 눌러 1.3MB 가 된다.
 	# ogg·mp3 는 폴백으로 남긴다 - 데스크톱에서는 어느 쪽이든 울린다.
+	# ── 진단 출력 ────────────────────────────────────────────────────────
+	# 브라우저 콘솔(F12)에 그대로 찍힌다. 화면 라벨로는 어느 단계에서 죽었는지가
+	# 한 줄로만 보이는데, 여기서는 경로·존재·로드 결과가 순서대로 나온다.
+	print("BGM: ", name)
 	var stream: AudioStream = null
 	for ext in [".wav", ".ogg", ".mp3"]:
 		var path: String = "res://assets/music/%s%s" % [name, ext]
+		print("BGM   ", path, " exists=", ResourceLoader.exists(path))
 		if not ResourceLoader.exists(path):
 			continue
 		var res = load(path)
+		print("BGM   load -> ", res)
 		if res is AudioStream:
 			stream = res
 			break
 	if stream == null:
+		print("BGM   음원을 못 찾았다")
 		return
 
 	# 트리 밖에서 부르면 get_tree() 가 null 이라 재생기를 붙일 곳이 없다.
@@ -273,21 +291,44 @@ func play_music(name: String) -> void:
 	_music.stream = stream
 	# 음악은 효과음보다 확실히 낮게 깔린다. 같은 볼륨이면 타격감이 묻힌다.
 	_music.volume_db = volume_db - 8.0
-	# ── 재생 경로를 못 박는다 ────────────────────────────────────────────
-	# 기본값(0)은 플랫폼이 정하는데, 실측하면 웹만 다르다.
+	# ── 재생 경로 ────────────────────────────────────────────────────────
+	# 실측하면 웹만 기본값이 다르다.
 	#   audio/general/default_playback_type     = 0 (Stream)
 	#   audio/general/default_playback_type.web = 1 (Sample)
-	# Sample 은 Web Audio 버퍼 하나로 통째로 올려 재생하는 경로다. 짧은 효과음에는
-	# 맞지만 74초짜리 배경음악에는 맞지 않는다. 음악은 항상 엔진 믹서로 보낸다 -
-	# 데스크톱에서 검증된 경로가 이쪽이다.
-	_music.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
-	# 트리 루트에 붙인다. 화면이 사라져도 음악은 살아 있어야 한다.
-	get_tree().root.add_child(_music)
+	#
+	# 한 번 STREAM 으로 못 박았다가 오히려 소리가 통째로 죽었다. 화면 진단이
+	# "재생기 정지 (AudioStreamWAV · 경로 1 · 시도 4회)" 를 찍어서 잡았다.
+	# 웹에서 실제로 우는 길은 Sample 쪽이다 - 효과음이 나오는 이유가 그거고,
+	# 음악만 굳이 STREAM 으로 옮기면서 그 길에서 빼내 버린 것이었다.
+	#
+	# 그래서 **아무것도 정하지 않는다.** 기본값(0)은 플랫폼이 고르라는 뜻이고,
+	# 웹은 Sample, 데스크톱은 Stream 을 고른다. 음원이 AudioStreamWAV 라
+	# 양쪽 다 성립한다 - mp3·ogg 였을 때 Sample 에서 죽은 게 처음 원인이었다.
+	if not stream.can_be_sampled():
+		# 그래도 못 샘플링하는 음원이면 믹서로 보낼 수밖에 없다.
+		_music.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	# ── 트리에 붙이는 것을 반드시 미룬다 ────────────────────────────────
+	# 화면이 사라져도 음악은 살아 있어야 하므로 루트에 붙인다. 그런데 그냥
+	# add_child 를 부르면 실패한다.
+	#
+	#   ERROR: Parent node is busy setting up children, `add_child()` failed.
+	#   ERROR: Playback can only happen when a node is inside the scene tree
+	#
+	# play_music 은 TitleScreen.setup() 에서 불리고, 그 setup 은 Game._swap() 의
+	# add_child(화면) **안에서** 실행된다. 그 순간 루트는 자식을 세팅하는 중이라
+	# 새 자식을 거절한다. 재생기는 만들어지는데 트리에 못 들어가고, 그래서 play()
+	# 가 영원히 실패한다. 화면에는 "재생기 정지" 로만 보인다.
+	#
+	# 이게 배경음악이 웹에서 안 나온 진짜 원인이었다. 계측이 매번 "정상" 을
+	# 찍은 것은 프로브가 프레임을 한 번 돌린 뒤에 타이틀을 붙여서 루트가
+	# 한가했기 때문이다. 부팅 경로를 그대로 재현하지 못한 것이다.
+	get_tree().root.add_child.call_deferred(_music)
 	_music.finished.connect(_on_music_finished)
 	_music_name = name
-	# 여기서 바로 play() 를 부르지 않는다. 아직 조작 전이면 유령 재생이 된다.
-	# 잠금이 풀렸으면 아래에서 틀고, 아니면 첫 클릭이 튼다.
-	resume_music()
+	_music_tries = 0
+	# 붙는 것이 미뤄졌으므로 재생도 미룬다. 트리에 실제로 들어간 순간 한 번만
+	# 시도한다. 그때 아직 조작 전이면 resume_music 이 알아서 안 튼다.
+	_music.tree_entered.connect(func(): resume_music(), CONNECT_ONE_SHOT)
 
 
 func stop_music() -> void:

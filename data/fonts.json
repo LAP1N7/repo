@@ -6,18 +6,24 @@
 		"그래서 폰트 파일을 지워도 게임이 안 깨지고 폴백으로 돈다.",
 		"",
 		"title : 게임 이름 전용. 굵고 장식적이어도 된다 - 한 줄밖에 안 쓴다.",
-		"large : small_max 보다 큰 글씨. 화면 제목·유닛 이름·버튼.",
-		"small : small_max 이하. 카드 설명·전투 로그·배지. 가독성이 전부다.",
+		"large : small_max 보다 큰 글씨. 화면 제목·대원 이름·버튼.",
+		"small : small_max 이하. 모듈 설명·전투 기록·튜토리얼 대사·배지.",
 		"",
 		"small_max : 이 크기 이하를 small 로 본다.",
 		"pixel_render : 안티에일리어싱·서브픽셀을 끈다. 도트/비트맵 계열이면 true.",
-		"               켜 두면 획이 뭉개져 '픽셀 폰트인데 흐릿한' 최악이 된다.",
 		"",
-		"둥근모꼴을 작은 글씨에 써 봤다가 되돌렸다. 자소가 굵고 글자폭이 넓어서",
-		"9~11px 에서는 오히려 비트비트체 v2 보다 덜 읽혔다. 폴백으로만 남긴다."
+		"── 작은 글씨를 넥슨 Lv2 고딕으로 바꿨다 ────────────────────────────",
+		"비트비트체 v2 는 분위기는 맞지만 도트 폰트라 9~11px 에서 획이 붙는다.",
+		"모듈 설명은 조건과 행동을 좁은 카드 안에 담아야 해서 정보 밀도가 높고,",
+		"튜토리얼 대사는 처음 보는 사람이 읽는 글이다. 둘 다 분위기보다 판독이 먼저다.",
+		"",
+		"제목과 큰 글씨는 비트비트체를 그대로 둔다 - 게임의 인상은 거기서 나온다.",
+		"작은 글씨만 갈아 끼우면 인상은 유지하면서 읽히기만 좋아진다.",
+		"",
+		"pixel_render 를 껐다. small 이 더는 도트 폰트가 아니라, 끄면 계단이 보인다."
 	],
 	"small_max": 13,
-	"pixel_render": true,
+	"pixel_render": false,
 	"roles": {
 		"title": [
 			"res://assets/fonts/HeirofLightBold.ttf",
@@ -28,8 +34,8 @@
 			"res://assets/fonts/Pretendard-Regular.otf"
 		],
 		"small": [
+			"res://assets/fonts/NexonLv2Gothic.ttf",
 			"res://assets/fonts/DNFBitBitv2.ttf",
-			"res://assets/fonts/DungGeunMo.otf",
 			"res://assets/fonts/Pretendard-Regular.otf"
 		]
 	}

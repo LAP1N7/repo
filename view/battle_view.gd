@@ -197,17 +197,20 @@ func _build_ui() -> void:
 	rules_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(rules_root)
 
-	# 판단 패널. 판 왼쪽 아래의 빈 구역을 쓴다 - 격자(y176~560)와 조작줄(y592~)
-	# 사이가 비어 있고, 오른쪽 알고리즘 패널과도 안 겹친다.
+	# 판단 패널.
+	#
+	# 처음에는 격자 위(48,176)에 얹었는데 대원과 타일을 가렸다. 판단은 "지금
+	# 무슨 일이 벌어지는가" 를 읽는 글이고 그건 전투 기록과 같은 종류다.
+	# 오른쪽 기록 패널 위에 붙여 읽는 눈이 한쪽에만 머물게 한다.
 	trace_root = Control.new()
-	trace_root.position = Vector2(48, 176)
+	trace_root.position = Vector2(600, 436)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
-	log_root.position = Vector2(600, 436)
+	log_root.position = Vector2(600, 596)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
 	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 22), UiText.t("battle.log_head", "전투 로그"), 15, UiKit.MUTED)

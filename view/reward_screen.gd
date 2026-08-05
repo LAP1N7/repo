@@ -159,16 +159,17 @@ func _upgrade_summary() -> String:
 
 
 func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
-	var panel := Panel.new()
+	var panel := _RewardCard.new()
 	panel.position = at
 	panel.size = Vector2(w, PANEL_H)
-	panel.add_theme_stylebox_override("panel",
-		UiKit.box(Color(0.14, 0.16, 0.20), UiKit.LINE, 8))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(panel)
 
 	var title := ""
 	var body := ""
 	var accent := UiKit.TEXT
+	# 카드가 자기 색을 알아야 외곽선을 그린다. 아래 match 가 accent 를 정한 뒤
+	# 실제로 넘기는 것은 이 함수 끝이다.
 
 	match int(r["kind"]):
 		Kind.UPGRADE:
@@ -222,6 +223,9 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 			body = UiText.t("reward.economy_body", "예산 +%d\n정제권 +%d\n\n정제권은 손패에서 카드를\n영구히 버릴 때 쓴다.\n\n덱이 두꺼워지면 원하는 카드가\n덜 나온다. 그때 깎아라.") % [
 				int(r["budget"]), int(r["tokens"])]
 
+	panel.accent = accent
+	panel.queue_redraw()
+
 	UiKit.label(panel, Vector2(16, 14), Vector2(w - 32, 26), title, 18, accent, true)
 	UiKit.label(panel, Vector2(16, 48), Vector2(w - 32, PANEL_H - 108), body, 13,
 		UiKit.TEXT, true)
@@ -249,3 +253,39 @@ func _pick(r: Dictionary) -> void:
 	# 고른 순간 나머지는 사라진다. 다음 보상은 새로 뽑는다.
 	run.pending_rewards.clear()
 	chosen.emit()
+
+
+## 보상 한 장. 상점 모듈과 같은 어법으로 그린다.
+##
+## ── 왜 같은 모양이어야 하는가 ────────────────────────────────────────────
+## 보상 고르기와 모듈 사기는 플레이어에게 같은 종류의 행위다 - 여러 장을 훑고
+## 하나를 고르면 나머지는 사라진다. 그런데 생김새가 다르면 뇌가 다른 물건으로
+## 분류해서, 상점에서 익힌 읽는 법을 여기서 다시 배워야 한다.
+##
+## 그래서 사선 프레임과 낮은 채도 네온을 그대로 가져왔다.
+## (view/card_node.gd 의 _neon 주석 참조)
+class _RewardCard extends Control:
+	var accent: Color = Color(0.7, 0.7, 0.7)
+
+	func _draw() -> void:
+		var s := size
+		var cut := 16.0
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		])
+		draw_colored_polygon(shape, Color(0.11, 0.13, 0.17, 0.96))
+
+		# 채도를 눌러 쓴다. 다섯 장이 나란히 서므로 원색이면 화면이 요란해진다.
+		var neon := Color.from_hsv(accent.h, minf(accent.s, 0.42),
+			clampf(accent.v * 1.25 + 0.18, 0.0, 1.0), 1.0)
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, neon, 1.6, true)
+		draw_polyline(line, Color(neon.r, neon.g, neon.b, 0.18), 4.0, true)
+
+		# 상단 색 띠. 멀리서도 무슨 종류인지 갈린다.
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(cut + 1, 1), Vector2(s.x - 1, 1),
+			Vector2(s.x - 1, 5), Vector2(cut - 4, 5),
+		]), neon)

@@ -305,7 +305,21 @@ func _build_roster() -> void:
 			var by := y + 30.0 + k * SLOT_STEP
 			if k < slots.size():
 				var c: Dictionary = Cards.TABLE[slots[k]]
-				var b := UiKit.button(roster_root, Vector2(RIGHT_X + 12, by), Vector2(560, SLOT_H),
+				# 축 표시. 슬롯 왼쪽에 영문 축 라벨과 축 색 막대를 세운다.
+				# 무슨 종류의 모듈이 어느 칸에 있는지가 목록만 봐도 읽혀야 한다.
+				var ax := String(c.get("axis", ""))
+				if ax != "":
+					var bar := ColorRect.new()
+					bar.color = Axes.color(ax)
+					bar.position = Vector2(RIGHT_X + 4, by + 2)
+					bar.size = Vector2(3, SLOT_H - 4)
+					bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					roster_root.add_child(bar)
+					var al := UiKit.label(roster_root, Vector2(RIGHT_X + 12, by + 4),
+						Vector2(72, 14), Axes.label(ax), 9, Axes.color(ax))
+					al.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+				var b := UiKit.button(roster_root, Vector2(RIGHT_X + 86, by), Vector2(486, SLOT_H),
 					"%d.  %s  ·  %s" % [k + 1, c["name"], c["text"]], 12)
 				b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 				b.tooltip_text = UiText.t("loadout.m12", "누르면 손패로 돌아온다")

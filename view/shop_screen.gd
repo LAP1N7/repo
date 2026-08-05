@@ -87,6 +87,11 @@ func setup(p_run: RunState) -> void:
 	# 같은 자리에 있어야 비교하며 고르게 된다.
 	btn_merge = UiKit.button(self, Vector2(460, 355), Vector2(210, 38), "", 14)
 	btn_merge.pressed.connect(_on_merge_toggle)
+	# ── 지금은 감춘다 ────────────────────────────────────────────────────
+	# 합성은 축 개편에서 빠졌다. 자리를 되살릴 계획(환전·교환)이 있으므로
+	# 노드는 남기고 보이지만 않게 한다. 지우면 배치를 다시 잡아야 한다.
+	btn_merge.visible = false
+	btn_merge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# 안내문은 버튼 줄 **아래**다. 합성 버튼을 (460,355)에 넣으면서 같은 자리에
 	# 있던 이 라벨과 겹쳐 글자가 서로 위에 얹혔다.
