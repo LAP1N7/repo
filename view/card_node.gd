@@ -85,9 +85,24 @@ func setup(p_card_id: String, p_index: int, p_mini: bool = false,
 	queue_redraw()
 
 
-## 지금 그려야 할 크기. 펼친 미니 카드는 원래 카드와 같은 크기다.
+## 지금 그려야 할 크기.
+##
+## 미니 카드는 0.72배로 줄여 두고, 마우스를 올리면 원래 크기로 펼친다.
+## 원래 크기 카드(상점)는 마우스를 올리면 **원래보다 더 크게** 펼친다.
+##
+## ── 왜 상점 카드까지 키우는가 ────────────────────────────────────────
+## 128x168 안에 조건과 행동을 각각 두 줄까지밖에 못 담아서, 긴 설명은
+## "직전 틱에 아군이 적..." 처럼 잘렸다. 살 물건의 설명이 잘려 있으면
+## 무엇을 사는지 모르는 채로 사게 된다. 펼치면 잘림이 사라진다.
 func card_size() -> Vector2:
-	return Vector2(W, H) * (0.72 if (mini and not _expanded) else 1.0)
+	if mini:
+		return Vector2(W, H) * (1.0 if _expanded else 0.72)
+	return Vector2(W, H) * (EXPAND if _expanded else 1.0)
+
+
+## 원래 크기 카드를 펼칠 배율. 폭이 늘어나면 한 줄에 더 들어가고,
+## 높이가 늘어나면 줄 수가 늘어난다. 둘 다 필요하다.
+const EXPAND: float = 1.42
 
 
 ## 지금 미니 레이아웃으로 그려야 하는가. 펼쳐졌으면 아니다.
@@ -114,18 +129,25 @@ func _process(delta: float) -> void:
 
 	var want_hover := _hover and enabled
 
-	# 미니 카드는 호버하면 원래 카드 크기로 펼쳐진다. 손패에서는 설명을 두 줄로
-	# 줄여 보여 주므로, 전문을 읽는 수단이 이것뿐이다.
-	var want_expand := want_hover and mini
+	# 마우스를 올리면 카드가 펼쳐진다. 손패의 미니든 상점의 원래 크기든,
+	# 잘린 설명의 전문을 읽는 수단이 이것뿐이다.
+	var want_expand := want_hover
 	if want_expand != _expanded:
 		_expanded = want_expand
 		var sz := card_size()
 		size = sz
 		pivot_offset = sz * 0.5
+		# 펼치면 [제외] 버튼도 같이 내려가야 한다. 안 옮기면 카드 한가운데에
+		# 남아 본문을 가린다.
+		if _ban_btn != null and is_instance_valid(_ban_btn):
+			_ban_btn.position = Vector2(8, sz.y - 26)
+			_ban_btn.size = Vector2(sz.x - 16, 20)
 		queue_redraw()
 
 	var target_lift: float = -18.0 if want_hover else 0.0
-	var target_scale: float = 1.07 if want_hover else 1.0
+	# 레이아웃이 이미 커졌으므로 확대는 살짝만 얹는다. 둘 다 크게 주면
+	# 옆 카드를 통째로 덮는다.
+	var target_scale: float = 1.03 if want_hover else 1.0
 	var target_tilt: float = 0.045 if want_hover else 0.0
 
 	# 지수 감쇠 보간 - 프레임레이트에 안 흔들린다.
@@ -166,6 +188,18 @@ func is_special() -> bool:
 
 
 ## 카드 일러스트. 없으면 null - 에셋이 없어도 카드가 성립한다.
+## 네온 외곽선 색. 채도를 낮추고 밝기를 올린다.
+##
+## 원색 네온을 그대로 두르면 카드가 20장 깔린 상점에서 화면이 형광펜이 된다.
+## 사이버틱한 인상은 **채도가 아니라 밝기 대비**에서 나온다 - 어두운 판 위에
+## 밝고 흐린 선이 떠 있을 때가 가장 그렇게 보인다.
+func _neon(base: Color) -> Color:
+	var h := base.h
+	var sat: float = minf(base.s, 0.42)
+	var val: float = clampf(base.v * 1.25 + 0.18, 0.0, 1.0)
+	return Color.from_hsv(h, sat, val, 1.0)
+
+
 func _banner_tex() -> Texture2D:
 	if card_id == "":
 		return null
@@ -207,20 +241,42 @@ func _draw() -> void:
 		body = Color(0.11, 0.12, 0.15)
 		border = Color(0.24, 0.26, 0.32)
 
-	draw_style_box(UiKit.box(body, border, 7), Rect2(Vector2.ZERO, s))
+	# ── 프레임 ───────────────────────────────────────────────────────────
+	# 둥근 모서리 대신 왼쪽 위·오른쪽 아래를 사선으로 깎는다. 네 귀퉁이를 다 깎으면
+	# 팔각형이 되어 카드로 안 읽히고, 대각으로 둘만 깎으면 방향이 생긴다.
+	# 궁극기 컷인의 사선 프레임과 같은 어법이다.
+	var cut: float = 13.0 * (s.x / W)
+	var shape := PackedVector2Array([
+		Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+		Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+	])
+	draw_colored_polygon(shape, body)
+
+	# 네온 외곽선. 채도를 낮춰 쓴다 - 원색 그대로 두르면 카드가 20장 깔렸을 때
+	# 화면이 통째로 형광펜이 된다. 밝기만 올리고 채도는 깎는다.
+	var neon := _neon(border)
+	var outline := PackedVector2Array(shape)
+	outline.append(shape[0])
+	draw_polyline(outline, neon, 1.6, true)
+	# 안쪽으로 한 겹 더 희미하게. 선 하나만으로는 발광으로 안 읽힌다.
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.22), 4.0, true)
 
 	# ── 일러스트 배너 (레이어: 배경판 위, 텍스트 아래)
 	# assets/art/cards/<id>.png 가 있으면 상단 띠에 깔린다. 없으면 그냥 비어 있다.
 	var banner := _banner_tex()
 	if banner != null:
 		var bh := s.y * BANNER_RATIO
-		draw_texture_rect(banner, Rect2(Vector2(1, 5), Vector2(s.x - 2, bh)), false)
+		draw_texture_rect(banner, Rect2(Vector2(1, 6), Vector2(s.x - 2, bh)), false)
 		# 아래쪽을 어둡게 덮어 글자가 그림 위에서도 읽히게 한다.
 		draw_rect(Rect2(Vector2(1, 5 + bh * 0.45), Vector2(s.x - 2, bh * 0.55)),
 			Color(body.r, body.g, body.b, 0.75))
 
 	# 코스트 색 띠 - 멀리서도 비싼 카드가 구분된다.
-	draw_rect(Rect2(Vector2(1, 1), Vector2(s.x - 2, 4)), border)
+	# 왼쪽 위가 깎였으므로 띠도 같이 깎아야 프레임 밖으로 안 삐져나온다.
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(cut + 1, 1), Vector2(s.x - 1, 1),
+		Vector2(s.x - 1, 5), Vector2(cut - 3, 5),
+	]), neon)
 
 	var pad := 9.0
 	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
@@ -299,6 +355,12 @@ func _draw() -> void:
 	if _is_mini():
 		var room: float = s.y - 10.0 - ty - 6.0
 		cap = maxi(1, int(room / line_h) / 2)
+	elif _expanded:
+		# 펼친 카드는 자르지 않는다. 전문을 보여 주려고 키운 것이므로
+		# 여기서 또 말줄임을 하면 키운 의미가 없다. 0 이면 무제한이다.
+		draw_string(fs, Vector2(pad, ty), UiText.t("card.cond", "조건"),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.MUTED * dim)
+		ty += 15.0
 	else:
 		# 라벨 두 개(15+15)와 사이 여백(8)을 뺀 나머지를 조건·행동이 나눠 쓴다.
 		var room2: float = floor_y - ty - 38.0
