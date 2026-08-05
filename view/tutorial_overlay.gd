@@ -107,7 +107,7 @@ func setup(p_tut: Tutorial, p_screen: Node = null) -> void:
 	# "아무 데나 클릭" 하나에만 의존하면, 클릭이 다른 Control 에 먹히거나 rect 계산이
 	# 어긋났을 때 플레이어가 그냥 갇힌다. 실제로 그렇게 막혔다.
 	# 눌러야 할 대상이 눈에 보이는 게 가장 확실하다.
-	_btn_next = UiKit.button(_bubble, Vector2.ZERO, Vector2(120, 30), UiText.t("tut.m01", "계속  >"), 14)
+	_btn_next = UiKit.button(_bubble, Vector2.ZERO, Vector2(120, 30), UiText.t("tut.m01", "계속  ▶"), 14)
 	_btn_next.mouse_filter = Control.MOUSE_FILTER_STOP
 	_btn_next.pressed.connect(_advance_if_click_step)
 

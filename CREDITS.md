@@ -14,8 +14,8 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 |---|---|---|---|
 | **title** (게임 이름) | 빛의 계승자 Bold (HeirofLightBold) | 넥슨 히트 | SIL Open Font License 1.1 |
 | **large** (14px+) | 던파 비트비트체 (DNFBitBitTTF) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 |
-| **small** (13px 이하) | 둥근모꼴 (DungGeunMo) | 개인 제작 (둥근모꼴 프로젝트) | SIL Open Font License 1.1 |
-| 폴백 | 던파 비트비트체 v2 / Pretendard 1.3.9 | 넥슨 / orioncactus | SIL Open Font License 1.1 |
+| **small** (13px 이하) | 던파 비트비트체 v2 (DNFBitBitv2) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 |
+| 폴백 | 둥근모꼴 (DungGeunMo) / Pretendard 1.3.9 | 둥근모꼴 프로젝트 / orioncactus | SIL Open Font License 1.1 |
 
 - 라이선스 전문: `assets/fonts/*-LICENSE.txt`
 - OFL 1.1은 임베딩·재배포를 허용한다. 표기 의무만 지키면 된다.
@@ -23,8 +23,10 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
   제목용 서체는 9~13px 로 들어가면 획이 뭉쳐 못 읽고, 반대로 가독성 위주 서체로
   제목을 뽑으면 밋밋하다. 역할별 선택은 `UiKit.font(size)` / `UiKit.title_font()` 가
   자동으로 한다.
-- 둥근모꼴에는 `▲ ▼ ▶` 글리프가 없어서 `^ v >` 로 바꿨다. 이건 눈으로 찾은 게
-  아니라 `test/glyph_check.gd` 가 폰트 교체 직후 바로 잡아냈다.
+- 둥근모꼴을 작은 글씨에 써 봤다가 되돌렸다. 자소가 굵고 글자폭이 넓어 9~11px
+  에서 오히려 덜 읽혔다. 폴백으로만 남겼다.
+- 폰트를 갈아 끼울 때마다 `test/glyph_check.gd` 가 없는 글리프를 즉시 잡는다.
+  실제로 둥근모꼴에 `▲ ▼ ▶` 가 없다는 것을 교체 직후 알려 줬다.
 - **맑은 고딕(malgun.ttf)은 절대 빌드에 포함하지 말 것** — 재배포 불가.
   개발 중 시스템 폰트를 빌려 쓰던 경로는 폴백으로만 남겨 두었다.
 

@@ -20,7 +20,7 @@ Copy-Item "$root\data\tips.json" "$root\docs\tips.json" -Force
 # 로딩 화면 폰트. 게임 안과 같은 서체를 써야 그 순간 톤이 안 끊긴다.
 # 제목용·본문용 두 가지다. data/fonts.json 의 배정과 같은 파일을 쓴다.
 Copy-Item "$root\assets\fonts\HeirofLightBold.ttf" "$root\docs\HeirofLightBold.ttf" -Force
-Copy-Item "$root\assets\fonts\DungGeunMo.otf" "$root\docs\DungGeunMo.otf" -Force
+Copy-Item "$root\assets\fonts\DNFBitBitv2.ttf" "$root\docs\DNFBitBitv2.ttf" -Force
 
 $pck = [math]::Round((Get-Item "$root\docs\index.pck").Length / 1MB, 1)
 $wasm = [math]::Round((Get-Item "$root\docs\index.wasm").Length / 1MB, 1)

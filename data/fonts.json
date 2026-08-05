@@ -11,12 +11,13 @@
 		"",
 		"small_max : 이 크기 이하를 small 로 본다.",
 		"pixel_render : 안티에일리어싱·서브픽셀을 끈다. 도트/비트맵 계열이면 true.",
-		"               켜 두면 획이 뭉개져 '픽셀 폰트인데 흐릿한' 최악이 된다."
+		"               켜 두면 획이 뭉개져 '픽셀 폰트인데 흐릿한' 최악이 된다.",
+		"",
+		"둥근모꼴을 작은 글씨에 써 봤다가 되돌렸다. 자소가 굵고 글자폭이 넓어서",
+		"9~11px 에서는 오히려 비트비트체 v2 보다 덜 읽혔다. 폴백으로만 남긴다."
 	],
-
 	"small_max": 13,
 	"pixel_render": true,
-
 	"roles": {
 		"title": [
 			"res://assets/fonts/HeirofLightBold.ttf",
@@ -27,8 +28,8 @@
 			"res://assets/fonts/Pretendard-Regular.otf"
 		],
 		"small": [
-			"res://assets/fonts/DungGeunMo.otf",
 			"res://assets/fonts/DNFBitBitv2.ttf",
+			"res://assets/fonts/DungGeunMo.otf",
 			"res://assets/fonts/Pretendard-Regular.otf"
 		]
 	}

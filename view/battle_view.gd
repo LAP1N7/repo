@@ -145,7 +145,7 @@ func _build_ui() -> void:
 	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 13, UiKit.MUTED)
 
 	var cy := 592.0
-	btn_start = UiKit.button(ui, Vector2(48, cy), Vector2(200, 42), UiText.t("battle.start", ">  전투 시작"), 15)
+	btn_start = UiKit.button(ui, Vector2(48, cy), Vector2(200, 42), UiText.t("battle.start", "▶  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
@@ -365,10 +365,10 @@ func _refresh_ui() -> void:
 			btn_start.text = UiText.t("battle.stop", "■  중단")
 			lbl_status.text = st["hint"]
 		Phase.RESULT:
-			btn_start.text = UiText.t("battle.m07", ">  같은 규칙으로 다시")
+			btn_start.text = UiText.t("battle.m07", "▶  같은 규칙으로 다시")
 			lbl_status.text = UiText.t("battle.m08", "규칙을 고치려면 아래 '편성 고치기'.")
 		_:
-			btn_start.text = UiText.t("battle.start", ">  전투 시작")
+			btn_start.text = UiText.t("battle.start", "▶  전투 시작")
 			lbl_status.text = st["hint"]
 
 

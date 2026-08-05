@@ -298,12 +298,12 @@ func _build_roster() -> void:
 				b.pressed.connect(func(): run.unequip(i, k); refresh())
 				slot_buttons_row[k] = b
 
-				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, 26), "^", 11, 2)
+				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, 26), "▲", 11, 2)
 				up.disabled = k == 0
 				up.tooltip_text = UiText.t("loadout.m13", "우선순위를 올린다")
 				up.pressed.connect(func(): run.move_slot(i, k, -1); refresh())
 
-				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, 26), "v", 11, 2)
+				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, 26), "▼", 11, 2)
 				dn.disabled = k >= slots.size() - 1
 				dn.tooltip_text = UiText.t("loadout.m14", "우선순위를 내린다")
 				dn.pressed.connect(func(): run.move_slot(i, k, 1); refresh())

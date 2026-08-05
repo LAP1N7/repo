@@ -45,7 +45,7 @@
 	"loadout.equip_to": "%s 에게 꽂는다 - 카드는 다음 빈 슬롯, 특수는 특수 칸으로.",
 	"loadout.equip_full": "%s 는 규칙 3칸이 다 찼다. 특수는 아직 꽂을 수 있다.",
 	"loadout.pick_unit_first": "유닛을 먼저 고르면 꽂을 수 있다.",
-	"battle.start": ">  전투 시작",
+	"battle.start": "▶  전투 시작",
 	"battle.stop": "■  중단",
 	"battle.speed": "배속",
 	"battle.sound_on": "소리 켬",
