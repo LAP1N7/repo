@@ -106,7 +106,8 @@ func _assert_no_overlap() -> void:
 func living_enemies_of(u: Unit) -> Array:
 	var out: Array = []
 	for other in units:
-		if other.alive and other.team != u.team:
+		# 잠복 중이면 표적 후보에서 빠진다. 맞지 않는다는 게 이 태세의 값이다.
+		if other.alive and other.team != u.team and other.ambush_ticks <= 0:
 			out.append(other)
 	return out
 
@@ -276,11 +277,39 @@ func step() -> bool:
 		return false
 
 	tick += 1
+	# ── 상시 효과를 이번 틱 값으로 채운다 ────────────────────────────────
+	# 진형이 바뀌면 값이 바뀐다. 전투 시작에 한 번 계산하면 대원이 흩어져도
+	# 값이 그대로 남아 화면과 실제가 어긋난다.
+	for u in units:
+		if not u.alive:
+			continue
+		u.passive_atk_pct = Passives.attack_pct(u, self)
+		u.passive_def = Passives.defend_bonus(u, self)
+		u.passive_taken_pct = Passives.damage_taken_pct(u, self)
+		# [조준경] - 제자리를 지킨 다음 틱에만 사거리가 는다. 무조건 주면
+		# 궁수가 판 절반을 덮어서 다른 축이 전부 무의미해진다.
+		u.range_bonus = 1 if (Passives.has(u, "scope") and not u.moved_last_tick) else 0
+		u.atk_range = u.atk_range_base + u.range_bonus
+
 	_emit({ "type": "tick_begin", "tick": tick })
 
 	for u in units:
 		if not u.alive:
 			continue
+
+		# ── 잠복 ─────────────────────────────────────────────────────────
+		# 멈춰 있는 동안 맞지도 때리지도 않는다. 풀리는 순간 첫 공격이 강해진다.
+		# 3틱을 버리고 한 방을 사는 거래라, 그 한 방이 확실히 커야 성립한다.
+		if u.ambush_ticks > 0:
+			u.ambush_ticks -= 1
+			if u.ambush_ticks == 0:
+				u.ambush_ready = true
+				_emit({ "type": "ambush_end", "unit": u.index })
+			else:
+				_emit({ "type": "ambush", "unit": u.index })
+			continue
+
+		_riposte(u)
 
 		# 방어 태세는 자기 행동 직전에 풀린다 → 정확히 한 바퀴 유지된다.
 		u.defending = false
@@ -331,6 +360,8 @@ func step() -> bool:
 	for u in units:
 		u.was_hit = u.hit_pending
 		u.hit_pending = false
+		u.moved_last_tick = u.moved_this_tick
+		u.moved_this_tick = false
 		u.killed_last_tick = u.kill_pending
 		u.kill_pending = false
 	for t in 2:
@@ -365,6 +396,9 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 				"damage": dmg, "target_hp": target.hp,
 			})
 			_mark_focus(u, target)
+			# 잠복 보너스는 한 번 쓰면 꺼진다.
+			u.ambush_ready = false
+			_splash(u, target, dmg)
 			if not target.alive:
 				u.kill_pending = true
 				team_kill_pending[u.team] = true
@@ -397,6 +431,7 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 			var path := plan_move_path(u, target, act == "move_toward",
 				int(card.get("move_bonus", 0)))
 			u.pos = path[path.size() - 1]
+			u.moved_this_tick = u.pos != from
 			_emit({ "type": "move", "unit": u.index, "from": from, "to": u.pos,
 				"path": path })
 
@@ -424,6 +459,87 @@ func blink_landing(mover: Unit, target: Unit) -> Vector2i:
 		if Grid.in_bounds(p) and not blocked.has(p):
 			return p
 	return mover.pos
+
+
+## 상시 효과가 만드는 부가 타격.
+##
+## ── 왜 본체보다 약한가 ───────────────────────────────────────────────────
+## 부가 타격이 본체와 같은 위력이면, 적이 뭉치는 판에서 그냥 피해 3배가 된다.
+## 40~60% 로 두면 "뭉친 적에게 강하다" 는 성격은 남기고 배율은 안 터진다.
+##
+## 대상 선정에 난수를 쓰지 않는다. 후보를 index 순으로 훑어 조건에 맞는 것을
+## 고른다 - 같은 배치면 같은 결과여야 하기 때문이다.
+func _splash(u: Unit, target: Unit, _main: int) -> void:
+	var extra: Array[Unit] = []
+	var dist: int = Grid.manhattan(u.pos, target.pos)
+
+	if Passives.has(u, "scatter") and u.atk_range >= 2:
+		# 표적에서 1칸 떨어진 다른 적 하나.
+		for e in living_enemies_of(u):
+			if e.index != target.index and Grid.manhattan(e.pos, target.pos) <= 1:
+				extra.append(e)
+				break
+
+	if Passives.has(u, "whirl") and u.atk_range <= 1:
+		# 적 방향 3칸. 근접이 몰매를 되갚는 자리다.
+		var dir: int = 1 if u.team == Unit.TEAM_PLAYER else -1
+		for step in [1, 2, 3]:
+			var at := u.pos + Vector2i(dir * step, 0)
+			var e := unit_at(at)
+			if e != null and e.team != u.team and e.index != target.index:
+				extra.append(e)
+
+	if Passives.has(u, "bombard") and dist >= 2:
+		# 표적을 중심으로 한 십자.
+		for d in Grid.DIRS:
+			var e2 := unit_at(target.pos + d)
+			if e2 != null and e2.team != u.team:
+				extra.append(e2)
+
+	if extra.is_empty():
+		return
+
+	var pct: int = 0
+	for name in ["scatter", "whirl", "bombard"]:
+		if Passives.has(u, name):
+			pct = maxi(pct, int(Passives.SPLASH[name]))
+
+	for e in extra:
+		if not e.alive:
+			continue
+		var d2: int = e.take_damage(u.power_damage(pct), u)
+		u.damage_dealt += d2
+		last_damage_tick = tick
+		_emit({ "type": "splash", "unit": u.index, "target": e.index,
+			"damage": d2, "target_hp": e.hp })
+		if not e.alive:
+			e.alive = false
+			u.kill_pending = true
+			team_kill_pending[u.team] = true
+			team_loss_pending[e.team] = true
+			_emit({ "type": "death", "unit": e.index })
+			_recharge_on_death()
+
+
+## [반격 회전] - 피격 다음 틱, 인접한 적 전원에게 되갚는다.
+func _riposte(u: Unit) -> void:
+	if not u.was_hit or not Passives.has(u, "riposte"):
+		return
+	for e in living_enemies_of(u):
+		if Grid.manhattan(u.pos, e.pos) > 1:
+			continue
+		var d: int = e.take_damage(u.power_damage(int(Passives.SPLASH["riposte"])), u)
+		u.damage_dealt += d
+		last_damage_tick = tick
+		_emit({ "type": "splash", "unit": u.index, "target": e.index,
+			"damage": d, "target_hp": e.hp })
+		if not e.alive:
+			e.alive = false
+			u.kill_pending = true
+			team_kill_pending[u.team] = true
+			team_loss_pending[e.team] = true
+			_emit({ "type": "death", "unit": e.index })
+			_recharge_on_death()
 
 
 func _hit(attacker: Unit, victim: Unit, percent: int, hits: Array) -> void:

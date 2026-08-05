@@ -97,7 +97,15 @@ func _roll_rewards() -> Array:
 	# 궁극기는 뒤로 갈수록 더 자주 섞인다 - 상점의 등장 곡선과 방향을 맞춘다.
 	var rare_pool: Array[String] = []
 	for cid in Cards.deck_order():
-		if int(Cards.TABLE[cid].get("tier", 1)) >= 3:
+		var c: Dictionary = Cards.TABLE[cid]
+		# ── 상시 모듈은 여기서만 나온다 ──────────────────────────────────
+		# 상점에 두면 예산으로 강한 것부터 도는 최적해가 생긴다. 보급에서만
+		# 나오면 "이번 판에 뭐가 떴는가" 가 빌드를 바꾼다 - 전 단계와 이번
+		# 단계가 다르게 느껴지는 것이 이 게임에 가장 부족했던 것이다.
+		if String(c.get("axis", "")) == Axes.PASSIVE:
+			rare_pool.append(cid)
+			continue
+		if int(c.get("tier", 1)) >= 3:
 			rare_pool.append(cid)
 	var special_copies: int = 1 + run.cleared / 2
 	for sid in Specials.ORDER:

@@ -20,6 +20,10 @@ var pos: Vector2i = Vector2i.ZERO
 var hp: int = 0
 var max_hp: int = 0
 var atk: int = 0
+## 기본 사거리. 상시 효과 보정은 range_bonus 에 따로 있다.
+var atk_range_base: int = 1
+
+## 실제 사거리. 규칙 엔진과 전투가 전부 이 값을 본다.
 var atk_range: int = 1
 var move_range: int = 1
 var color: Color = Color.WHITE
@@ -107,6 +111,22 @@ var doctrines: Dictionary = {}
 ## 갉는다" 같은 전술이 성립한다. (core/threat.gd 참조)
 var threat_mod: int = 0
 
+## 상시 효과가 이번 틱에 만든 보정. Battle 이 틱마다 다시 채운다.
+## (core/passives.gd 의 "왜 매 틱 다시 계산되는가" 주석 참조)
+var passive_atk_pct: int = 0
+var passive_def: int = 0
+var passive_taken_pct: int = 0
+
+## 직전 틱에 움직였는가. [조준경] 이 "제자리를 지킨 다음 틱" 을 판정한다.
+var moved_last_tick: bool = false
+var moved_this_tick: bool = false
+
+## 상시 효과가 주는 사거리 보정. [조준경] 이 쓴다.
+var range_bonus: int = 0
+
+## 이번 틱에 한 번 더 행동할 수 있는가. [연쇄] 가 처치 시 켠다.
+var extra_action: bool = false
+
 ## 잠복 남은 틱. 0보다 크면 맞지도 때리지도 않는다.
 var ambush_ticks: int = 0
 
@@ -153,7 +173,8 @@ static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i
 	u.max_hp = UnitData.scaled(p_type_id, "hp", int(s["hp"]), p_upgrade)
 	u.hp = u.max_hp
 	u.atk = UnitData.scaled(p_type_id, "atk", int(s["atk"]), p_upgrade)
-	u.atk_range = s["range"]
+	u.atk_range_base = int(s["range"])
+	u.atk_range = u.atk_range_base
 	u.move_range = s["move"]
 	u.color = s["color"]
 
@@ -207,7 +228,9 @@ func power_damage(percent: int) -> int:
 	# 겹쳤을 때 수치가 갑자기 튀어서, 밸런스를 잡을 때 어느 쪽을 깎아야 하는지
 	# 알 수 없게 된다.
 	var doc := Doctrines.amount(doctrines, "attack_pct")
-	return maxi(1, atk * (percent + focus_bonus + doc) / 100)
+	# 잠복이 풀린 뒤 첫 공격. 멈춰 있던 값을 여기서 받는다.
+	var amb := 60 if ambush_ready else 0
+	return maxi(1, atk * (percent + focus_bonus + doc + passive_atk_pct + amb) / 100)
 
 
 func is_enemy_of(other: Unit) -> bool:
@@ -223,9 +246,16 @@ func take_damage(amount: int, from: Unit) -> int:
 	var dealt: int = amount
 	# 인내 교리: 받는 피해 -15%. 방어 계산보다 **먼저** 건다.
 	# 나중에 걸면 방어 중일 때 정수 나눗셈 때문에 거의 사라진다.
-	var soak := Doctrines.amount(doctrines, "damage_taken_pct")
+	var soak := Doctrines.amount(doctrines, "damage_taken_pct") + passive_taken_pct
 	if soak != 0:
 		dealt = maxi(1, dealt * (100 + soak) / 100)
+	# [철갑] - 한 방에 최대 HP 의 12% 를 넘게 맞으면 초과분은 절반만 받는다.
+	# 큰 한 방을 무디게 하는 것이지 잔공격을 막는 게 아니다. 방패병처럼 HP 가
+	# 두꺼운 대원이 "실제로 잘 안 죽는다" 를 체감하게 하는 자리다.
+	if Passives.has(self, "plating"):
+		var cap: int = maxi(1, max_hp * 12 / 100)
+		if dealt > cap:
+			dealt = cap + (dealt - cap) / 2
 	if defending:
 		# 정수 나눗셈. 기본은 절반이고, 합성 단계마다 한 몫씩 더 깎는다.
 		# 2 -> 3 -> 4 로 나누므로 50% -> 33% -> 25% 가 된다.
@@ -233,7 +263,7 @@ func take_damage(amount: int, from: Unit) -> int:
 		# 최소 1 은 남긴다. 안 그러면 [방어 태세] 3단계(4로 나눔) 앞에서 공격력
 		# 3 이하가 통째로 0 이 되어 **면역**이 된다. 뎀감은 줄이는 것이지
 		# 무효로 만드는 것이 아니다.
-		dealt = maxi(1, dealt / (2 + defend_level))
+		dealt = maxi(1, dealt / (2 + defend_level + passive_def))
 	hp -= dealt
 	hit_pending = true
 	last_attacker_index = from.index if from != null else -1
@@ -253,6 +283,10 @@ func take_damage(amount: int, from: Unit) -> int:
 
 
 func heal(amount: int) -> int:
+	# [빠른 치유] 는 **받는** 쪽에 붙는다. 악사가 아니라 살아남고 싶은 대원이
+	# 드는 물건이라, 회복 편성이 아니어도 악사 하나로 값을 한다.
+	if Passives.has(self, "fast_heal"):
+		amount = amount * 140 / 100
 	var before: int = hp
 	hp = mini(max_hp, hp + amount)
 	return hp - before

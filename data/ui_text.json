@@ -204,5 +204,6 @@
 	"battle.squad_work": "피해 %d · 회복 %d",
 	"battle.squad_ult": "궁극기 · 교전당 1회",
 	"story.hint": "아무 곳이나 눌러 계속",
-	"title.story": "스토리 몰아보기"
+	"title.story": "스토리 몰아보기",
+	"battle.threat": "위협"
 }

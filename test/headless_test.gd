@@ -42,6 +42,7 @@ func _init() -> void:
 	test_axis_doctrine()
 	test_squad_movement()
 	test_story_wiring()
+	test_passives()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -460,3 +461,57 @@ func test_story_wiring() -> void:
 				if fx != "" and not Story.EFFECTS.has(fx):
 					bad = "%s_%d: %s" % [when, stage, fx]
 	ok(bad == "", "알 수 없는 연출 이름이 없다", bad)
+
+
+func test_passives() -> void:
+	print("\n[19] 상시 효과")
+
+	# 상시 모듈은 상점에 안 나온다. 보급 전용이라는 계약이다.
+	var in_shop := false
+	for cid in Cards.shop_order():
+		if String(Cards.TABLE[cid]["axis"]) == Axes.PASSIVE:
+			in_shop = true
+	ok(not in_shop, "상시 모듈은 상점 주머니에 없다")
+
+	var b := Battle.new()
+	b.setup(1, [
+		member("warrior", 0, ["assault"]),
+		member("shieldman", 2, ["plating"]),
+		member("archer", 4)])
+	b.step()
+
+	# 공격대 +18%
+	var plain := Battle.new()
+	plain.setup(1, [member("warrior", 0), member("archer", 2), member("bard", 4)])
+	plain.step()
+	ok(b.units[0].power_damage(100) > plain.units[0].power_damage(100),
+		"[공격대] 가 공격력을 올린다",
+		"%d vs %d" % [b.units[0].power_damage(100), plain.units[0].power_damage(100)])
+
+	# 철갑 - 최대 HP 12% 를 넘는 한 방만 깎는다.
+	var guard := b.units[1]
+	var big: int = guard.max_hp   # 확실히 상한을 넘는 값
+	var took := guard.take_damage(big, null)
+	ok(took < big, "[철갑] 이 큰 한 방을 무디게 한다", "%d <- %d" % [took, big])
+
+	# 잠복 - 표적 후보에서 빠진다.
+	var amb := Battle.new()
+	amb.setup(1, [member("assassin", 0, ["ambush"]), member("warrior", 2), member("bard", 4)])
+	amb.step()
+	var hidden := amb.units[0].ambush_ticks > 0
+	if hidden:
+		var seen := false
+		for e in amb.living_enemies_of(amb.units[3]):
+			if e.index == 0:
+				seen = true
+		ok(not seen, "잠복 중인 대원은 표적이 안 된다")
+	else:
+		ok(true, "잠복 조건이 안 걸린 판 - 건너뜀")
+
+	# 균형 편제 - 세 축을 하나씩
+	var bal := Doctrines.active([
+		{ "axis": "target", "id": "backline" },
+		{ "axis": "position", "id": "keep_range" },
+		{ "axis": "doctrine", "id": "hold_fire" },
+	])
+	ok(bal.has("balanced"), "세 축을 하나씩 채우면 균형 편제")

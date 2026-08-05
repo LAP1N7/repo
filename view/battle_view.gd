@@ -172,6 +172,25 @@ func _draw() -> void:
 		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_ENEMY_ZONE)
 
+	# ── 어그로 선 ────────────────────────────────────────────────────────
+	# 적이 지금 누구를 보고 있는지를 선으로 잇는다.
+	#
+	# 이게 없으면 "내 궁수가 왜 죽었지" 를 답할 수가 없다. 위협도를 넣어도
+	# 화면에 안 보이면 플레이어에게는 없는 것과 같다 - 도발을 넣었을 때 선이
+	# 방패병 쪽으로 옮겨 가는 것이 보여야 그 카드가 무슨 일을 하는지 안다.
+	if battle != null:
+		for e in battle.units:
+			if not e.alive or e.team != Unit.TEAM_ENEMY or e.last_target == null:
+				continue
+			var t: Unit = e.last_target
+			if not t.alive:
+				continue
+			var a := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
+				e.pos.y * TILE_H + TILE_H * 0.5)
+			var b := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
+				t.pos.y * TILE_H + TILE_H * 0.5)
+			draw_line(a, b, Color(1.0, 0.42, 0.38, 0.28), 1.5)
+
 	for x in Grid.W + 1:
 		draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),
 			BOARD_ORIGIN + Vector2(x * TILE_W, Grid.H * TILE_H), UiKit.LINE, 1.0)
@@ -1675,6 +1694,17 @@ class _SquadCard extends Control:
 		# 빨강은 위험 신호로 남겨 둔다. 평소엔 직업 색이라 누구 막대인지 읽힌다.
 		var hpc: Color = UiKit.BAD if ratio < 0.35 else neon
 		draw_rect(Rect2(106, 48, bw * ratio, 6), hpc)
+
+		# ── 위협도 ───────────────────────────────────────────────────────
+		# 지금 적이 누구를 노릴지가 여기서 갈린다. 도발을 넣으면 이 막대가
+		# 올라가고, 그때 격자의 어그로 선이 이 대원 쪽으로 옮겨 온다.
+		# 두 표시가 같은 것을 말해야 "내가 어그로를 관리하고 있다" 가 성립한다.
+		var th: int = clampi(unit.threat_mod + 10, 0, 50)
+		draw_rect(Rect2(s.x - 44, 8, 36, 4), Color(0.14, 0.15, 0.19))
+		draw_rect(Rect2(s.x - 44, 8, 36.0 * float(th) / 50.0, 4),
+			UiKit.BAD if unit.threat_mod > 0 else UiKit.FAINT)
+		draw_string(fs, Vector2(s.x - 44, 26), UiText.t("battle.threat", "위협"),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.FAINT)
 
 		# ── 기여도 ───────────────────────────────────────────────────────
 		var work := unit.damage_dealt + unit.healing_done

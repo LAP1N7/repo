@@ -572,6 +572,19 @@ static func deck_order() -> Array[String]:
 		out.append(String(cid))
 	return out
 
+
+## 상점에 나올 수 있는 모듈만.
+##
+## 상시 모듈(PASSIVE)은 보급에서만 나온다. 상점에 두면 예산으로 강한 것부터
+## 도는 최적해가 생기는데, 보상에서만 나오면 "이번 판에 뭐가 떴는가" 가 빌드를
+## 바꾼다. (view/reward_screen.gd 의 rare_pool 주석 참조)
+static func shop_order() -> Array[String]:
+	var out: Array[String] = []
+	for cid in TABLE:
+		if String(TABLE[cid].get("axis", "")) != "passive":
+			out.append(String(cid))
+	return out
+
 ## 스테이지별 티어 등장 장수. 인덱스는 스테이지 1~5.
 ##
 ## 초반엔 기본 도구가 대부분이고, 뒤로 갈수록 고가치가 열린다.
