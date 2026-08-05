@@ -130,8 +130,9 @@ func refresh() -> void:
 	var sur := run.surcharge()
 	lbl_budget.text = UiText.t("shop.budget", "예산  %d") % run.budget
 	if sur > 0:
-		lbl_budget.text += UiText.t("shop.budget_surcharge", "      (이번 스테이지 %d장 구매 - 다음 카드 +%d)") % [
-			run.buys_this_stage, sur]
+		# 자리 표시 개수와 인자 개수가 반드시 같아야 한다. 하나라도 어긋나면
+		# 치환이 통째로 실패해 "%d" 가 화면에 그대로 뜬다.
+		lbl_budget.text += UiText.t("shop.budget_surcharge", "  (+%d)") % sur
 	btn_reroll.text = UiText.t("shop.reroll", "리롤  (-%d)") % run.reroll_cost()
 	btn_reroll.disabled = not run.can_reroll()
 

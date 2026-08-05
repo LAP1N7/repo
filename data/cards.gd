@@ -156,7 +156,7 @@ const TABLE: Dictionary = {
 		"cond": "enemy_out_of_range",
 		"cond_arg": 0,
 		"stance": "pursue",
-		"text": "적이 사거리 밖 → 끝까지 쪽는다",
+		"text": "적이 사거리 밖 → 추격한다",
 	},
 	"berserk": {
 		"axis": "engage",
@@ -178,7 +178,7 @@ const TABLE: Dictionary = {
 		"cond": "enemies_adjacent_at_least",
 		"cond_arg": 2,
 		"stance": "defend",
-		"text": "인접한 적 2명 이상 → 방어한다",
+		"text": "인접한 적 2명 이상 → 받는 피해를 줄인다",
 	},
 	"preempt": {
 		"axis": "engage",

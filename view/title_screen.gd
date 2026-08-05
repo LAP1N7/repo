@@ -39,8 +39,12 @@ func setup() -> void:
 	# 않으면 아래 줄과 글자가 겹친다.
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	var t_ko := UiKit.label(self, Vector2(0, 250), Vector2(1280, 34),
-		UiText.t("title.name_ko", "프로젝트 리클레임"), 22, UiKit.MUTED)
+	# 한글 부제도 제목 폰트로 쓴다. 영문 제목과 한글 부제는 **같은 이름**인데
+	# 서체가 다르면 두 개의 다른 문구처럼 보인다. 같은 서체로 묶어야 한 덩어리로
+	# 읽힌다. 빛의계승자는 세리프라 한글도 획이 살아 있다.
+	var t_ko := UiKit.label(self, Vector2(0, 250), Vector2(1280, 40),
+		UiText.t("title.name_ko", "프로젝트 리클레임"), 24, UiKit.MUTED)
+	t_ko.add_theme_font_override("font", UiKit.title_font())
 	t_ko.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 	var sub := UiKit.label(self, Vector2(0, 292), Vector2(1280, 30),

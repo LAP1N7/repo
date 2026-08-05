@@ -20,7 +20,10 @@
 		"제목과 큰 글씨는 비트비트체를 그대로 둔다 - 게임의 인상은 거기서 나온다.",
 		"작은 글씨만 갈아 끼우면 인상은 유지하면서 읽히기만 좋아진다.",
 		"",
-		"pixel_render 를 껐다. small 이 더는 도트 폰트가 아니라, 끄면 계단이 보인다."
+		"",
+		"굵기는 Bold(800)를 쓴다. Regular(400)는 어두운 판 위 9~11px 에서 획이 배경에",
+		"묻혀 회색으로 뭉갠 것처럼 보였다. 이 게임은 배경이 거의 검정이라 밝은 글씨의",
+		"획이 얇으면 대비가 아니라 잔상이 된다. 굵은 쪽이 같은 크기에서 훨씬 또렷하다."
 	],
 	"small_max": 13,
 	"pixel_render": false,
@@ -34,8 +37,8 @@
 			"res://assets/fonts/Pretendard-Regular.otf"
 		],
 		"small": [
+			"res://assets/fonts/NexonLv2GothicBold.ttf",
 			"res://assets/fonts/NexonLv2Gothic.ttf",
-			"res://assets/fonts/DNFBitBitv2.ttf",
 			"res://assets/fonts/Pretendard-Regular.otf"
 		]
 	}

@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://ckfpc7fjarr65"
-path="res://.godot/imported/NexonLv2GothicMedium.ttf-aca70d0ec35d8967df34b03569de2b2e.fontdata"
+uid="uid://d4kdetjrpti28"
+path="res://.godot/imported/NexonLv2GothicBold.ttf-4aa0cc04fec8827930b32ca0c201d566.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/NexonLv2GothicMedium.ttf"
-dest_files=["res://.godot/imported/NexonLv2GothicMedium.ttf-aca70d0ec35d8967df34b03569de2b2e.fontdata"]
+source_file="res://assets/fonts/NexonLv2GothicBold.ttf"
+dest_files=["res://.godot/imported/NexonLv2GothicBold.ttf-4aa0cc04fec8827930b32ca0c201d566.fontdata"]
 
 [params]
 

@@ -203,25 +203,29 @@ func _build_ui() -> void:
 	# 무슨 일이 벌어지는가" 를 읽는 글이고 그건 전투 기록과 같은 종류다.
 	# 오른쪽 기록 패널 위에 붙여 읽는 눈이 한쪽에만 머물게 한다.
 	trace_root = Control.new()
-	trace_root.position = Vector2(600, 436)
+	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
+	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
+	trace_root.position = Vector2(1000, 436)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
-	log_root.position = Vector2(600, 596)
+	log_root.position = Vector2(600, 436)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
 	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 22), UiText.t("battle.log_head", "전투 로그"), 15, UiKit.MUTED)
 	var logbg := Panel.new()
 	logbg.position = Vector2(0, 24)
-	logbg.size = Vector2(660, 236)
+	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
+	# 600 + 388 = 988. 12px 여백을 둔다.
+	logbg.size = Vector2(388, 236)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(640, 224), "", 12)
+	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(368, 224), "", 11)
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
 	log_label.add_theme_constant_override("line_spacing", -6)
@@ -417,19 +421,19 @@ func _show_trace(who: Unit, e: Dictionary) -> void:
 
 	var trace: Dictionary = e.get("trace", {})
 	var y := 0.0
-	UiKit.label(trace_root, Vector2(0, y), Vector2(300, 20),
-		"%s · %d틱" % [who.display_name, battle.tick], 14, UiKit.ACCENT)
-	y += 22.0
+	UiKit.label(trace_root, Vector2(0, y), Vector2(264, 20),
+		"%s · %d틱" % [who.display_name, battle.tick], 13, UiKit.ACCENT)
+	y += 20.0
 
 	for axis in Axes.ORDER:
 		var rows: Array = trace.get(axis, [])
-		UiKit.label(trace_root, Vector2(0, y), Vector2(120, 16),
-			Axes.label(axis), 10, Axes.color(axis))
+		UiKit.label(trace_root, Vector2(0, y), Vector2(80, 15),
+			Axes.label(axis), 9, Axes.color(axis))
 		if rows.is_empty():
 			# 그 축에 모듈이 없으면 직업 기본 AI 가 정한 것이다.
-			UiKit.label(trace_root, Vector2(96, y), Vector2(230, 16),
-				UiText.t("battle.trace_base", "기본 AI"), 10, UiKit.FAINT)
-			y += 17.0
+			UiKit.label(trace_root, Vector2(78, y), Vector2(186, 15),
+				UiText.t("battle.trace_base", "기본 AI"), 9, UiKit.FAINT)
+			y += 16.0
 			continue
 		for r in rows:
 			var hit := bool(r["hit"])
@@ -438,14 +442,13 @@ func _show_trace(who: Unit, e: Dictionary) -> void:
 			var txt := "%s %s" % [mark, String(r["name"])]
 			if not hit:
 				txt += "  (%s)" % String(r["why"])
-			UiKit.label(trace_root, Vector2(96, y), Vector2(230, 16), txt, 10, col)
-			y += 17.0
+			UiKit.label(trace_root, Vector2(78, y), Vector2(186, 15), txt, 9, col)
+			y += 16.0
 
 	# 마지막 줄은 실제로 한 행동이다. 위 네 축이 이 한 줄로 모인다.
-	UiKit.label(trace_root, Vector2(0, y + 4), Vector2(120, 16),
-		"ACTION", 10, UiKit.GOOD)
-	UiKit.label(trace_root, Vector2(96, y + 4), Vector2(230, 16),
-		String(e.get("rule_name", "")), 10, UiKit.GOOD)
+	UiKit.label(trace_root, Vector2(0, y + 4), Vector2(80, 15), "ACTION", 9, UiKit.GOOD)
+	UiKit.label(trace_root, Vector2(78, y + 4), Vector2(186, 15),
+		String(e.get("rule_name", "")), 9, UiKit.GOOD)
 
 
 func _flash_slot(unit_i: int, slot: int) -> void:
@@ -783,7 +786,7 @@ func _play_special(e: Dictionary) -> void:
 ## 지점은 data/cutin_shots.gd 에 있다. 여기서 수치를 잡으면 일러스트를 갈 때마다
 ## 연출 코드를 고쳐야 한다.
 ##
-## 도입부 1.11초 + 공개 1.53초 = 총 2.6초. 절반 이상이 이름을 읽는 시간이다.
+## 도입부 1.59초 + 공개 1.53초 = 총 3.1초. 훑는 시간과 읽는 시간이 반반이다.
 const CUTIN_X: float = 384.0        ## 1280 의 30%. 일러스트가 차지하는 폭.
 const CUTIN_SKEW: float = 44.0      ## 사선 프레임의 기울기(위가 넓고 아래가 좁다).
 const CUTIN_ART: Vector2 = Vector2(600, 900)
@@ -893,7 +896,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 	var name_x := CUTIN_X + 72.0
 	var bw := 1280.0 - name_x - 36.0
 	var band := Node2D.new()
-	band.position = Vector2(name_x, 296)
+	band.position = Vector2(name_x, 294)
 	band.scale = Vector2(0.0, 1.0)          # 왼쪽에서 오른쪽으로 펴진다
 	layer.add_child(band)
 	# 끝을 크게 깎는다. 14px 로는 그냥 직사각형으로 보였다.
@@ -926,7 +929,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 
 	var lbl := Label.new()
 	lbl.text = skill_name
-	lbl.position = Vector2(name_x + 96.0, 302)      # 오른쪽에서 밀려 들어온다
+	lbl.position = Vector2(name_x + 96.0, 300)      # 오른쪽에서 밀려 들어온다
 	lbl.size = Vector2(bw - 40.0, 80)
 	lbl.add_theme_font_override("font", UiKit.title_font())
 	lbl.add_theme_font_size_override("font_size", 64)
@@ -943,7 +946,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 
 	# 누구 궁극기인지. 색만으로는 여섯 직업을 다 못 가른다.
 	var unit_name := String(UnitData.TABLE.get(type_id, {}).get("name", ""))
-	var sub := UiKit.label(layer, Vector2(name_x + 30.0, 266), Vector2(bw, 22),
+	var sub := UiKit.label(layer, Vector2(name_x + 30.0, 264), Vector2(bw, 22),
 		unit_name, 14, Color(1, 1, 1, 0.85))
 	sub.modulate.a = 0.0
 
@@ -961,7 +964,7 @@ func _cutin(skill_name: String, tint: Color, type_id: String) -> void:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(band, "scale", Vector2.ONE, 0.14)\
 		.set_delay(0.06).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tw.tween_property(lbl, "position", Vector2(name_x + 30.0, 302), 0.20)\
+	tw.tween_property(lbl, "position", Vector2(name_x + 30.0, 300), 0.20)\
 		.set_delay(0.06).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), 0.12)\
 		.set_delay(0.06).from(Color(1, 1, 1, 0))
@@ -1056,14 +1059,14 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	# 1) 무기 끝. 완전히 정지시키지 않고 아주 천천히 밀어 준다.
 	#    멈춘 그림은 정지 화면으로 읽히고, 조금이라도 흐르면 살아 있는 것으로 읽힌다.
 	tw.parallel()
-	_cam_to(tw, art, weapon, 4.2, 0.34, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	_cam_to(tw, art, weapon, 4.2, 0.50, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
 
 	# 2) 얼굴까지 위로. 이 구간이 가장 길다 - 두 지점이 한 인물이라는 것을
 	#    이어 붙이는 게 목적이라, 끊기면 딴 그림 두 장으로 보인다.
-	_cam_to(tw, art, face, 3.4, 0.44, Tween.TRANS_CUBIC, Tween.EASE_IN_OUT)
+	_cam_to(tw, art, face, 3.4, 0.62, Tween.TRANS_CUBIC, Tween.EASE_IN_OUT)
 
 	# 3) 눈. 짧고 세게 박는다.
-	_cam_to(tw, art, eye, 5.4, 0.26, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	_cam_to(tw, art, eye, 5.4, 0.40, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	await tw.finished
 
 	# 번쩍. 이 흰 화면이 도입부와 전체 공개 사이의 이음매를 덮는다.
