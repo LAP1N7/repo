@@ -87,7 +87,7 @@
 	"reward.growth_hp": "강화 시 내구도 상승폭이 큽니다.",
 	"reward.growth_even": "체력과 화력이 고르게 상승합니다.",
 	"card.tactic_tag": "전술 · 매 틱",
-	"card.special_tag": "궁극기 · %s · 1회",
+	"card.special_tag": "%s 전용 · 교전당 1회",
 	"card.special_tag_mini": "궁극기",
 	"card.cond": "조건",
 	"card.act": "행동",

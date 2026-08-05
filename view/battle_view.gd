@@ -22,9 +22,19 @@ var tut: Tutorial = null
 ## 채우면서 아래에 대원 바 자리를 남긴다.
 ## 판 세로가 대원 바를 넘으면 안 된다. 6행 x 64 x 배율 + 상단 104 가 바의
 ## y(560)보다 작아야 한다. 1.30 은 603 이라 바를 덮었다.
-const BOARD_SCALE := 1.16
+## 판이 화면의 3분의 2를 차지해야 한다. 가로 8칸 x 64px x 배율이 1280 의
+## 2/3(853) 근처여야 하므로 1.63 쯤이지만, 그러면 세로가 626 이 되어 하단
+## 대원 바를 덮는다. 세로가 한계라 1.36 으로 맞추고(가로 696 · 세로 522)
+## 오른쪽 정보 열을 그만큼 좁힌다.
+## 세로가 한계다. 판 아래에 대원 바(높이 76)와 여백이 있어야 하므로
+## 96 + 6행 x 64 x 배율 <= 588 이어야 한다. 1.28 이 그 상한이고, 이때 가로는
+## 655px 로 화면의 절반을 조금 넘는다.
+##
+## 가로를 3분의 2까지 늘리려면 배율이 아니라 **열 수**를 늘려야 한다(8 -> 10).
+## 그건 사거리·이동·적 배치가 전부 걸리는 밸런스 변경이라 따로 잡는다.
+const BOARD_SCALE := 1.28
 
-const BOARD_ORIGIN := Vector2(48, 104)
+const BOARD_ORIGIN := Vector2(40, 96)
 const TILE: int = Grid.TILE
 const ACT_TIME: float = 0.22
 const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
@@ -142,12 +152,17 @@ func _draw() -> void:
 				Vector2(TILE, TILE) * BOARD_SCALE)
 			draw_rect(r, COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
 
+	# ── 배율은 위치와 크기 **둘 다**에 걸어야 한다 ───────────────────────
+	# 진영 표시만 크기에 배율을 안 걸어서, 칸은 74px 인데 표시는 64px 로 그려져
+	# 반 칸씩 밀린 것처럼 보였다. 유닛이 어긋난 게 아니라 이 사각형이 어긋난
+	# 것이었다 - 눈에는 똑같이 "격자와 안 맞는다" 로 보인다.
+	var cell := Vector2(TILE, TILE) * BOARD_SCALE
 	for p in Grid.PLAYER_SLOTS:
 		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE) * BOARD_SCALE,
-			Vector2(TILE, TILE)), COL_PLAYER_ZONE)
+			cell), COL_PLAYER_ZONE)
 	for p in Grid.ENEMY_SLOTS:
 		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE, p.y * TILE) * BOARD_SCALE,
-			Vector2(TILE, TILE)), COL_ENEMY_ZONE)
+			cell), COL_ENEMY_ZONE)
 
 	for x in Grid.W + 1:
 		draw_line(BOARD_ORIGIN + Vector2(x * TILE, 0) * BOARD_SCALE,
@@ -182,7 +197,7 @@ func _build_ui() -> void:
 	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 12, UiKit.FAINT)
 
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
-	var cy := 566.0
+	var cy := 596.0
 	var bx := 860.0
 	btn_start = UiKit.button(ui, Vector2(bx, cy), Vector2(372, 44), UiText.t("battle.start", "▶  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
@@ -228,7 +243,7 @@ func _build_ui() -> void:
 	# 알고리즘 전문은 여기 안 적는다 - 세 명분을 다 적으면 결국 지금과 같은
 	# 글자 벽이 된다. 얼굴에 마우스를 올리면 그때 사선 판으로 펼친다.
 	squad_root = Control.new()
-	squad_root.position = Vector2(48, 560)
+	squad_root.position = Vector2(40, 596)
 	ui.add_child(squad_root)
 
 	rules_root = Control.new()
@@ -243,14 +258,15 @@ func _build_ui() -> void:
 	trace_root = Control.new()
 	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
 	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
-	trace_root.position = Vector2(666, 386)
+	trace_root.position = Vector2(972, 314)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
-	log_root.position = Vector2(666, 104)
+	# 오른쪽 끝에 붙여 고정한다. 판이 커지거나 줄어도 이 열은 안 움직인다.
+	log_root.position = Vector2(972, 96)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
 	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 20), UiText.t("battle.log_head", "교전 기록"), 13, UiKit.MUTED)
@@ -258,12 +274,12 @@ func _build_ui() -> void:
 	logbg.position = Vector2(0, 24)
 	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
 	# 600 + 388 = 988. 12px 여백을 둔다.
-	logbg.size = Vector2(420, 252)
+	logbg.size = Vector2(268, 200)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(400, 240), "", 11)
+	log_label = UiKit.label(logbg, Vector2(8, 5), Vector2(252, 190), "", 10)
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
 	log_label.add_theme_constant_override("line_spacing", -6)
@@ -429,8 +445,8 @@ func _build_squad_bar() -> void:
 		var card := _SquadCard.new()
 		card.unit = u
 		card.position = Vector2(i * 268.0, 0)
-		card.size = Vector2(252, 96)
-		card.pivot_offset = Vector2(126, 48)
+		card.size = Vector2(252, 76)
+		card.pivot_offset = Vector2(126, 38)
 		squad_root.add_child(card)
 		squad_cards[u.index] = card
 		i += 1
@@ -1579,7 +1595,7 @@ class _SquadCard extends Control:
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tr.position = Vector2(8, 4)
-			tr.size = Vector2(88, 88)
+			tr.size = Vector2(68, 68)
 			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			add_child(tr)
 
@@ -1631,27 +1647,27 @@ class _SquadCard extends Control:
 		var dead := not unit.alive
 
 		# 이름과 HP 숫자
-		draw_string(fb, Vector2(106, 26), unit.display_name,
+		draw_string(fb, Vector2(106, 24), unit.display_name,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
 			Color(0.45, 0.45, 0.5) if dead else UiKit.TEXT)
-		draw_string(fs, Vector2(106, 46), "%d / %d" % [maxi(0, unit.hp), unit.max_hp],
+		draw_string(fs, Vector2(106, 42), "%d / %d" % [maxi(0, unit.hp), unit.max_hp],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.MUTED)
 
 		# ── HP 막대 ──────────────────────────────────────────────────────
 		var bw := s.x - 118.0
-		draw_rect(Rect2(106, 54, bw, 7), Color(0.16, 0.17, 0.21))
+		draw_rect(Rect2(106, 48, bw, 6), Color(0.16, 0.17, 0.21))
 		var ratio: float = 0.0 if unit.max_hp <= 0 else clampf(
 			float(unit.hp) / float(unit.max_hp), 0.0, 1.0)
 		# 빨강은 위험 신호로 남겨 둔다. 평소엔 직업 색이라 누구 막대인지 읽힌다.
 		var hpc: Color = UiKit.BAD if ratio < 0.35 else neon
-		draw_rect(Rect2(106, 54, bw * ratio, 7), hpc)
+		draw_rect(Rect2(106, 48, bw * ratio, 6), hpc)
 
 		# ── 기여도 ───────────────────────────────────────────────────────
 		var work := unit.damage_dealt + unit.healing_done
-		draw_rect(Rect2(106, 68, bw, 4), Color(0.14, 0.15, 0.19))
-		draw_rect(Rect2(106, 68, bw * float(work) / float(maxi(1, contrib_top)), 4),
+		draw_rect(Rect2(106, 58, bw, 4), Color(0.14, 0.15, 0.19))
+		draw_rect(Rect2(106, 58, bw * float(work) / float(maxi(1, contrib_top)), 4),
 			UiKit.GOOD if unit.healing_done > unit.damage_dealt else UiKit.ACCENT)
-		draw_string(fs, Vector2(106, 88),
+		draw_string(fs, Vector2(106, 72),
 			UiText.t("battle.squad_work", "피해 %d · 회복 %d") % [
 				unit.damage_dealt, unit.healing_done],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)

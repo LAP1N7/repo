@@ -111,7 +111,15 @@ func card_size() -> Vector2:
 
 ## 원래 크기 카드를 펼칠 배율. 폭이 늘어나면 한 줄에 더 들어가고,
 ## 높이가 늘어나면 줄 수가 늘어난다. 둘 다 필요하다.
-const EXPAND: float = 1.62
+## 펼침 배율. 1.0 이면 크기를 안 바꾼다.
+##
+## 예전에는 1.62 로 레이아웃 박스를 키웠는데, 그러면 [제외] 버튼과 ULTIMATE
+## 라벨이 원래 자리에서 밀려 프레임 밖으로 삐져나갔다. 안쪽 요소가 전부 고정
+## 좌표라 박스만 늘리면 어긋난다.
+##
+## 지금은 크기를 그대로 두고 **위로 띄우고 앞으로 세운다.** 옆 카드에 가리지
+## 않는 것이 목적이었으므로 그걸로 충분하고, 글자가 잘리는 문제도 없다.
+const EXPAND: float = 1.0
 
 
 ## 지금 미니 레이아웃으로 그려야 하는가. 펼쳐졌으면 아니다.
@@ -153,10 +161,10 @@ func _process(delta: float) -> void:
 			_ban_btn.size = Vector2(sz.x - 16, 20)
 		queue_redraw()
 
-	var target_lift: float = -18.0 if want_hover else 0.0
+	var target_lift: float = -34.0 if want_hover else 0.0
 	# 레이아웃이 이미 커졌으므로 확대는 살짝만 얹는다. 둘 다 크게 주면
 	# 옆 카드를 통째로 덮는다.
-	var target_scale: float = 1.03 if want_hover else 1.0
+	var target_scale: float = 1.12 if want_hover else 1.0
 	var target_tilt: float = 0.045 if want_hover else 0.0
 
 	# 지수 감쇠 보간 - 프레임레이트에 안 흔들린다.
@@ -297,8 +305,8 @@ func _draw() -> void:
 	var pad := 9.0
 	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
 	# 미니 폭은 92px 다. 11 로 두면 "불굴의 의지" 가 "불굴의 의" 로 잘린다.
-	var name_size := (20 if _expanded else 17) if not _is_mini() else 10
-	var text_size := (14 if _expanded else 12) if not _is_mini() else 10
+	var name_size := 17 if not _is_mini() else 10
+	var text_size := 12 if not _is_mini() else 10
 	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
 
 	# 코스트 배지
@@ -318,7 +326,11 @@ func _draw() -> void:
 	# 안 보인다. 축만 영문으로 두면 계기판처럼 읽히면서 본문은 그대로다.
 	# 궁극기는 축이 없다. 대신 ULTIMATE 을 같은 자리에 적는다. 이 줄이 없으면
 	# 그 자리가 비어서 이름이 위로 붙고, 아래 부제와 글자가 겹친다.
-	var top_label := axis_label if axis != "" else "ULTIMATE"
+	# 궁극기는 축 대신 소유 대원을 적는다. ULTIMATE 만으로는 누구 것인지 모르고,
+	# 그건 이 카드를 살지 말지를 정하는 가장 큰 정보다.
+	var top_label := axis_label
+	if axis == "":
+		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
 	draw_string(UiKit.font_role("large"), Vector2(pad, pad + 11.0), top_label,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10 if not _is_mini() else 8,
 			Color(ccol.r, ccol.g, ccol.b, 0.95))
@@ -342,7 +354,9 @@ func _draw() -> void:
 		var tag := ""
 		var tcol := UiKit.ACCENT
 		if special:
-			tag = UiText.t("card.special_tag", "궁극기 · %s 전용 · 전투당 1회") % UnitData.TABLE[c["unit"]]["name"]
+			# 어느 대원 것인지가 제일 먼저 필요하다. 남의 궁극기를 사면 그 판
+			# 내내 못 쓴다 - 산 뒤에 알면 늦는다.
+			tag = UiText.t("card.special_tag", "%s 전용 · 교전당 1회") % UnitData.TABLE[c["unit"]]["name"]
 		else:
 			tag = UiText.t("card.tactic_tag", "전술 · 조건이 맞는 한 매 틱 발동")
 			tcol = UiKit.MUTED
