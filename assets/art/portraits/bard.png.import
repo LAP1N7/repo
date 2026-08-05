@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cp0i5vdg24apf"
-path="res://.godot/imported/archer.webp-452733672935851b99b34127f563376e.ctex"
+uid="uid://c88l7dkxvry4b"
+path="res://.godot/imported/bard.png-92ab774bea0b4deec10c2e2d710d68ed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/portraits/archer.webp"
-dest_files=["res://.godot/imported/archer.webp-452733672935851b99b34127f563376e.ctex"]
+source_file="res://assets/art/portraits/bard.png"
+dest_files=["res://.godot/imported/bard.png-92ab774bea0b4deec10c2e2d710d68ed.ctex"]
 
 [params]
 

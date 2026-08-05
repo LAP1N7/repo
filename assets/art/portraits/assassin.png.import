@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://devcf3yrd450u"
-path="res://.godot/imported/shieldman.webp-7807918f87881d243cc93b6072a88fdd.ctex"
+uid="uid://cx3sga4pi30r1"
+path="res://.godot/imported/assassin.png-af12efd9f4c62826bb1c3061eba5de8d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/portraits/shieldman.webp"
-dest_files=["res://.godot/imported/shieldman.webp-7807918f87881d243cc93b6072a88fdd.ctex"]
+source_file="res://assets/art/portraits/assassin.png"
+dest_files=["res://.godot/imported/assassin.png-af12efd9f4c62826bb1c3061eba5de8d.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b8g76iv4tjbui"
-path="res://.godot/imported/assassin.webp-52c91f6c534a29c2a2063624cdbcb4a0.ctex"
+uid="uid://dtrjoblofl6jy"
+path="res://.godot/imported/musketeer.png-7f3dd3c2f1e58b9cf07f430779a8240a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/portraits/assassin.webp"
-dest_files=["res://.godot/imported/assassin.webp-52c91f6c534a29c2a2063624cdbcb4a0.ctex"]
+source_file="res://assets/art/portraits/musketeer.png"
+dest_files=["res://.godot/imported/musketeer.png-7f3dd3c2f1e58b9cf07f430779a8240a.ctex"]
 
 [params]
 

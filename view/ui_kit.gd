@@ -289,14 +289,15 @@ class Frame extends Control:
 		var faint := Color(accent.r, accent.g, accent.b, 0.10)
 
 		# 상단 가로 바. 왼쪽은 진하고 오른쪽으로 갈수록 흐려진다.
-		draw_line(Vector2(36, 26), Vector2(w * 0.45, 26), line, 2.0)
-		draw_line(Vector2(w * 0.45, 26), Vector2(w - 36, 26), faint, 1.0)
+		# y=26 에 두면 화면 제목(y16~50)을 가로지른다. 위로 붙인다.
+		draw_line(Vector2(36, 10), Vector2(w * 0.45, 10), line, 2.0)
+		draw_line(Vector2(w * 0.45, 10), Vector2(w - 36, 10), faint, 1.0)
 
 		# 하단도 같은 어법으로 한 줄. 화면이 위아래로 닫힌 것처럼 보인다.
 		draw_line(Vector2(36, h - 26), Vector2(w - 36, h - 26), faint, 1.0)
 
 		# 네 모서리 꺾쇠.
-		var box := Rect2(28, 18, w - 56, h - 44)
+		var box := Rect2(20, 6, w - 40, h - 26)
 		for corner in [
 			[box.position, Vector2(1, 0), Vector2(0, 1)],
 			[Vector2(box.end.x, box.position.y), Vector2(-1, 0), Vector2(0, 1)],

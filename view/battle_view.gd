@@ -17,9 +17,12 @@ var tut: Tutorial = null
 ##
 ## 이렇게 하면 Grid 의 거리·경로 계산이 한 줄도 안 바뀐다. 타일 크기 자체를
 ## 키우면 BOARD_ORIGIN 을 쓰는 모든 자리와 뷰의 픽셀 상수를 전부 다시 재야 한다.
-const BOARD_SCALE := 1.42
+## 8x6 타일 x 64px = 512x384 가 원래 크기다. 1.42배로 키웠더니 판이 세로
+## 545px 이 되어 화면 아래 조작줄까지 내려왔다. 1.15 면 589x442 로, 왼쪽 절반을
+## 채우면서 아래에 대원 바 자리를 남긴다.
+const BOARD_SCALE := 1.15
 
-const BOARD_ORIGIN := Vector2(60, 118)
+const BOARD_ORIGIN := Vector2(48, 104)
 const TILE: int = Grid.TILE
 const ACT_TIME: float = 0.22
 const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
@@ -172,8 +175,10 @@ func _build_ui() -> void:
 	lbl_tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 12, UiKit.FAINT)
 
-	var cy := 592.0
-	btn_start = UiKit.button(ui, Vector2(48, cy), Vector2(200, 42), UiText.t("battle.start", "▶  전투 시작"), 15)
+	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
+	var cy := 566.0
+	var bx := 860.0
+	btn_start = UiKit.button(ui, Vector2(bx, cy), Vector2(370, 40), UiText.t("battle.start", "▶  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
@@ -199,13 +204,13 @@ func _build_ui() -> void:
 
 	# 이 줄은 x=600(로그 패널) 전에 끝나야 한다. 셋을 176 폭으로 줄이면
 	# 48 + 176*3 + 8*2 = 592 로 딱 들어간다.
-	var b1 := UiKit.button(ui, Vector2(48, cy + 52), Vector2(176, 36), UiText.t("battle.to_loadout", "←  편성 고치기"), 14)
+	var b1 := UiKit.button(ui, Vector2(bx, cy + 46), Vector2(180, 34), UiText.t("battle.to_loadout", "←  편성 고치기"), 14)
 	b1.pressed.connect(func(): to_loadout.emit())
-	var b2 := UiKit.button(ui, Vector2(232, cy + 52), Vector2(176, 36), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
+	var b2 := UiKit.button(ui, Vector2(bx + 190, cy + 46), Vector2(180, 34), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
 	b2.pressed.connect(func(): to_shop.emit())
 
 	# 이기면 보상 화면으로. 아직 못 이겼으면 숨긴다.
-	btn_next = UiKit.button(ui, Vector2(416, cy + 52), Vector2(176, 36), UiText.t("battle.to_reward", "보상 받기  →"), 15)
+	btn_next = UiKit.button(ui, Vector2(bx, cy + 46), Vector2(370, 34), UiText.t("battle.to_reward", "보상 받기  →"), 15)
 	btn_next.visible = false
 	btn_next.pressed.connect(func(): won.emit())
 
@@ -217,7 +222,7 @@ func _build_ui() -> void:
 	# 알고리즘 전문은 여기 안 적는다 - 세 명분을 다 적으면 결국 지금과 같은
 	# 글자 벽이 된다. 얼굴에 마우스를 올리면 그때 사선 판으로 펼친다.
 	squad_root = Control.new()
-	squad_root.position = Vector2(60, 560)
+	squad_root.position = Vector2(48, 566)
 	ui.add_child(squad_root)
 
 	rules_root = Control.new()
@@ -232,14 +237,14 @@ func _build_ui() -> void:
 	trace_root = Control.new()
 	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
 	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
-	trace_root.position = Vector2(660, 96)
+	trace_root.position = Vector2(668, 380)
 	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
 	log_root = Control.new()
-	log_root.position = Vector2(660, 300)
+	log_root.position = Vector2(668, 104)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
 	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 22), UiText.t("battle.log_head", "교전 기록"), 14, UiKit.MUTED)
@@ -247,12 +252,12 @@ func _build_ui() -> void:
 	logbg.position = Vector2(0, 24)
 	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
 	# 600 + 388 = 988. 12px 여백을 둔다.
-	logbg.size = Vector2(560, 236)
+	logbg.size = Vector2(564, 244)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(540, 224), "", 11)
+	log_label = UiKit.label(logbg, Vector2(10, 6), Vector2(544, 232), "", 11)
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
 	log_label.add_theme_constant_override("line_spacing", -6)
@@ -1547,6 +1552,22 @@ class _SquadCard extends Control:
 	var _mx: float = 0.5
 
 	func _ready() -> void:
+		# ── 얼굴은 노드로 그린다 ─────────────────────────────────────────
+		# draw_texture_rect 로 그렸더니 알파가 무시되고 흰 사각형이 나왔다.
+		# 텍스처 자체는 멀쩡했다(엔진에서 (2,2) 픽셀이 완전 투명으로 읽힌다).
+		# _draw 안에서 그린 것이 문제였으므로 TextureRect 자식으로 옮긴다.
+		# 매 프레임 다시 그리지 않아도 되니 비용도 준다.
+		var face := UiKit.art(["portraits"], unit.type_id if unit != null else "")
+		if face != null:
+			var tr := TextureRect.new()
+			tr.texture = face
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.position = Vector2(8, 4)
+			tr.size = Vector2(88, 88)
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(tr)
+
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		mouse_entered.connect(func(): _hover = true)
 		mouse_exited.connect(func(): _hover = false)
@@ -1586,11 +1607,8 @@ class _SquadCard extends Control:
 		# 왼쪽 직업 색 바. 멀리서도 누구인지 갈린다.
 		draw_rect(Rect2(0, 0, 3, s.y), neon)
 
-		# ── 얼굴 ─────────────────────────────────────────────────────────
-		var face := UiKit.art(["portraits"], unit.type_id)
-		if face != null:
-			draw_texture_rect(face, Rect2(8, 4, 88, 88), false)
-		else:
+		# 얼굴은 _draw 가 아니라 TextureRect 자식으로 그린다. (아래 _ready 주석 참조)
+		if UiKit.art(["portraits"], unit.type_id) == null:
 			draw_circle(Vector2(52, 48), 34, col)
 
 		var fs := UiKit.font(11)

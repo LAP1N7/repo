@@ -14,7 +14,7 @@ var tut: Tutorial = null
 
 const SHOP_Y: float = 156.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
-const HAND_Y: float = 470.0
+const HAND_Y: float = 500.0
 
 var run: RunState
 
@@ -102,7 +102,8 @@ func setup(p_run: RunState) -> void:
 	# 있던 이 라벨과 겹쳐 글자가 서로 위에 얹혔다.
 	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다. 안내문을
 	# 336 에 두면 카드가 그 위에 얹혀 글자를 반쯤 먹는다. 카드 아래로 내린다.
-	UiKit.label(self, Vector2(40, 366), Vector2(1200, 22),
+	# 재검색·정제 버튼이 y355~393 을 쓴다. 안내문은 그 아래여야 한다.
+	UiKit.label(self, Vector2(40, 404), Vector2(1200, 22),
 		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 는 이번 런 전체에서 배제 - 다음 스테이지에도 안 나온다."), 12, UiKit.MUTED)
 
 	var b_help := UiKit.button(self, Vector2(880, 655), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)
