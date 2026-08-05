@@ -180,8 +180,14 @@ func occupancy(mover: Unit) -> Dictionary:
 ## 규칙 엔진의 실행 가능성 판정과 실제 실행이 같은 값을 써야 하므로 반드시 이걸 공유한다.
 ## bonus 는 이동 보너스 칸수. 유료 이동 카드가 무료 기본기보다 한 칸 더 가게 해서
 ## "돌격 ≡ 기본 전진" 같은 완전 중복을 없애는 장치다.
-func plan_move(mover: Unit, target: Unit, toward: bool, bonus: int = 0) -> Vector2i:
-	var path := plan_move_path(mover, target, toward, bonus)
+## stop_range 는 "이만큼 가까워지면 그만 간다" 는 거리다. 기본은 사거리다.
+##
+## 아군에게 갈 때는 반드시 1 을 넘겨야 한다. 사거리로 재면 궁수(사거리 3)가
+## 아군에게서 3칸 떨어진 채로 "다 왔다" 고 판단해 한 발짝도 안 움직인다.
+## [엄호]·[방패 뒤]·[밀집] 이 통째로 죽어 있던 원인이 이거였다.
+func plan_move(mover: Unit, target: Unit, toward: bool, bonus: int = 0,
+		stop_range: int = -1) -> Vector2i:
+	var path := plan_move_path(mover, target, toward, bonus, stop_range)
 	return path[path.size() - 1] if path.size() > 0 else mover.pos
 
 
@@ -190,7 +196,8 @@ func plan_move(mover: Unit, target: Unit, toward: bool, bonus: int = 0) -> Vecto
 ## 뷰가 도착점만 알면 출발점에서 도착점까지 직선으로 보간해 버린다. 경로가 L자면
 ## 모서리를 가로질러 다른 유닛을 뚫고 지나가는 것처럼 보인다 - 이동이 2칸이 되면서
 ## 실제로 그렇게 보였다. 그래서 경로 전체를 넘긴다.
-func plan_move_path(mover: Unit, target: Unit, toward: bool, bonus: int = 0) -> Array[Vector2i]:
+func plan_move_path(mover: Unit, target: Unit, toward: bool, bonus: int = 0,
+		stop_range: int = -1) -> Array[Vector2i]:
 	var blocked: Dictionary = occupancy(mover)
 	var path: Array[Vector2i] = [mover.pos]
 	var p: Vector2i = mover.pos
@@ -198,7 +205,8 @@ func plan_move_path(mover: Unit, target: Unit, toward: bool, bonus: int = 0) -> 
 		var nxt: Vector2i
 		if toward:
 			# 사거리 안에 들어오면 더 붙지 않는다. 궁수가 적 코앞까지 걸어가는 걸 막는다.
-			if Grid.manhattan(p, target.pos) <= mover.atk_range:
+			var stop_at: int = mover.atk_range if stop_range < 0 else stop_range
+			if Grid.manhattan(p, target.pos) <= stop_at:
 				break
 			nxt = Grid.step_toward(p, target.pos, blocked)
 		else:

@@ -1071,6 +1071,44 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 		view.add_child(bar)
 		bars.append(bar)
 
+	# ── 확대 구간의 먼지와 불티 ──────────────────────────────────────────
+	# 카메라가 훑는 동안 화면에 움직이는 것이 아트 하나뿐이라, 확대가 부드러울수록
+	# 오히려 정지 화면처럼 보였다. 렌즈 앞을 스치는 입자가 있으면 "지금 카메라가
+	# 붙어 있다" 가 읽힌다. 아트보다 앞에 두되 흐리게 깔아 얼굴을 안 가린다.
+	var dust := CPUParticles2D.new()
+	dust.position = Vector2(640, 720)
+	dust.amount = 70
+	dust.lifetime = 2.4
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	dust.emission_rect_extents = Vector2(660, 20)
+	dust.direction = Vector2(0, -1)
+	dust.spread = 22.0
+	dust.gravity = Vector2.ZERO
+	dust.initial_velocity_min = 70.0
+	dust.initial_velocity_max = 260.0
+	dust.scale_amount_min = 1.0
+	dust.scale_amount_max = 3.4
+	dust.color = Color(1, 1, 1, 0.28)
+	view.add_child(dust)
+
+	# 인물 쪽으로 빨려 드는 불티. 확대의 방향과 같은 쪽으로 흘러야 시선이
+	# 얼굴로 모인다. 아래에서 위로 올라가는 먼지와 방향이 달라 층이 갈린다.
+	var spark := CPUParticles2D.new()
+	spark.position = Vector2(1180, 360)
+	spark.amount = 34
+	spark.lifetime = 1.1
+	spark.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	spark.emission_rect_extents = Vector2(12, 300)
+	spark.direction = Vector2(-1, 0)
+	spark.spread = 10.0
+	spark.gravity = Vector2.ZERO
+	spark.initial_velocity_min = 420.0
+	spark.initial_velocity_max = 900.0
+	spark.scale_amount_min = 1.0
+	spark.scale_amount_max = 2.2
+	spark.color = Color(tint.r, tint.g, tint.b, 0.55)
+	view.add_child(spark)
+
 	var weapon: Vector2 = shot["weapon"]
 	var eye: Vector2 = shot["eye"]
 	# 얼굴은 눈보다 조금 아래를 잡는다. 눈만 노리면 턱이 잘려 얼굴로 안 읽힌다.

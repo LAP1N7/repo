@@ -71,10 +71,12 @@ const CONDS := [
 const PICKS := [
 	"nearest_enemy", "farthest_enemy", "backline_enemy", "lowest_hp_enemy",
 	"healer_enemy", "unguarded_enemy", "strongest_enemy", "focused_enemy",
+	"special_ready_enemy",
 ]
 const STANCES := ["engage", "avoid", "wait", "pursue", "defend"]
 const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "flank", "march"]
-const COOPS := ["solo", "focus", "spread", "escort", "rally"]
+const COOPS := ["solo", "focus", "spread", "escort", "rally",
+	"follow_guard", "follow_lead", "protect_support"]
 
 
 func _check_vocabulary() -> void:

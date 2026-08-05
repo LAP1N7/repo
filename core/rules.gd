@@ -238,12 +238,26 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			return _rule(unit, "공격", "attack", target, power, 0)
 
 	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
-	return _move_by_stand(unit, state, target, stance, stand, bonus)
+	return _move_by_stand(unit, state, target, stance, stand, bonus, coop)
 
 
 static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
-		stand: String, bonus: int) -> Dictionary:
+		stand: String, bonus: int, coop: String = "solo") -> Dictionary:
 	var ai := Innates.base_ai(unit.type_id)
+
+	# ── 협력이 위치 모듈보다 먼저 걸린다 ─────────────────────────────────
+	# 부대 차원의 결정이 개인의 자리 취향을 이긴다. [방패 추종] 을 넣어 놓고
+	# 혼자 딴 데 서면 그건 협력이 아니다.
+	#
+	# 위치 모듈이 있으면 그쪽이 이긴다 - 플레이어가 명시적으로 자리를 지정한
+	# 것이므로, 협력이 그걸 덮으면 지정이 무의미해진다.
+	if stand == "" and coop != "solo":
+		var mate := _coop_anchor(unit, state, coop)
+		if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1:
+			# 아군에게 갈 때는 1칸 옆까지 간다. 사거리로 재면 궁수가 3칸 밖에서
+			# "다 왔다" 고 판단해 협력 모듈이 아무 일도 안 한다.
+			if state.plan_move(unit, mate, true, bonus, 1) != unit.pos:
+				return _rule(unit, "동행", "move_to_ally", mate, 0, bonus)
 
 	match stand:
 		"keep_range":
@@ -257,7 +271,7 @@ static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
 			# 방패병·전사보다 앞에 서 있으면 물러난다. 없으면 그냥 붙는다.
 			var guard := _guard_ally(unit, state)
 			if guard != null and _is_ahead_of(unit, guard):
-				if state.plan_move(unit, guard, true, bonus) != unit.pos:
+				if state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
 					return _rule(unit, "방패 뒤", "move_to_ally", guard, 0, bonus)
 			return _approach(unit, state, target, bonus, "전진")
 
@@ -265,7 +279,7 @@ static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
 			# 아군과 떨어져 있으면 붙는다.
 			var mate := _nearest_ally(unit, state)
 			if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1:
-				if state.plan_move(unit, mate, true, bonus) != unit.pos:
+				if state.plan_move(unit, mate, true, bonus, 1) != unit.pos:
 					return _rule(unit, "밀집", "move_to_ally", mate, 0, bonus)
 			return _approach(unit, state, target, bonus, "전진")
 
@@ -293,6 +307,34 @@ static func _rule(unit: Unit, name: String, act: String, target: Unit,
 		card["power"] = power
 	return { "card": card, "target": target, "card_id": "", "slot": -1,
 		"innate": true, "special": false }
+
+
+## 협력 축이 기준으로 삼는 아군. 없으면 null.
+##
+## 표적이 "누구를 치는가" 라면 이쪽은 "누구 옆에 있는가" 다. 같은 표적 모듈을
+## 쓰는 두 대원도 이 기준이 다르면 완전히 다르게 논다.
+static func _coop_anchor(unit: Unit, state, coop: String) -> Unit:
+	match coop:
+		"escort":
+			# HP 가 가장 낮은 아군. 지금 가장 위험한 쪽이다.
+			return resolve_target(unit, "lowest_hp_other_ally", state, "")
+		"follow_guard":
+			return _guard_ally(unit, state)
+		"protect_support":
+			for a in state.living_allies_of(unit):
+				if a.index != unit.index and String(Innates.base_ai(a.type_id)["act"]) == "heal":
+					return a
+			return null
+		"follow_lead":
+			# 적진 쪽으로 가장 나가 있는 아군. 진영마다 "앞" 이 반대다.
+			var best: Unit = null
+			for a in state.living_allies_of(unit):
+				if a.index == unit.index:
+					continue
+				if best == null or _is_ahead_of(a, best):
+					best = a
+			return best
+	return null
 
 
 static func _guard_ally(unit: Unit, state) -> Unit:
@@ -545,6 +587,14 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 			# 광역기는 개별 대상이 없다. 생존 적이 하나라도 있으면 성립한다.
 			return enemies[0] if enemies.size() > 0 else null
 
+		"special_ready_enemy":
+			# 궁극기가 곧 터질 적. [예봉 차단] 이 이걸로 선제를 잡는다.
+			# 여럿이면 index 순 - 먼저 행동하는 쪽이 더 급하다.
+			for e in enemies:
+				if e.special_ready():
+					return e
+			return null
+
 		"healer_enemy":
 			# 회복하는 적 우선. 방벽 뒤의 악사를 끊는 표적 교리다.
 			var h: Unit = null
@@ -613,7 +663,9 @@ static func is_viable(unit: Unit, card: Dictionary, target: Unit, state) -> bool
 				return false
 			if Grid.manhattan(unit.pos, target.pos) <= 1:
 				return false
-			return state.plan_move(unit, target, true, int(card.get("move_bonus", 0))) != unit.pos
+			# 계획과 판정이 같은 값을 써야 한다. 여기만 사거리로 재면 "갈 수 있다" 고
+			# 판정해 놓고 실제로는 안 움직이는 유령 행동이 나온다.
+			return state.plan_move(unit, target, true, int(card.get("move_bonus", 0)), 1) != unit.pos
 
 		"defend", "hold":
 			return true

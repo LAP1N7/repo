@@ -115,6 +115,33 @@ const TABLE: Dictionary = {
 		"text": "인접한 아군 1명당 방어 +3",
 		"flavor": "지켜야 할 것이 있는 쪽이 더 오래 선다.",
 	},
+	# 방패를 따라가며 앞선을 민다. 방패병이 죽으면 통째로 무너진다.
+	"vanguard": {
+		"name": "선봉 교리",
+		"core": ["follow_guard", "hold_the_line"],
+		"effect": "moved_attack_pct",
+		"value": 15,
+		"text": "이동한 다음 틱의 공격 +15%",
+		"flavor": "방패가 여는 자리로 곧장 들어간다.",
+	},
+	# 회복원을 지키며 버틴다. 화력을 포기한 만큼 오래 선다.
+	"lifeline": {
+		"name": "생명선 교리",
+		"core": ["protect_support", "behind_guard"],
+		"effect": "damage_taken_pct",
+		"value": -15,
+		"text": "받는 피해 -15%",
+		"flavor": "살리는 자가 살아 있는 동안은 아무도 안 죽는다.",
+	},
+	# 궁극기를 먼저 끊는다. 그 한 틱을 위해 다른 표적을 전부 미룬다.
+	"preempt": {
+		"name": "선제 교리",
+		"core": ["preempt_target", "follow_lead"],
+		"effect": "crit_pct",
+		"value": 12,
+		"text": "치명타 확률 +12%",
+		"flavor": "터지기 전에 지우는 것이 가장 싼 방어다.",
+	},
 	# 진형을 갖추고 기다렸다 친다. 먼저 움직이지 않으므로 정체에 약하다.
 	"ambush": {
 		"name": "매복 교리",

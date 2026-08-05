@@ -40,6 +40,7 @@ func _init() -> void:
 	test_tutorial_battle()
 	test_doctrine_in_battle()
 	test_axis_doctrine()
+	test_squad_movement()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -398,3 +399,39 @@ func test_axis_doctrine() -> void:
 	var d: Dictionary = both.units[0].doctrines
 	ok(d.has("interdict"), "저지 교리(조합)가 켜졌다")
 	ok(Doctrines.amount(d, "attack_pct") == 12, "조합 교리 효과가 살아 있다")
+
+
+func test_squad_movement() -> void:
+	print("\n[17] 협력이 이동을 정한다")
+
+	# [엄호] 는 오래 표에만 있고 이동에 아무 영향이 없었다. 이제 실제로 붙는다.
+	var b := Battle.new()
+	b.setup(1, [
+		member("archer", 0, ["escort"]),
+		member("warrior", 5), member("bard", 4)])
+	b.units[1].hp = 10
+	var d := Rules.select(b.units[0], b)
+	ok(String(d["card"]["act"]) == "move_to_ally",
+		"[엄호] 가 위독한 아군 쪽으로 보낸다", String(d["card"]["act"]))
+
+	# [방패 추종] 은 방패병·전사를 따라간다.
+	var g := Battle.new()
+	g.setup(1, [
+		member("archer", 0, ["follow_guard"]),
+		member("shieldman", 5), member("bard", 4)])
+	var d2 := Rules.select(g.units[0], g)
+	ok(String(d2["card"]["act"]) == "move_to_ally",
+		"[방패 추종] 이 방패병 쪽으로 보낸다", String(d2["card"]["act"]))
+
+	# 위치 모듈이 있으면 그쪽이 이긴다. 명시적 지정이 협력 보정을 덮는다.
+	var p := Battle.new()
+	p.setup(1, [
+		member("archer", 0, ["follow_guard", "front_line"]),
+		member("shieldman", 5), member("bard", 4)])
+	var d3 := Rules.select(p.units[0], p)
+	ok(String(d3["card"]["act"]) == "move_toward",
+		"위치 모듈이 협력 보정을 이긴다", String(d3["card"]["act"]))
+
+	# 새 협력 교리
+	ok(Doctrines.active_ids(["follow_guard", "hold_the_line"]).has("vanguard"),
+		"선봉 교리가 켜진다")
