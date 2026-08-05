@@ -611,7 +611,7 @@ func ready_to_fight() -> bool:
 
 func blocking_reason() -> String:
 	if roster.size() < required_party():
-		return "유닛을 %d명 배치해야 한다. (현재 %d명)" % [required_party(), roster.size()]
+		return UiText.t("state.need_units", "대원을 %d명 배치해야 합니다. (현재 %d명)") % [required_party(), roster.size()]
 	return ""
 
 
@@ -703,23 +703,23 @@ func merge(card_id: String) -> bool:
 func grant_card(card_id: String) -> String:
 	if is_special(card_id):
 		special_hand.append(card_id)
-		return "획득"
+		return UiText.t("state.got_module", "확보")
 	hand.append(card_id)
 	if can_merge(card_id):
 		merge(card_id)
-		return "이미 있어 합성 → %d단계" % card_level(card_id)
-	return "획득"
+		return UiText.t("state.merged", "이미 보유 중이므로 %d등급으로 통합") % card_level(card_id)
+	return UiText.t("state.got_module", "확보")
 
 
 func merge_blocker(card_id: String) -> String:
 	if not Cards.can_merge(card_id):
-		return "이 카드는 올릴 수치가 없다"
+		return UiText.t("state.merge_no_stat", "이 모듈은 상승시킬 수치가 없습니다")
 	if card_level(card_id) >= Cards.MAX_LEVEL:
-		return "이미 최고 단계"
+		return UiText.t("state.merge_maxed", "이미 최고 등급입니다")
 	if budget < merge_price(card_id):
-		return "예산이 %d 필요하다 (현재 %d)" % [merge_price(card_id), budget]
+		return UiText.t("state.merge_poor", "예산 %d 이 필요합니다 (현재 %d)") % [merge_price(card_id), budget]
 	if copies_of(card_id) < Cards.MERGE_COPIES:
-		return "같은 카드 %d장이 필요하다 (현재 %d장)" % [
+		return UiText.t("state.merge_need", "동일 모듈 %d개가 필요합니다 (현재 %d개)") % [
 			Cards.MERGE_COPIES, copies_of(card_id)]
 	return ""
 

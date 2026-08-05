@@ -14,8 +14,9 @@ func _init() -> void:
 
 	var used: Dictionary = {}
 	var files: Array[String] = []
+	# view/ 만 훑다가 core/run_state.gd 의 안내문을 놓쳤다. 두 폴더를 다 본다.
 	_collect("res://view", files)
-	files.append("res://core/game.gd")
+	_collect("res://core", files)
 
 	var re := RegEx.new()
 	# 정규식에 큰따옴표를 직접 못 쓴다 - GDScript 가 \" 를 이스케이프로 본다.

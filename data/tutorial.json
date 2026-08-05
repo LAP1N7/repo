@@ -33,7 +33,7 @@
 			"screen": "tutorial",
 			"speaker": "archer",
 			"side": "left",
-			"text": "여기선 대원을 직접 움직이지 않아.\n원하는 전술을 지시해서 대원들이 전투하게 하는거야.",
+			"text": "여기선 대원을 직접 움직이지 않아.\n원하는 전술을 지시해서 대원들이 교전하게 하는거야.",
 			"advance": "click"
 		},
 		{
@@ -41,7 +41,7 @@
 			"screen": "tutorial",
 			"speaker": "archer",
 			"side": "left",
-			"text": "지시는 카드로 한다.\n대원은 매 틱 자기 카드를 위에서부터 읽어,\n조건이 맞고 실행도 되는 첫 번째 것 하나만 해.",
+			"text": "지시는 전술 모듈로 한다.\n대원은 매 틱 자기 모듈을 위에서부터 읽어,\n조건이 맞고 실행도 되는 첫 번째 것 하나만 해.",
 			"advance": "click"
 		},
 		{
@@ -94,7 +94,7 @@
 			"speaker": "archer",
 			"side": "right",
 			"anchor": "shop_ban_2",
-			"text": "안 쓸 카드는 제외해.\n이번 작전 전체에서 배제돼 - 다음 전투에도 안 나와.\n덱이 얇아야 원하는 게 나오지.\n\n[제외] 를 눌러 봐.",
+			"text": "안 쓸 모듈은 제외해.\n이번 작전 전체에서 배제돼 - 다음 전투에도 안 나와.\n목록이 얇아야 원하는 게 나오지.\n\n[제외] 를 눌러 봐.",
 			"advance": "action:ban",
 			"gate": true
 		},
@@ -104,7 +104,7 @@
 			"speaker": "archer",
 			"side": "right",
 			"anchor": "shop_reroll",
-			"text": "마음에 드는 게 없으면 리롤.\n예산을 쓰지만, 안 맞는 카드를 억지로 사는 것보단 나아.",
+			"text": "마음에 드는 게 없으면 재검색.\n예산을 쓰지만, 안 맞는 카드를 억지로 사는 것보단 나아.",
 			"advance": "click"
 		},
 		{
@@ -123,7 +123,7 @@
 			"speaker": "archer",
 			"side": "right",
 			"anchor": "unit_archer",
-			"text": "자, 궁수 캐릭터를 하나 배치해봐.",
+			"text": "자, 궁수 대원을 하나 배치해봐.",
 			"advance": "action:pick_type",
 			"gate": true
 		},
@@ -143,7 +143,7 @@
 			"speaker": "archer",
 			"side": "right",
 			"anchor": "hand_card_0",
-			"text": "산 카드를 꽂아.\n[교전] 을 1번에.\n\n사거리 안의 적을 친다. 궁수 사거리는 3칸이야.",
+			"text": "확보한 모듈을 장착해.\n[교전] 을 1번에.\n\n사거리 안의 적을 친다. 궁수 사거리는 3칸이야.",
 			"advance": "action:equip",
 			"gate": true
 		},
@@ -171,7 +171,7 @@
 			"speaker": "archer",
 			"side": "right",
 			"anchor": "fight_button",
-			"text": "카드가 전부 안 맞아도 걱정 마.\n기본기가 깔려 있어. 아무것도 안 하는 일은 없어.\n\n나가자.",
+			"text": "모듈이 전부 안 맞아도 걱정 마.\n기본기가 깔려 있어. 아무것도 안 하는 일은 없어.\n\n나가자.",
 			"advance": "action:fight",
 			"gate": true
 		},
