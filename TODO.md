@@ -11,6 +11,7 @@
 |---|---|---|
 | git 저장소 생성 + 커밋 기록 | **완료** | 초기 커밋 164파일 |
 | `web/` → `docs/` 이름 변경 | **완료** | 익스포트 프리셋도 `docs/index.html` 로 |
+| 웹 셸 로딩 화면 (PROJECT RECLAIM + TIP) | **완료** | `build_web.ps1` 로 빌드 |
 | GitHub 원격 저장소 + push | 미착수 | **사용자 계정 필요** |
 | GitHub Pages 켜기 | 미착수 | Settings → Pages → main / docs |
 | 플레이 영상 30~60초 | 미착수 | 구성안은 `SUBMISSION.md` §2 |

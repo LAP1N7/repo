@@ -26,7 +26,16 @@ body {
 	background-color: #13151a;
 	overflow: hidden;
 	touch-action: none;
-	font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+	font-family: "DNFBitBit", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+}
+
+/* 게임 안과 같은 폰트를 쓴다. 로딩 화면만 다른 서체면 그 순간 톤이 끊긴다.
+   .pck 안이 아니라 웹 루트에 따로 복사해 둔 파일을 참조한다 - 셸은 게임이
+   로드되기 **전에** 뜨므로 .pck 안의 리소스에는 접근할 수 없다. */
+@font-face {
+	font-family: "DNFBitBit";
+	src: url("DNFBitBitTTF.ttf") format("truetype");
+	font-display: swap;
 }
 
 #canvas { display: block; }
@@ -48,15 +57,55 @@ body {
 }
 
 #gg-title {
-	font-size: 58px;
-	font-weight: 800;
-	letter-spacing: 0.12em;
-	color: #f2f4fa;
-	margin-bottom: 10px;
+	font-size: 54px;
+	letter-spacing: 0.10em;
+	color: #ffc759;
+	margin-bottom: 6px;
 }
 
-#gg-sub { font-size: 15px; color: #8b90a0; margin-bottom: 4px; }
-#gg-tag { font-size: 13px; color: #ffc759; margin-bottom: 40px; }
+#gg-title-ko { font-size: 18px; color: #8b90a0; letter-spacing: 0.22em; margin-bottom: 10px; }
+#gg-sub { font-size: 13px; color: #6a6f7e; margin-bottom: 34px; }
+
+/* TIP · 헌사. 게임 안 로딩 화면과 같은 자리, 같은 색이다. */
+#gg-tip {
+	margin-top: 22px;
+	font-size: 13px;
+	color: #8b90a0;
+	max-width: 640px;
+	text-align: center;
+	line-height: 1.8;
+	min-height: 44px;
+}
+#gg-tip.dedication { color: #b8c4ef; }
+
+/* 지직거리는 주사선. 게임 안 로딩 화면의 _draw() 와 같은 연출이다.
+   신호가 불안정한 화면처럼 보이게 해서, 이 게임이 "시뮬레이션" 이라는 설정을
+   첫 화면부터 깔아 둔다. */
+#status::before {
+	content: "";
+	position: absolute;
+	left: 0; right: 0; top: 0; bottom: 0;
+	pointer-events: none;
+	background: repeating-linear-gradient(
+		to bottom,
+		rgba(255,255,255,0.020) 0px,
+		rgba(255,255,255,0.020) 1px,
+		transparent 1px,
+		transparent 8px);
+}
+#status::after {
+	content: "";
+	position: absolute;
+	left: 0; right: 0;
+	height: 3px;
+	pointer-events: none;
+	background: rgba(140,190,255,0.10);
+	animation: gg-scan 3.6s linear infinite;
+}
+@keyframes gg-scan {
+	from { top: -4px; }
+	to   { top: 100%; }
+}
 
 #gg-barwrap {
 	width: 420px;
@@ -104,23 +153,75 @@ body {
 			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
 			<progress id="status-progress"></progress>
 
-			<div id="gg-title">GAMBIT GRID</div>
+			<div id="gg-title">PROJECT RECLAIM</div>
+			<div id="gg-title-ko">프로젝트 리클레임</div>
 			<div id="gg-sub">규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러</div>
-			<div id="gg-tag">내가 조종하는 건 캐릭터가 아니라 캐릭터의 사고방식이다.</div>
 
 			<div id="gg-barwrap"><div id="gg-bar"></div></div>
 			<div id="gg-pct">불러오는 중…</div>
 
+			<div id="gg-tip">불러오는 중…</div>
+
 			<div id="gg-hint">
-				용량이 커서 처음 여는 데 10~20초 걸립니다. 데스크탑 브라우저를 권장합니다.
+				용량이 커서 처음 여는 데 10~30초 걸립니다. 데스크탑 브라우저를 권장합니다.
 			</div>
 
 			<div id="status-notice"></div>
 		</div>
 
+		<script>
+// ── TIP · 헌사 ───────────────────────────────────────────────────────────
+// 게임 안 로딩 화면과 같은 문구를 쓴다. 셸은 .pck 가 로드되기 **전에** 뜨므로
+// data/tips.json 을 직접 못 읽는다. 웹 루트에 복사해 둔 tips.json 을 받아 쓰고,
+// 없으면 아래 최소 목록으로 버틴다 - 로딩 화면이 소스 하나 때문에 비면 안 된다.
+var GG_FALLBACK = {
+	dedication_pct: 12,
+	tips: [
+		"슬롯은 위에서부터 읽힌다. 조건이 헐거운 카드를 1번에 두면 아래가 전부 죽는다.",
+		"한 틱에 한 행동뿐이다. 물러나는 틱은 쏘지 못하는 틱이다.",
+		"궁극기는 전투당 한 번뿐이다. 전술 카드는 조건만 맞으면 매 틱 발동한다.",
+	],
+	dedications: ["사라진 모든 지휘관들에게 바치는 헌사."]
+};
+
+(function () {
+	var box = document.getElementById('gg-tip');
+	var data = GG_FALLBACK;
+
+	function pick() {
+		var deds = data.dedications || [];
+		var tips = data.tips || [];
+		var pct = data.dedication_pct || 12;
+		if (deds.length && Math.random() * 100 <= pct) {
+			box.className = 'dedication';
+			return deds[Math.floor(Math.random() * deds.length)];
+		}
+		box.className = '';
+		if (!tips.length) return '';
+		return 'TIP.   ' + tips[Math.floor(Math.random() * tips.length)];
+	}
+
+	function show() {
+		box.style.opacity = 0;
+		setTimeout(function () {
+			box.textContent = pick();
+			box.style.transition = 'opacity 0.4s';
+			box.style.opacity = 1;
+		}, 400);
+	}
+
+	fetch('tips.json').then(function (r) { return r.json(); })
+		.then(function (j) { data = j; show(); })
+		.catch(function () { show(); });
+
+	// 다운로드가 길다. 한 줄만 띄워 두면 읽고 나서 할 게 없다.
+	setInterval(show, 6500);
+}());
+		</script>
+
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":5623584,"index.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":5623600,"index.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

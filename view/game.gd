@@ -68,8 +68,16 @@ func _ready() -> void:
 		"tutorial":
 			start_tutorial()
 		_:
-			# 부팅 시 한 번. 게임이 무엇인지 알기 전에 톤을 먼저 준다.
-			goto_loading(goto_title)
+			# 부팅 직후에는 로딩 연출을 넣지 않는다.
+			#
+			# 웹에서는 셸(assets/web/shell.html)이 wasm 38MB 를 받는 동안 같은
+			# 연출을 이미 10~30초 보여 준다. 게임이 뜨자마자 또 2초를 붙이면
+			# 같은 화면을 두 번 보는 셈이다. 데스크톱은 즉시 뜨므로 애초에
+			# 기다릴 것이 없다.
+			#
+			# 로딩 연출이 값을 하는 자리는 **전투 직전**뿐이다. 거기는 실제로
+			# 국면이 바뀌는 지점이라 호흡이 필요하다.
+			goto_title()
 
 
 func _swap(node: Node) -> void:

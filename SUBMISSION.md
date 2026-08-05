@@ -16,26 +16,32 @@
 
 ### 지금 상태
 
-- 웹 빌드는 `web/` 에 있고 로컬에서 정상 동작 확인됨 (42MB — wasm 38MB + pck 3.2MB)
-- **git 저장소가 없다.** 요구사항이 *"게임 전체 소스 코드를 동일 저장소에 포함하고,
-  커밋 기록을 유지해 주세요"* 라서 이게 1번 블로커다.
+- **git 저장소 생성 완료.** 커밋 기록 유지 중
+- 웹 빌드는 `docs/` (Pages 가 서빙할 수 있는 위치). wasm 37.7MB + pck 5.4MB
+- 로컬 서빙 확인 완료
 
-### 해야 할 일
+### 빌드 방법
+
+```powershell
+.uild_web.ps1
+```
+
+`--export-release` 만으로는 부족하다. 웹 셸(로딩 화면)은 게임이 로드되기 **전에**
+뜨므로 `.pck` 안의 리소스를 못 읽는다. 셸이 쓰는 `tips.json` 과 폰트를 웹 루트로
+복사하는 단계가 스크립트에 들어 있다.
+
+### 남은 일
 
 ```
-1) git init + 첫 커밋
-2) web/ → docs/ 로 이름 변경
-   GitHub Pages 는 브랜치 루트나 /docs 만 서빙한다. web/ 은 못 쓴다.
-3) GitHub 저장소 생성 후 push
-4) Settings → Pages → Source: main branch / docs 폴더
-5) 공개(public) 권장. 비공개면 dl_gameai_reviewer@nhn.com 초대
+1) GitHub 저장소 생성 후 push
+2) Settings → Pages → Source: main branch / docs 폴더
+3) 공개(public) 권장. 비공개면 dl_gameai_reviewer@nhn.com 초대
 ```
 
 ### 주의
 
-- **`.gitignore` 에서 `*.import` 를 빼야 한다.** Godot 4 의 `.import` 파일은
-  리소스 UID 를 들고 있어서, 빠진 채로 클론하면 씬의 `uid://` 참조가 어긋날 수 있다.
-  `.godot/` 만 무시하는 게 맞다.
+- `.gitignore` 에서 `*.import` 를 제외했다. Godot 4 의 `.import` 파일은 리소스 UID 를
+  들고 있어서, 빠진 채로 클론하면 씬의 `uid://` 참조가 어긋난다. `.godot/` 만 무시한다.
 - 웹 빌드는 `thread_support=false` 로 뽑았다. SharedArrayBuffer 를 안 쓰므로
   GitHub Pages 처럼 COOP/COEP 헤더를 못 주는 정적 호스팅에서도 돌아간다.
   **이 설정을 켜면 Pages 에서 흰 화면이 된다.**
