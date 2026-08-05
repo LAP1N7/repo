@@ -62,6 +62,10 @@ func setup(p_run: RunState) -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
+	# Arknights 계열의 인상은 장식이 아니라 **정렬**에서 온다. 얇은 가로선 하나가
+	# 화면 위를 가로지르면 아래 요소가 전부 그 선에 맞춰 정렬된 것처럼 읽힌다.
+	UiKit.frame(self, Axes.color(Axes.POSITION))
+
 	UiKit.phase_header(self, Vector2(48, 18), 1)
 	UiKit.label(self, Vector2(48, 58), Vector2(820, 22),
 		UiText.t("loadout.sub", "유닛을 고르고 진영의 빈 칸을 누른다. 그 다음 유닛을 골라 손패의 카드를 꽂는다."),

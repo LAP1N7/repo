@@ -13,7 +13,8 @@ signal help()
 var tut: Tutorial = null
 
 const SHOP_Y: float = 156.0
-const HAND_Y: float = 436.0
+## 상점 카드(156~352)와 안내문(366) 아래.
+const HAND_Y: float = 470.0
 
 var run: RunState
 
@@ -45,6 +46,10 @@ func setup(p_run: RunState) -> void:
 	bg.size = Vector2(1280, 720)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
+
+	# Arknights 계열의 인상은 장식이 아니라 **정렬**에서 온다. 얇은 가로선 하나가
+	# 화면 위를 가로지르면 아래 요소가 전부 그 선에 맞춰 정렬된 것처럼 읽힌다.
+	UiKit.frame(self, Axes.color(Axes.TARGET))
 
 	UiKit.phase_header(self, Vector2(40, 20), 0)
 	UiKit.label(self, Vector2(40, 60), Vector2(760, 22),
@@ -95,8 +100,9 @@ func setup(p_run: RunState) -> void:
 
 	# 안내문은 버튼 줄 **아래**다. 합성 버튼을 (460,355)에 넣으면서 같은 자리에
 	# 있던 이 라벨과 겹쳐 글자가 서로 위에 얹혔다.
-	# 보유 목록 헤더가 HAND_Y-34 = 402 에 온다. 안내문을 거기 두면 겹친다.
-	UiKit.label(self, Vector2(40, 336), Vector2(900, 22),
+	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다. 안내문을
+	# 336 에 두면 카드가 그 위에 얹혀 글자를 반쯤 먹는다. 카드 아래로 내린다.
+	UiKit.label(self, Vector2(40, 366), Vector2(1200, 22),
 		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 는 이번 런 전체에서 배제 - 다음 스테이지에도 안 나온다."), 12, UiKit.MUTED)
 
 	var b_help := UiKit.button(self, Vector2(880, 655), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)

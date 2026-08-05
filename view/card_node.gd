@@ -323,7 +323,7 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10 if not _is_mini() else 8,
 			Color(ccol.r, ccol.g, ccol.b, 0.95))
 
-	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 30.0), String(c["name"]),
+	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 32.0), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2 - (badge_r * 2.0 + 2.0),
 		name_size, UiKit.TEXT * dim)
 
@@ -346,7 +346,7 @@ func _draw() -> void:
 		else:
 			tag = UiText.t("card.tactic_tag", "전술 · 조건이 맞는 한 매 틱 발동")
 			tcol = UiKit.MUTED
-		draw_string(fs, Vector2(pad, pad + 36.0), tag,
+		draw_string(fs, Vector2(pad, pad + 50.0), tag,
 			HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2, 10, tcol * dim)
 
 	# 규칙 문장 - 조건과 행동을 두 줄로 쪼개 보여준다. 카드 한 장 = 한 문장.
@@ -367,7 +367,7 @@ func _draw() -> void:
 	# 그 태그와 조건 첫 줄이 겹친다. 궁극기만 조금 내려서 시작한다.
 	# 본문 시작 높이. 큰 카드는 0.48(높이의 절반)이라 제목과 본문 사이가 통째로
 	# 비어 보였다. 라벨·이름·부제가 pad+36 에서 끝나므로 그 바로 아래면 된다.
-	var ty: float = s.y * ((0.47 if special else 0.42) if _is_mini() else 0.32)
+	var ty: float = s.y * ((0.47 if special else 0.42) if _is_mini() else 0.0) 		+ (0.0 if _is_mini() else pad + 64.0)
 	var line_h := float(text_size) + 3.0
 
 	# 아래로 침범하면 안 되는 선. 큰 카드는 [배제] 버튼과 안내문이 하단을 쓴다.

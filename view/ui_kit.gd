@@ -267,3 +267,58 @@ static func cost_color(cost: int) -> Color:
 		2: return Color(0.45, 0.90, 0.65)
 		3: return Color(1.0, 0.78, 0.35)
 	return Color(1.0, 0.45, 0.45)
+
+
+## 화면 상단의 가로 바와 네 모서리 꺾쇠.
+##
+## ── 왜 이게 톤을 바꾸는가 ────────────────────────────────────────────────
+## Arknights 계열의 인상은 장식이 아니라 **정렬**에서 온다. 얇은 가로선 하나가
+## 화면 위를 가로지르면 그 아래 요소들이 전부 그 선에 맞춰 정렬된 것처럼 읽힌다.
+## 니케 쪽에서는 각진 모서리 꺾쇠를 가져온다 - 화면이 창이 아니라 계기판으로
+## 보이게 하는 최소한의 표식이다.
+##
+## 굵게 그리면 안 된다. 이 선들은 읽는 대상이 아니라 배경이라, 눈에 띄는
+## 순간 본문과 경쟁한다. 전부 1~2px 에 알파를 낮게 둔다.
+class Frame extends Control:
+	var accent: Color = Color(0.38, 0.80, 0.86)
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var line := Color(accent.r, accent.g, accent.b, 0.22)
+		var faint := Color(accent.r, accent.g, accent.b, 0.10)
+
+		# 상단 가로 바. 왼쪽은 진하고 오른쪽으로 갈수록 흐려진다.
+		draw_line(Vector2(36, 26), Vector2(w * 0.45, 26), line, 2.0)
+		draw_line(Vector2(w * 0.45, 26), Vector2(w - 36, 26), faint, 1.0)
+
+		# 하단도 같은 어법으로 한 줄. 화면이 위아래로 닫힌 것처럼 보인다.
+		draw_line(Vector2(36, h - 26), Vector2(w - 36, h - 26), faint, 1.0)
+
+		# 네 모서리 꺾쇠.
+		var box := Rect2(28, 18, w - 56, h - 44)
+		for corner in [
+			[box.position, Vector2(1, 0), Vector2(0, 1)],
+			[Vector2(box.end.x, box.position.y), Vector2(-1, 0), Vector2(0, 1)],
+			[Vector2(box.position.x, box.end.y), Vector2(1, 0), Vector2(0, -1)],
+			[box.end, Vector2(-1, 0), Vector2(0, -1)],
+		]:
+			var o: Vector2 = corner[0]
+			draw_line(o, o + corner[1] * 26.0, line, 2.0)
+			draw_line(o, o + corner[2] * 26.0, line, 2.0)
+
+		# 오른쪽 눈금. 계기판 느낌을 만드는 마지막 한 겹이다.
+		for i in 9:
+			var y := 90.0 + i * ((h - 180.0) / 9.0)
+			draw_line(Vector2(w - 30, y), Vector2(w - 30 - (10.0 if i % 3 == 0 else 5.0), y),
+				faint, 1.0)
+
+
+## 화면 뒤에 톤 프레임을 깐다. 각 화면의 setup 첫 줄에서 부르면 된다.
+static func frame(host: Control, accent: Color = Color(0.38, 0.80, 0.86)) -> Control:
+	var f := Frame.new()
+	f.accent = accent
+	f.size = Vector2(1280, 720)
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.add_child(f)
+	return f

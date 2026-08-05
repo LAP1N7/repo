@@ -45,6 +45,10 @@ func setup(p_run: RunState, used: Array) -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
+	# Arknights 계열의 인상은 장식이 아니라 **정렬**에서 온다. 얇은 가로선 하나가
+	# 화면 위를 가로지르면 아래 요소가 전부 그 선에 맞춰 정렬된 것처럼 읽힌다.
+	UiKit.frame(self, UiKit.GOOD)
+
 	var head := UiText.t("reward.head", "스테이지 %d 클리어") % run.stage_id
 	if run.last_speed_bonus > 0:
 		head += UiText.t("reward.speed_bonus", "     신속 제압  예산 +%d") % run.last_speed_bonus
