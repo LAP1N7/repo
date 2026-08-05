@@ -46,6 +46,21 @@ func _init() -> void:
 	await _shot("05_reward", load("res://scenes/reward_screen.tscn").instantiate(),
 		func(s): s.setup(run, ["musketeer", "assassin", "bard"]))
 
+	# 스토리는 대목마다 그림이 크게 달라서 대표 셋을 찍는다.
+	for tag in [["pre", 1, "06_story_intro"], ["post", 3, "07_story_glitch"],
+			["pre", 4, "08_story_log"]]:
+		var beats := Story.beats(String(tag[0]), int(tag[1]))
+		if beats.is_empty():
+			continue
+		# 연출이 걸린 장면을 골라 찍는다. 첫 장면은 대개 평범한 대사다.
+		var pick := 0
+		for i in beats.size():
+			if String((beats[i] as Dictionary).get("fx", "")) != "":
+				pick = i
+				break
+		await _shot(String(tag[2]), load("res://scenes/story_screen.tscn").instantiate(),
+			func(s2): s2.setup(beats); s2.index = pick; s2._show(pick), 6)
+
 	print("=== .shots/ 에 저장 완료 ===")
 	quit(0)
 

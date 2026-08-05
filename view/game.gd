@@ -26,6 +26,7 @@ const SCN_REWARD := preload("res://scenes/reward_screen.tscn")
 const SCN_RUN_CLEAR := preload("res://scenes/run_clear_screen.tscn")
 const SCN_TUT_INTRO := preload("res://scenes/tutorial_intro_screen.tscn")
 const SCN_LOADING := preload("res://scenes/loading_screen.tscn")
+const SCN_STORY := preload("res://scenes/story_screen.tscn")
 
 var run: RunState
 var current: Node = null
@@ -69,7 +70,7 @@ func _ready() -> void:
 			_autofill_party()
 			last_used_types = ["warrior", "archer"] as Array[String]
 			run.on_stage_cleared()
-			goto_reward()
+			play_story("post", run.stage_id, goto_reward)
 		"tutorial":
 			start_tutorial()
 		_:
@@ -119,7 +120,7 @@ func goto_title() -> void:
 	s.setup()
 	s.start_run.connect(func():
 		run.start_run(1)
-		goto_shop()
+		play_story("pre", run.stage_id, goto_shop)
 	)
 	s.show_help.connect(func(): goto_help(true))
 	s.start_tutorial.connect(start_tutorial)
@@ -203,6 +204,22 @@ func _attach_overlay(screen: Node, screen_name: String) -> void:
 	tut.step_changed.connect(refresh)
 
 
+## 스토리 한 대목을 재생하고 끝나면 next 를 부른다. 대본에 없으면 바로 next.
+##
+## ── 왜 여기에 끼우는가 ───────────────────────────────────────────────────
+## 스토리는 화면이 아니라 **화면 사이**에 있다. 상점에 들어가기 직전과 판을
+## 깬 직후가 그 자리다. 각 화면이 자기 안에서 스토리를 재생하게 만들면, 그
+## 화면이 다시 열릴 때마다(편성으로 갔다가 돌아오는 등) 또 나온다.
+func play_story(when: String, stage: int, next: Callable) -> void:
+	if not Story.has(when, stage):
+		next.call()
+		return
+	var s := SCN_STORY.instantiate() as StoryScreen
+	_swap(s)
+	s.setup(Story.beats(when, stage))
+	s.done.connect(next)
+
+
 func goto_shop() -> void:
 	var s := SCN_SHOP.instantiate() as ShopScreen
 	_swap(s)
@@ -267,7 +284,8 @@ func goto_reward() -> void:
 	s.setup(run, last_used_types)
 	s.chosen.connect(func():
 		if run.advance():
-			goto_shop()
+			# 새 단계의 도입 대사를 먼저 재생한다.
+			play_story("pre", run.stage_id, goto_shop)
 		else:
 			goto_run_clear()
 	)

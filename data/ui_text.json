@@ -202,5 +202,6 @@
 	"battle.trace_base": "기본 AI",
 	"shop.note_doctrine": "%s 완성",
 	"battle.squad_work": "피해 %d · 회복 %d",
-	"battle.squad_ult": "궁극기 · 교전당 1회"
+	"battle.squad_ult": "궁극기 · 교전당 1회",
+	"story.hint": "아무 곳이나 눌러 계속"
 }
