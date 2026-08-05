@@ -39,7 +39,9 @@ var tut: Tutorial = null
 ## 거리 계산은 맨해튼이라 **픽셀 비율과 무관하다.** 한 칸 이동은 화면에서
 ## 가로로 106px, 세로로 81px 이지만 규칙상으로는 똑같이 1칸이다.
 ## 게임 규칙은 한 줄도 안 바뀐다.
-const TILE_W: float = 106.0
+## 좌우를 조금 좁혀 칸 사이가 붙어 보이게 한다. 8열이 나란히 설 때 칸이
+## 너무 넓으면 격자가 아니라 표처럼 읽힌다.
+const TILE_W: float = 98.0
 const TILE_H: float = 81.0
 
 const BOARD_ORIGIN := Vector2(36, 100)

@@ -29,6 +29,8 @@ var _lbl_hint: Label
 var _fx: Control
 var _log: Label
 var _log_box: Control
+var _log_t: float = 0.0
+var _log_n: int = 0
 var _t: float = 0.0
 var _shake: float = 0.0
 
@@ -55,14 +57,16 @@ func setup(p_beats: Array) -> void:
 	# 로그 화면. fx == "log" 인 장면에서만 보인다.
 	# 로그는 줄이 서른 줄 가까이 되므로 반드시 잘라야 한다. Label 은 넘치면
 	# 그냥 아래로 자라서 대사판을 뚫고 나간다 - 실제로 그렇게 겹쳤다.
-	var log_box := Control.new()
+	var log_box := _Holo.new()
 	log_box.position = Vector2(PAD + 16, 70)
 	log_box.size = Vector2(1280 - PAD * 2 - 32, 380)
 	log_box.clip_contents = true
 	log_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(log_box)
-	_log = UiKit.label(log_box, Vector2.ZERO, Vector2(1280 - PAD * 2 - 32, 380),
-		"", 12, Color(0.85, 0.92, 1.0))
+	# 파란 단색. 시설 기록은 사람이 쓴 글이 아니라 기계가 남긴 것이므로 색이
+	# 하나뿐이어야 한다. 흰색이면 그냥 자막처럼 보인다.
+	_log = UiKit.label(log_box, Vector2(12, 8), Vector2(1280 - PAD * 2 - 56, 1400),
+		"", 12, Color(0.55, 0.88, 1.0))
 	log_box.visible = false
 	_log_box = log_box
 
@@ -120,7 +124,12 @@ func _show(i: int) -> void:
 	var fx := String(b.get("fx", ""))
 	_log_box.visible = fx == "log"
 	if fx == "log":
-		_log.text = "\n".join(Story.LOG_LINES)
+		# 한 번에 다 뿌리지 않는다. 시설 기록이 차곡차곡 쌓이다가 어느 지점부터
+		# 눈이 못 따라갈 속도로 넘어가는 것이 이 장면의 전부다. 그 가속을
+		# 글로 설명하지 않고 실제로 그렇게 흐르게 한다.
+		_log_t = 0.0
+		_log_n = 0
+		_log.text = ""
 	(_fx as _Glitch).mode = fx
 	(_fx as _Glitch).t0 = _t
 	_fx.queue_redraw()
@@ -140,6 +149,10 @@ func _show(i: int) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+
+	if _log_box != null and _log_box.visible:
+		_tick_log(delta)
+		_log_box.queue_redraw()
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta * 2.2)
 		position = Vector2(sin(_t * 90.0) * 6.0 * _shake, cos(_t * 71.0) * 4.0 * _shake)
@@ -196,18 +209,99 @@ class _Glitch extends Control:
 	func _draw() -> void:
 		match mode:
 			"glitch", "collapse":
-				for i in 14:
-					var y := fmod(float(i) * 97.3 + Time.get_ticks_msec() * 0.06, 720.0)
-					var h := 2.0 + float(i % 4) * 3.0
-					var off := sin(float(i) * 2.7 + Time.get_ticks_msec() * 0.004) * 22.0
-					draw_rect(Rect2(off, y, 1280, h), Color(0.55, 0.85, 1.0, 0.10))
-				draw_rect(Rect2(0, 0, 1280, 720), Color(0.7, 0.9, 1.0, 0.04))
+				# ── 찢어진 띠 ────────────────────────────────────────────
+				# 얇은 선을 겹치는 것만으로는 "화면에 효과가 얹혔다" 로만 보인다.
+				# 굵은 띠를 좌우로 크게 어긋내면 **화면 자체가 찢어진** 것처럼
+				# 읽힌다. 이 장면은 플레이어가 잠깐 버그로 착각해야 하므로
+				# 효과처럼 예쁘면 안 된다.
+				var ms := float(Time.get_ticks_msec())
+				for i in 9:
+					var y := fmod(float(i) * 151.7 + ms * 0.11, 760.0) - 40.0
+					var h := 8.0 + float(i % 5) * 14.0
+					var off := sin(float(i) * 1.9 + ms * 0.006) * 90.0
+					draw_rect(Rect2(off, y, 1280, h), Color(0.03, 0.05, 0.09, 0.85))
+					draw_rect(Rect2(off - 6, y, 1280, 2), Color(0.45, 0.9, 1.0, 0.55))
+					draw_rect(Rect2(off + 6, y + h - 2, 1280, 2), Color(1.0, 0.4, 0.5, 0.35))
+				# 색 분리. 빨강과 청록을 반대로 밀면 신호가 흐트러진 것처럼 보인다.
+				draw_rect(Rect2(-5, 0, 1280, 720), Color(1.0, 0.2, 0.3, 0.05))
+				draw_rect(Rect2(5, 0, 1280, 720), Color(0.2, 1.0, 0.9, 0.05))
+				# 가로 노이즈 띠 하나가 화면을 훑는다.
+				var sweep := fmod(ms * 0.35, 900.0) - 90.0
+				draw_rect(Rect2(0, sweep, 1280, 26), Color(0.8, 0.95, 1.0, 0.09))
 			"sync":
+				# ── 14% 에서 멈춘다 ──────────────────────────────────────
+				# 진행 막대는 보통 "곧 끝난다" 를 말하는 물건이다. 14% 에서
+				# 멎어 있으면 그 기대가 어긋나고, 그 어긋남이 이 장면의 전부다.
+				# 그래서 막대를 크게 놓고 화면을 어둡게 덮어 여기만 보게 한다.
+				draw_rect(Rect2(0, 0, 1280, 720), Color(0.01, 0.02, 0.04, 0.82))
 				var pct := 14
-				var w := 520.0
+				var w := 720.0
 				var x := (1280.0 - w) * 0.5
-				draw_rect(Rect2(x, 330, w, 10), Color(0.16, 0.17, 0.21))
-				draw_rect(Rect2(x, 330, w * float(pct) / 100.0, 10), UiKit.GOOD)
-				draw_string(UiKit.font_role("large"), Vector2(x, 316),
-					"MEMORY SYNCHRONIZATION  %d%%" % pct,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UiKit.GOOD)
+				var beat := 0.55 + 0.45 * absf(sin(float(Time.get_ticks_msec()) * 0.004))
+				draw_rect(Rect2(x, 352, w, 16), Color(0.10, 0.12, 0.16))
+				draw_rect(Rect2(x, 352, w, 16), Color(0.35, 0.75, 1.0, 0.5), false, 1.0)
+				draw_rect(Rect2(x, 352, w * float(pct) / 100.0, 16),
+					Color(0.45, 0.85, 1.0, beat))
+				# 눈금. 100% 가 어디인지 보여야 14% 가 얼마나 모자란지 읽힌다.
+				for i in 11:
+					var tx := x + w * float(i) / 10.0
+					draw_line(Vector2(tx, 372), Vector2(tx, 378),
+						Color(0.35, 0.75, 1.0, 0.35), 1.0)
+				draw_string(UiKit.font_role("large"), Vector2(x, 336),
+					"MEMORY SYNCHRONIZATION", HORIZONTAL_ALIGNMENT_LEFT, -1, 20,
+					Color(0.55, 0.88, 1.0))
+				draw_string(UiKit.font_role("large"), Vector2(x + w - 70, 336),
+					"%d%%" % pct, HORIZONTAL_ALIGNMENT_LEFT, -1, 20,
+					Color(0.45, 0.85, 1.0, beat))
+				draw_string(UiKit.font(11), Vector2(x, 398),
+					"... 동기화가 진행되지 않습니다", HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+					Color(0.5, 0.6, 0.7))
+
+
+## 로그가 흐르는 속도.
+##
+## 앞부분(평범한 시설 기록)은 한 줄씩 천천히 올라가고, 뒤로 갈수록 가속한다.
+## 그 가속이 "무언가 일어났다" 를 말한다 - 글로 설명하지 않는다.
+func _tick_log(delta: float) -> void:
+	_log_t += delta
+	# 처음 열 줄은 0.28초에 한 줄. 그 뒤로는 줄마다 빨라진다.
+	var speed: float = 0.28 if _log_n < 10 else maxf(0.02, 0.28 - float(_log_n - 10) * 0.018)
+	while _log_n < Story.LOG_LINES.size() and _log_t > speed:
+		_log_t -= speed
+		_log_n += 1
+		_log.text = "
+".join(Story.LOG_LINES.slice(0, _log_n))
+	# 넘치면 위로 밀어 마지막 줄이 항상 보이게 한다.
+	var over: float = maxf(0.0, float(_log_n) * 17.0 - 356.0)
+	_log.position.y = 8.0 - over
+
+
+## 파란 홀로그램 판. 스캔라인과 노이즈.
+##
+## 시설 로그는 화면이 아니라 **투영**이어야 한다. 판을 파랗게 깔고 가로선을
+## 겹치면 그것만으로 "여기 띄워진 것" 이 된다. 노이즈는 고정 시드 LCG 로
+## 만든다 - 볼 때마다 다르면 연출이 아니라 잡음으로 읽힌다.
+class _Holo extends Control:
+	func _draw() -> void:
+		var s := size
+		draw_rect(Rect2(Vector2.ZERO, s), Color(0.04, 0.12, 0.20, 0.92))
+		draw_rect(Rect2(Vector2.ZERO, s), Color(0.35, 0.75, 1.0, 0.55), false, 1.5)
+
+		# 스캔라인. 3px 간격으로 한 줄씩 어둡게 깐다.
+		var y := 0.0
+		while y < s.y:
+			draw_line(Vector2(0, y), Vector2(s.x, y), Color(0, 0, 0, 0.22), 1.0)
+			y += 3.0
+
+		# 흐르는 밝은 띠. 이게 있어야 정지 화면으로 안 보인다.
+		var band := fmod(float(Time.get_ticks_msec()) * 0.09, s.y + 120.0) - 60.0
+		draw_rect(Rect2(0, band, s.x, 40), Color(0.45, 0.85, 1.0, 0.06))
+
+		# 노이즈. 고정 시드 LCG 라 매번 같은 자리에 낀다.
+		var seed_v: int = 20260806
+		for i in 90:
+			seed_v = (seed_v * 1103515245 + 12345) & 0x7FFFFFFF
+			var nx := float(seed_v % maxi(1, int(s.x)))
+			seed_v = (seed_v * 1103515245 + 12345) & 0x7FFFFFFF
+			var ny := float(seed_v % maxi(1, int(s.y)))
+			draw_rect(Rect2(nx, ny, 2, 1), Color(0.6, 0.9, 1.0, 0.16))
