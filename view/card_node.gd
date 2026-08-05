@@ -161,6 +161,13 @@ func _process(delta: float) -> void:
 			_ban_btn.size = Vector2(sz.x - 16, 20)
 		queue_redraw()
 
+	# [제외] 버튼은 매 프레임 현재 크기 기준으로 다시 놓는다. setup 에서 한 번만
+	# 놓으면 트리에 들어가기 전 크기로 굳어 프레임 밖으로 삐져나간다.
+	if _ban_btn != null and is_instance_valid(_ban_btn):
+		var bs := card_size()
+		_ban_btn.position = Vector2(8, bs.y - 26)
+		_ban_btn.size = Vector2(bs.x - 16, 20)
+
 	var target_lift: float = -34.0 if want_hover else 0.0
 	# 레이아웃이 이미 커졌으므로 확대는 살짝만 얹는다. 둘 다 크게 주면
 	# 옆 카드를 통째로 덮는다.
@@ -363,61 +370,35 @@ func _draw() -> void:
 		draw_string(fs, Vector2(pad, pad + 50.0), tag,
 			HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2, 10, tcol * dim)
 
-	# 규칙 문장 - 조건과 행동을 두 줄로 쪼개 보여준다. 카드 한 장 = 한 문장.
-	var parts: PackedStringArray = String(c["text"]).split("→")
-	var cond_line := parts[0].strip_edges() if parts.size() > 0 else ""
-	var act_line := parts[1].strip_edges() if parts.size() > 1 else ""
-
-	# ── 미니 카드는 남은 높이에 맞춰 줄 수를 자른다 ───────────────────────
-	# 세로가 121px 뿐이라 그냥 접으면 [최후의 수호] 처럼 긴 설명이 카드 밖으로
-	# 흘러나가 옆 카드 위에 얹힌다.
+	# ── 규칙 문장 ────────────────────────────────────────────────────────
+	# 한 덩어리로 그린다. 예전에는 [조건]/[행동] 두 칸으로 쪼갰는데, 축을
+	# 나누면서 모듈의 절반이 "원거리 적을 먼저 쫓는다" 같은 한 문장이 됐다.
+	# 그런 모듈은 [행동] 칸이 텅 빈 채로 나왔다.
 	#
-	# `조건`·`행동` 라벨을 빼는 것이 먼저다. 둘이 38px 을 먹는데 그건 본문 3줄에
-	# 해당한다. 라벨이 없어도 색으로 구분된다 - 조건은 흰색, 행동은 금색이다.
-	# 그 뒤에 남은 높이를 줄 높이로 나눠 조건·행동에 절반씩 준다.
-	# 이제 전술에도 태그 한 줄이 붙으므로 본문 시작 높이를 맞춘다.
-	# 미니는 태그가 없으니 예전 높이 그대로 둔다.
-	# 미니 카드도 궁극기면 태그 한 줄(pad+38)이 붙는다. 0.42(=50px)로 시작하면
-	# 그 태그와 조건 첫 줄이 겹친다. 궁극기만 조금 내려서 시작한다.
-	# 본문 시작 높이. 큰 카드는 0.48(높이의 절반)이라 제목과 본문 사이가 통째로
-	# 비어 보였다. 라벨·이름·부제가 pad+36 에서 끝나므로 그 바로 아래면 된다.
-	var ty: float = s.y * ((0.47 if special else 0.42) if _is_mini() else 0.0) 		+ (0.0 if _is_mini() else pad + 64.0)
+	# 화살표가 있으면 조건이 붙은 것이고 없으면 상시다. 그 차이는 문장 자체가
+	# 이미 말하므로 라벨이 필요 없다. 화살표 앞뒤로 색만 갈라 준다.
+	# 본문 시작 높이. 위 요소가 끝나는 지점은 고정값이므로 여기도 고정값이다.
+	var ty: float = s.y * (0.47 if _is_mini() else 0.0) + (0.0 if _is_mini() else pad + 64.0)
 	var line_h := float(text_size) + 3.0
 
-	# 아래로 침범하면 안 되는 선. 큰 카드는 [배제] 버튼과 안내문이 하단을 쓴다.
-	var floor_y: float = s.y - (36.0 if _ban_btn else 12.0)
-	if note != "":
-		floor_y -= 14.0
-
+	var rule_text := String(c["text"])
+	var arrow := rule_text.find("→")
 	var cap := 0
 	if _is_mini():
 		var room: float = s.y - 10.0 - ty - 6.0
-		cap = maxi(1, int(room / line_h) / 2)
-	elif _expanded:
-		# 펼친 카드는 자르지 않는다. 전문을 보여 주려고 키운 것이므로
-		# 여기서 또 말줄임을 하면 키운 의미가 없다. 0 이면 무제한이다.
-		draw_string(fs, Vector2(pad, ty), UiText.t("card.cond", "조건"),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.MUTED * dim)
-		ty += 15.0
+		cap = maxi(1, int(room / line_h))
+
+	if arrow >= 0:
+		var cond_line := rule_text.substr(0, arrow).strip_edges()
+		var act_line := rule_text.substr(arrow + 1).strip_edges()
+		ty += _wrapped(fs, cond_line, Vector2(pad, ty), s.x - pad * 2, text_size,
+			UiKit.MUTED * dim, cap)
+		ty += 4.0
+		_wrapped(fs, act_line, Vector2(pad, ty), s.x - pad * 2, text_size,
+			UiKit.ACCENT * dim, cap)
 	else:
-		# 라벨 두 개(15+15)와 사이 여백(8)을 뺀 나머지를 조건·행동이 나눠 쓴다.
-		var room2: float = floor_y - ty - 38.0
-		cap = maxi(1, int(room2 / line_h) / 2)
-		draw_string(fs, Vector2(pad, ty), UiText.t("card.cond", "조건"),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.MUTED * dim)
-		ty += 15.0
-
-	ty += _wrapped(fs, cond_line, Vector2(pad, ty), s.x - pad * 2, text_size,
-		UiKit.TEXT * dim, cap)
-
-	ty += 6.0 if _is_mini() else 8.0
-	if not _is_mini():
-		draw_string(fs, Vector2(pad, ty), UiText.t("card.act", "행동"),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.MUTED * dim)
-		ty += 15.0
-
-	_wrapped(fs, act_line, Vector2(pad, ty), s.x - pad * 2, text_size,
-		UiKit.ACCENT * dim, cap)
+		_wrapped(fs, rule_text, Vector2(pad, ty), s.x - pad * 2, text_size,
+			UiKit.TEXT * dim, cap)
 
 	if note != "":
 		var ny := s.y - (32.0 if _ban_btn else 9.0)

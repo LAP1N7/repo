@@ -73,7 +73,7 @@ const PICKS := [
 	"lowest_hp_enemy", "lowest_hp_abs_enemy", "toughest_enemy", "healer_enemy",
 	"ranged_enemy", "melee_enemy", "unguarded_enemy", "strongest_enemy",
 	"focused_enemy", "unfocused_enemy", "far_from_allies_enemy",
-	"highest_threat_enemy", "special_ready_enemy",
+	"highest_threat_enemy", "locked_backline_enemy", "special_ready_enemy",
 ]
 const STANCES := ["engage", "wait", "defend", "ambush",
 	"avoid_near", "avoid_mid", "avoid_boost", "taunt", "aggressive", "stealth"]

@@ -271,11 +271,18 @@ static func _move_by_stand(unit: Unit, state, target: Unit,
 			return _approach(unit, state, target, bonus, "거리 좁힘")
 
 		"behind_guard":
-			# 방패병·전사보다 앞에 서 있으면 물러난다. 없으면 그냥 붙는다.
+			# 방패병·전사보다 앞에 서 있으면 그 뒤로 돌아간다.
 			var guard := _guard_ally(unit, state)
-			if guard != null and _is_ahead_of(unit, guard):
-				if state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
-					return _rule(unit, "방패 뒤", "move_to_ally", guard, 0, bonus)
+			if guard != null:
+				if _is_ahead_of(unit, guard):
+					if state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
+						return _rule(unit, "방패 뒤", "move_to_ally", guard, 0, bonus)
+				# 이미 뒤에 있으면 **그 자리를 지킨다.**
+				#
+				# 예전에는 여기서 전진했다. 그러면 원거리 대원이 방패병을 지나쳐
+				# 앞으로 나가고, [방패 뒤] 를 넣은 목적이 정확히 뒤집힌다.
+				# "방패 뒤에 선다" 는 앞으로 안 나간다는 뜻이기도 하다.
+				return _rule(unit, "방패 뒤 유지", "hold", unit, 0, 0)
 			return _approach(unit, state, target, bonus, "전진")
 
 		"cluster":
@@ -328,6 +335,23 @@ static func _coop_anchor(unit: Unit, state, coop: String) -> Unit:
 				if a.index != unit.index and String(Innates.base_ai(a.type_id)["act"]) == "heal":
 					return a
 			return null
+		"rally":
+			# 아군 무리의 한가운데. 아군까지 거리 합이 가장 작은 아군을 기준으로
+			# 삼는다. 칸을 직접 고르지 않는 이유는 이동이 아군 기준으로만
+			# 계획되기 때문이다(plan_move 는 유닛을 받는다).
+			var center: Unit = null
+			var best_sum: int = 1 << 30
+			for a in state.living_allies_of(unit):
+				if a.index == unit.index:
+					continue
+				var sum := 0
+				for b in state.living_allies_of(unit):
+					sum += Grid.manhattan(a.pos, b.pos)
+				if sum < best_sum:
+					best_sum = sum
+					center = a
+			return center
+
 		"follow_lead":
 			# 적진 쪽으로 가장 나가 있는 아군. 진영마다 "앞" 이 반대다.
 			var best: Unit = null
@@ -537,6 +561,18 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 					best = e
 			return best
 
+		"locked_backline_enemy":
+			# 교전 시작 시점의 가장 깊은 적을 **끝까지** 쫓는다.
+			#
+			# 매 틱 다시 고르면 뒤엣놈이 앞으로 나오는 순간 표적이 바뀌어,
+			# "후열을 끊으러 간다" 가 "그때그때 제일 뒤를 본다" 가 된다.
+			# 한 번 정한 목표를 밀고 들어가는 것이 이 모듈의 성격이다.
+			if unit.locked_target != null and unit.locked_target.alive 					and unit.locked_target.team != unit.team:
+				return unit.locked_target
+			var lb := resolve_target(unit, "backline_enemy", state, act)
+			unit.locked_target = lb
+			return lb
+
 		"backline_enemy":
 			# 제 진영 **깊숙이** 있는 적. "가장 먼 적" 과 다르다.
 			#
@@ -620,6 +656,10 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 
 		"highest_threat_enemy":
 			# 위협도가 가장 높은 적. 도발·은신이 실제로 작동하는 자리다.
+			#
+			# 지금 쫓던 상대가 있으면 **크게 넘어서야** 갈아탄다. 1이라도 높으면
+			# 바로 옮기면, 둘의 위협이 엎치락뒤치락하는 동안 적이 매 틱 표적을
+			# 바꾸며 제자리에서 떤다. 화면에는 아무 일도 안 일어난다.
 			var ht: Unit = null
 			var hs: int = -9999
 			for e in enemies:
@@ -627,6 +667,12 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 				if sc > hs:
 					hs = sc
 					ht = e
+			var cur: Unit = unit.last_target
+			if cur != null and cur.alive and cur.team != unit.team and ht != null 					and cur.index != ht.index:
+				var cs := Threat.score(unit, cur)
+				# 새 후보가 마진을 못 넘으면 하던 대로 간다.
+				if hs * 100 < cs * Threat.SWITCH_MARGIN:
+					return cur
 			return ht
 
 		"farthest_in_range_enemy":

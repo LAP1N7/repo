@@ -32,6 +32,24 @@ const AGGRESSIVE: int = 20
 const STEALTH: int = -15
 
 
+## 한 일이 쌓여 만드는 위협. 누적 피해·회복의 이 비율만큼이 위협이 된다.
+##
+## 이게 없으면 위협은 거리 하나로만 정해지고, 딜을 아무리 넣어도 어그로가 안
+## 끌린다. "탱커가 관리 안 하면 딜러가 어그로를 뺏긴다" 는 감각이 여기서 나온다.
+const PER_WORK: int = 100        ## 누적 100당 위협 1
+
+## 표적을 바꾸는 데 필요한 초과분(%).
+##
+## ── 왜 마진이 필요한가 ───────────────────────────────────────────────────
+## 1이라도 높으면 바로 갈아타면, 두 대원의 위협이 엎치락뒤치락하는 동안 적이
+## 매 틱 표적을 바꾸며 제자리에서 떤다. 화면에서는 아무 일도 안 일어나고
+## 플레이어는 왜 그러는지 알 수 없다.
+##
+## 25% 를 넘어야 갈아탄다. 그래서 도발은 "확실히 크게" 끌어야 의미가 있고,
+## 딜러가 어그로를 뺏으려면 정말 많이 때려야 한다.
+const SWITCH_MARGIN: int = 125
+
+
 ## chooser 가 볼 때 candidate 가 얼마나 위협적인가.
 static func score(chooser: Unit, candidate: Unit) -> int:
 	var n := BASE
@@ -41,4 +59,6 @@ static func score(chooser: Unit, candidate: Unit) -> int:
 	if candidate.hp_percent_below(30):
 		n += WOUNDED
 	n += candidate.threat_mod
+	# 한 일이 쌓인 만큼. 딜을 많이 넣은 대원이 결국 맞게 된다.
+	n += (candidate.damage_dealt + candidate.healing_done) / PER_WORK
 	return n

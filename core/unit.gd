@@ -133,6 +133,9 @@ var ambush_ticks: int = 0
 ## 잠복이 풀린 뒤 첫 공격에 실릴 보너스. 해제되면 켜지고 한 번 쓰면 꺼진다.
 var ambush_ready: bool = false
 
+## 한 번 정하면 끝까지 쫓는 표적. [후열 침투] 가 쓴다.
+var locked_target: Unit = null
+
 ## 이 대원이 마지막으로 고른 표적.
 ##
 ## 협력 축이 이걸 읽는다. [협공] 은 아군의 표적을 그대로 쓰고 [분산] 은 그

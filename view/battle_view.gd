@@ -185,11 +185,15 @@ func _draw() -> void:
 			var t: Unit = e.last_target
 			if not t.alive:
 				continue
+			# 사거리 안에 있을 때만 긋는다. 접근 중인 적까지 전부 이으면
+			# 판 위에 선이 잔뜩 깔려서 "지금 누가 맞고 있나" 가 오히려 안 보인다.
+			if Grid.manhattan(e.pos, t.pos) > e.atk_range:
+				continue
 			var a := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
 				e.pos.y * TILE_H + TILE_H * 0.5)
 			var b := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
 				t.pos.y * TILE_H + TILE_H * 0.5)
-			draw_line(a, b, Color(1.0, 0.42, 0.38, 0.28), 1.5)
+			draw_line(a, b, Color(1.0, 0.42, 0.38, 0.20), 1.0)
 
 	for x in Grid.W + 1:
 		draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),

@@ -65,8 +65,8 @@ const TABLE: Dictionary = {
 		"name": "후열 침투",
 		"cond": "always",
 		"cond_arg": 0,
-		"pick": "backline_enemy",
-		"text": "가장 깊은 적을 쫓는다",
+		"pick": "locked_backline_enemy",
+		"text": "교전 시작 시 가장 깊은 적을 끝까지 쫓는다",
 	},
 	"cut_support": {
 		"axis": "target",
