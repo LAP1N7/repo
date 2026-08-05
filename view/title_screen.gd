@@ -71,6 +71,34 @@ func setup() -> void:
 	# 오프닝 테마. 화면을 넘어가도 이어지도록 배경음악 경로로 튼다.
 	sfx.play_music("opening_theme")
 
+	# 브라우저에서는 조작 전까지 소리를 못 낸다. 가만히 기다리는 사람에게는
+	# 그냥 "음악이 없는 게임" 으로 보이므로, 왜 조용한지 한 줄 알린다.
+	# 잠금이 풀리면 스스로 사라진다.
+	_lbl_audio = UiKit.label(self, Vector2(290, 574), Vector2(700, 20), "", 11, UiKit.MUTED)
+	_lbl_audio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
+var _lbl_audio: Label
+
+
+## 음악이 안 울릴 때만 그 이유를 띄운다. 정상이면 아무것도 안 보인다.
+##
+## 브라우저는 조작 전까지 소리를 못 내는데, 가만히 기다리는 사람에게는 그냥
+## "음악이 없는 게임" 으로 보인다. 왜 조용한지는 알려 줘야 한다.
+func _process(_d: float) -> void:
+	if _lbl_audio == null:
+		return
+	if not Sfx.audio_open():
+		_lbl_audio.text = UiText.t("title.audio_locked",
+			"화면을 한 번 누르면 음악이 재생됩니다.")
+		_lbl_audio.visible = true
+		return
+	if Sfx.music_playing():
+		_lbl_audio.visible = false
+		return
+	_lbl_audio.text = UiText.t("title.audio_fail", "음악 재생 실패 · %s") % Sfx.diagnose()
+	_lbl_audio.visible = true
+
 
 ## 타이틀 배경의 격자 장식. 전투 화면과 같은 타일 크기를 써서 톤을 맞춘다.
 class _GridDeco extends Control:

@@ -53,12 +53,16 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 
 | 파일 | 출처 | 라이선스 | 용도 |
 |---|---|---|---|
-| `assets/music/opening_theme.mp3` | PaulYudin (Pixabay) | Pixabay Content License (무료·상업 이용 가능·출처 표기 불필요하나 명시함) | 타이틀 오프닝 테마 |
+| `assets/music/opening_theme.wav` | PaulYudin (Pixabay) | Pixabay Content License (무료·상업 이용 가능·출처 표기 불필요하나 명시함) | 타이틀 오프닝 테마 |
 
 > Say 'thanks' to **PaulYudin**! This helps keep the creative spirit going!
 > By downloading, you agree to our License.
 >
-> 원본: Pixabay 무료 음악 (`paulyudin-game-game-music-573991`)
+> 원본: Pixabay 무료 음악 (`paulyudin-game-game-music-573991.mp3`)
+>
+> 저장 형식만 바꿨습니다(mp3 → 44.1kHz 모노 wav, 임포터 QOA 압축 1.3MB).
+> 웹 빌드가 소리를 Sample 경로로 내보내는데 스트리밍 음원은 그 경로에서
+> 재생되지 않기 때문입니다. 편곡·편집은 하지 않았습니다.
 
 ## 아트
 

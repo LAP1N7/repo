@@ -85,6 +85,14 @@ func _ready() -> void:
 			goto_title()
 
 
+## 오디오 잠금 해제용.
+##
+## 화면은 계속 갈리지만 Game 은 처음부터 끝까지 살아 있다. 조작을 여기서
+## 세야 로딩 화면의 스킵 클릭도 놓치지 않는다. (core/sfx.gd 의 _unlocked 참조)
+func _input(e: InputEvent) -> void:
+	Sfx.mark_gesture(e)
+
+
 func _swap(node: Node) -> void:
 	if current != null:
 		current.queue_free()

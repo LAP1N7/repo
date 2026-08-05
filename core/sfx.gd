@@ -34,6 +34,12 @@ const DIR := "res://assets/sfx/"
 static var enabled: bool = true
 static var volume_db: float = -6.0
 
+## 효과음에만 더 얹는 감쇠.
+##
+## 타격·클릭이 배경음악을 덮었다. volume_db 를 통째로 내리면 음악까지 같이
+## 작아지므로(음악은 volume_db 기준으로 다시 -8 을 먹는다) 효과음 쪽에만 뺀다.
+const SFX_TRIM: float = -4.0
+
 ## 배경음악은 효과음 풀과 따로 둔다.
 ##
 ## 풀을 돌려 쓰면 음악이 다음 효과음에 밀려 끊긴다. 그리고 음악은 화면을
@@ -42,6 +48,42 @@ static var volume_db: float = -6.0
 static var _music: AudioStreamPlayer = null
 static var _music_name: String = ""
 
+## 브라우저 오디오가 열렸는가.
+##
+## ── 이걸 왜 따로 들고 있어야 하는가 ──────────────────────────────────
+## 브라우저는 **첫 사용자 조작 전에는 소리를 못 내게 막는다.** 여기까지는
+## 알려진 이야기인데, 진짜 함정은 그 다음이다. 잠긴 상태에서 play() 를 불러도
+## AudioStreamPlayer 는 **playing == true 를 돌려준다.** 재생 위치도 정상적으로
+## 흘러간다. 소리만 안 난다.
+##
+## 그래서 "playing 이 false 면 다시 튼다" 는 식의 복구 코드는 전부 속는다.
+## 실제로 그렇게 두 번 고쳤다가 두 번 다 안 고쳐졌다.
+##
+## 효과음이 멀쩡했던 이유도 같다 - 효과음은 전부 버튼을 누른 뒤에 나므로 이미
+## 열린 뒤였다. 배경음악만 타이틀이 뜨는 순간, 즉 조작 전에 걸렸다.
+##
+## 답은 playing 을 믿지 않는 것이다. 조작이 실제로 들어왔는지를 우리가 세고,
+## 그 전에는 아예 play() 를 부르지 않는다.
+##
+## ── 조작 감지는 Sfx 밖에도 있어야 한다 ───────────────────────────────
+## 처음에는 이 감지를 Sfx._input 에만 뒀는데, 로딩 화면에는 Sfx 인스턴스가
+## 없어서 **스킵 클릭이 아무에게도 안 잡혔다.** 그 다음 타이틀에서 가만히
+## 기다리면 조작이 하나도 세어지지 않아 영영 조용했다.
+## 그래서 항상 살아 있는 Game 도 같이 센다. (view/game.gd 의 _input)
+static var _unlocked: bool = false
+
+## 마지막으로 음악을 튼 시각. 무한 재시작을 막는 데 쓴다.
+static var _music_started_at: float = 0.0
+
+## 재생 시도 횟수.
+##
+## play() 를 불렀는데 시작이 안 되는 경우가 있다. 한 번만 시도하면 거기서 끝이라
+## 화면에는 "재생기 정지 상태" 만 남는다. 몇 번 더 두드려 본다.
+## 무한히 두드리면 안 된다 - 진짜로 못 트는 환경에서는 매 프레임 재시작이 되고,
+## 그건 무음과 구별이 안 된다.
+static var _music_tries: int = 0
+const MUSIC_MAX_TRIES: int = 4
+
 var _players: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _cache: Dictionary = {}      ## 이름 -> AudioStream
@@ -49,7 +91,15 @@ var _last_at: Dictionary = {}    ## 이름 -> 마지막 재생 시각
 var _clock: float = 0.0
 
 
+## 화면이 바뀔 때마다 Sfx 인스턴스는 새로 만들어진다. 그때마다 음악이
+## 아직 살아 있는지 확인하고, 죽어 있으면 되살린다.
+##
+## ── 왜 이게 필요했나 ─────────────────────────────────────────────────
+## play_music 을 부르는 곳이 **타이틀 화면 하나뿐**이었다. 곡이 74초라
+## 한 바퀴 돌고 나면 아무도 다시 틀어 주지 않아서, 상점이나 전투로 넘어간
+## 뒤에는 영영 조용했다.
 func _ready() -> void:
+	resume_music()
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Master"
@@ -59,6 +109,99 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	_retry_music()
+
+
+## 시작에 실패한 음악을 몇 번 더 두드린다. (위 _music_tries 주석 참조)
+func _retry_music() -> void:
+	if _music_tries == 0 or _music_tries >= MUSIC_MAX_TRIES:
+		return
+	if _music == null or not is_instance_valid(_music) or _music.playing:
+		return
+	if float(Time.get_ticks_msec()) / 1000.0 - _music_started_at < 0.6:
+		return
+	resume_music()
+
+
+func _input(e: InputEvent) -> void:
+	mark_gesture(e)
+
+
+## 오디오를 내보내도 되는가.
+##
+## 브라우저가 아니면 잠금 자체가 없다. 데스크톱에서까지 클릭을 기다리면
+## 타이틀에서 가만히 있는 동안 음악이 안 나온다 - 실제로 그렇게 됐다.
+static func audio_open() -> bool:
+	return _unlocked or not OS.has_feature("web")
+
+
+## 사용자 조작이면 잠금을 풀고 음악을 잇는다. 어디서 불러도 된다.
+##
+## 마우스 이동은 조작으로 안 친다 - 브라우저도 그건 제스처로 안 쳐 준다.
+## 누른 것만 센다.
+static func mark_gesture(e: InputEvent) -> void:
+	if _unlocked:
+		return
+	var gesture: bool = (e is InputEventMouseButton and (e as InputEventMouseButton).pressed) or (e is InputEventKey and (e as InputEventKey).pressed) or (e is InputEventScreenTouch)
+	if not gesture:
+		return
+	_unlocked = true
+	resume_music()
+
+
+## 틀어야 할 곡이 있는데 안 울리고 있으면 튼다.
+##
+## 잠금이 풀리기 전에는 아무것도 안 한다. 여기서 play() 를 부르면 "재생 중인데
+## 소리는 안 나는" 유령 상태로 들어가 버리고, 그 뒤로는 되살릴 방법이 없다.
+##
+## 정적이다. Sfx 인스턴스가 없는 화면(로딩)에서도 불러야 하기 때문이다.
+static func resume_music() -> void:
+	if not audio_open() or not enabled or _music_name == "":
+		return
+	if _music == null or not is_instance_valid(_music) or _music.playing:
+		return
+	_music_started_at = float(Time.get_ticks_msec()) / 1000.0
+	_music_tries += 1
+	_music.play()
+
+
+## 배경음악이 왜 안 울리는지 한 줄로 말한다.
+##
+## 소리 문제는 화면에 아무 흔적을 안 남긴다. 파일을 못 찾은 것인지, 재생기가
+## 안 만들어진 것인지, 브라우저가 막은 것인지가 전부 다른 문제인데 증상은
+## 똑같이 "조용함" 하나다. 실패했을 때만 타이틀에 띄운다.
+static func music_playing() -> bool:
+	return _music != null and is_instance_valid(_music) and _music.playing
+
+
+static func diagnose() -> String:
+	if _music_name == "":
+		return "음원 요청 없음"
+	if _music == null or not is_instance_valid(_music):
+		return "음원 파일을 불러오지 못했습니다 (assets/music)"
+	if not enabled:
+		return "소리가 꺼져 있습니다"
+	if not audio_open():
+		return "브라우저 잠금 (조작 대기)"
+	if not _music.playing:
+		return "재생기 정지 (%s · 경로 %d · 시도 %d회)" % [
+			_music.stream.get_class() if _music.stream != null else "스트림 없음",
+			_music.playback_type, _music_tries]
+	return "재생 중 · %.0f초 · %+.0fdB" % [
+		_music.get_playback_position(), _music.volume_db]
+
+
+## 곡이 끝나면 다시 튼다.
+##
+## ── 왜 finished 를 play 에 그냥 잇지 않는가 ──────────────────────────
+## 재생이 실패하는 환경에서는 finished 가 즉시 날아온다. 그걸 바로 play 에
+## 이어 두면 매 프레임 처음부터 다시 트는 상태가 되고, 결과는 완전한 무음이다.
+## 소리가 안 나는 것과 구별도 안 된다. 방금 튼 곡이면 무시한다.
+static func _on_music_finished() -> void:
+	var now := float(Time.get_ticks_msec()) / 1000.0
+	if now - _music_started_at < 1.0:
+		return
+	resume_music()
 
 
 ## 배경음악을 튼다. 같은 곡이 이미 돌고 있으면 아무것도 안 한다 -
@@ -67,27 +210,84 @@ func play_music(name: String) -> void:
 	if _music_name == name and _music != null and is_instance_valid(_music):
 		if not enabled:
 			_music.stop()
-		elif not _music.playing:
-			_music.play()
+		else:
+			resume_music()
 		return
 
-	var path := "res://assets/music/%s.mp3" % name
-	if not ResourceLoader.exists(path):
+	# ── 왜 wav 를 먼저 찾는가 ────────────────────────────────────────────
+	# 효과음은 웹에서 멀쩡한데 배경음악만 안 나오는 상태가 오래 갔다. 파일도
+	# 경로도 버스도 볼륨도 정상이었고, 브라우저 잠금도 이미 처리한 뒤였다.
+	#
+	# 원인은 **재생 경로가 둘**이라는 것이었다. Godot 은 소리를 자체 믹서로
+	# 흘리거나(Stream), Web Audio 버퍼 하나로 통째로 올려 재생한다(Sample).
+	# 어느 쪽을 쓸지는 프로젝트 설정이 정하는데, 실측하면 이렇다.
+	#
+	#     audio/general/default_playback_type      = 0 (Stream)
+	#     audio/general/default_playback_type.web  = 1 (Sample)   ← 웹만 다르다
+	#
+	# 즉 웹에서는 **모든 소리가 Sample 로 나간다.** 효과음은 원래 wav 라
+	# 그대로 버퍼가 되니까 멀쩡했고, 74초짜리 스트리밍 음원(mp3·ogg)만
+	# 그 경로에서 소리 없이 죽었다. 데스크톱은 Stream 이라 셋 다 멀쩡했고,
+	# 그래서 계측할 때마다 "정상" 이 찍혔다.
+	#
+	# 답은 음악도 효과음과 **같은 종류의 자원**으로 만드는 것이다. 74초를
+	# 통으로 올리면 6.5MB 지만 임포터가 QOA 로 눌러 1.3MB 가 된다.
+	# ogg·mp3 는 폴백으로 남긴다 - 데스크톱에서는 어느 쪽이든 울린다.
+	var stream: AudioStream = null
+	for ext in [".wav", ".ogg", ".mp3"]:
+		var path: String = "res://assets/music/%s%s" % [name, ext]
+		if not ResourceLoader.exists(path):
+			continue
+		var res = load(path)
+		if res is AudioStream:
+			stream = res
+			break
+	if stream == null:
 		return
-	var stream = load(path)
-	if not (stream is AudioStream):
+
+	# 트리 밖에서 부르면 get_tree() 가 null 이라 재생기를 붙일 곳이 없다.
+	# 예전에 여기서 조용히 죽어 "음악만 안 나오는" 상태가 됐다. 한 프레임 미룬다.
+	if not is_inside_tree():
+		call_deferred("play_music", name)
 		return
 
 	stop_music()
 	_music = AudioStreamPlayer.new()
+	# 타이틀 테마는 반복 재생한다. 74초짜리라 한 번 돌면 정적이 된다.
+	#
+	# 스트림의 loop 플래그만 믿지 않는다. 임포트 설정(.import 의 loop)이 진짜
+	# 주인이라 파일을 교체하면 false 로 되돌아가고, 런타임에서 덮어써도 이미
+	# 만들어진 재생 인스턴스에는 안 먹는다. 실제로 그렇게 한 번 돌고 끝났다.
+	# 그래서 끝나면 다시 트는 연결도 같이 건다 (_on_music_finished).
+	if stream is AudioStreamWAV:
+		# wav 임포터는 .import 의 edit/loop_mode 를 기본값으로 되돌려 놓는다.
+		# 파일을 교체할 때마다 다시 꺼지므로 여기서 직접 건다.
+		var w := stream as AudioStreamWAV
+		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		w.loop_begin = 0
+		w.loop_end = int(w.get_length() * float(w.mix_rate))
+	elif stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	elif stream is AudioStreamMP3:
+		(stream as AudioStreamMP3).loop = true
 	_music.stream = stream
 	# 음악은 효과음보다 확실히 낮게 깔린다. 같은 볼륨이면 타격감이 묻힌다.
 	_music.volume_db = volume_db - 8.0
+	# ── 재생 경로를 못 박는다 ────────────────────────────────────────────
+	# 기본값(0)은 플랫폼이 정하는데, 실측하면 웹만 다르다.
+	#   audio/general/default_playback_type     = 0 (Stream)
+	#   audio/general/default_playback_type.web = 1 (Sample)
+	# Sample 은 Web Audio 버퍼 하나로 통째로 올려 재생하는 경로다. 짧은 효과음에는
+	# 맞지만 74초짜리 배경음악에는 맞지 않는다. 음악은 항상 엔진 믹서로 보낸다 -
+	# 데스크톱에서 검증된 경로가 이쪽이다.
+	_music.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	# 트리 루트에 붙인다. 화면이 사라져도 음악은 살아 있어야 한다.
 	get_tree().root.add_child(_music)
+	_music.finished.connect(_on_music_finished)
 	_music_name = name
-	if enabled:
-		_music.play()
+	# 여기서 바로 play() 를 부르지 않는다. 아직 조작 전이면 유령 재생이 된다.
+	# 잠금이 풀렸으면 아래에서 틀고, 아니면 첫 클릭이 튼다.
+	resume_music()
 
 
 func stop_music() -> void:
@@ -96,6 +296,8 @@ func stop_music() -> void:
 		_music.queue_free()
 	_music = null
 	_music_name = ""
+	_music_started_at = 0.0
+	_music_tries = 0
 
 
 ## 이름 하나로 낸다. 없는 이름이면 조용히 무시한다 -
@@ -113,7 +315,7 @@ func play(name: String, pitch: float = 1.0) -> void:
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
 	p.stream = stream
-	p.volume_db = volume_db
+	p.volume_db = volume_db + SFX_TRIM
 	p.pitch_scale = pitch
 	p.play()
 
