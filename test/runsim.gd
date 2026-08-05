@@ -302,7 +302,7 @@ func _reward(run: RunState, types: Array, policy: String) -> void:
 
 	# 희귀 보상 — 3티어 카드나 궁극기를 하나 받는다.
 	var pool: Array[String] = []
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		if int(Cards.TABLE[cid].get("tier", 1)) >= 3:
 			pool.append(cid)
 	for sid in Specials.ORDER:

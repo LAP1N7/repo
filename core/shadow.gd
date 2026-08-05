@@ -26,14 +26,6 @@ const NEAR := "enemy_within"
 static func effective(card: Dictionary, atk_range: int) -> Array:
 	var cond := String(card["cond"])
 	var arg := int(card["cond_arg"])
-	var act := String(card["act"])
-
-	# 공격·회복은 사거리 안에서만 가능하다 → `항상` 이어도 실효 조건은 사거리다.
-	if act == "attack" and cond == "always":
-		return [NEAR, atk_range]
-	# 접근은 사거리 밖에서만 가능하다.
-	if act == "move_toward" and cond == "always":
-		return [FAR, atk_range]
 
 	# 거리 조건을 한 축으로 정규화한다.
 	match cond:
@@ -69,8 +61,15 @@ static func implies(a: String, a_arg: int, b: String, b_arg: int) -> bool:
 ## 이동·회복 카드는 벽에 몰리거나 대상이 없으면 실행 불가가 되어 아래로 양보한다.
 ## 그래서 "조건이 맞으면 거의 항상 실행되는" 행동만 가림으로 본다.
 ## 이 제한이 없으면 정상적인 카이팅 빌드에 오경보가 뜬다.
-static func _blocks(act: String) -> bool:
-	return act == "attack" or act == "defend" or act == "hold"
+## ── 축이 다르면 절대 안 가린다 ───────────────────────────────────────────
+## 예전에는 모듈 하나가 조건과 행동을 다 들고 있어서 목록 전체가 한 줄로
+## 경쟁했다. 그래서 `항상` 조건 하나가 아래 전부를 죽였다.
+##
+## 이제는 축마다 따로 읽는다. [저격](표적)과 [거리 유지](위치)는 애초에 서로
+## 다투지 않으므로 위아래에 있어도 둘 다 산다. 축을 무시하고 가림을 계산하면
+## 정상적인 편성에 오경보가 쏟아진다.
+static func same_axis(a: Dictionary, b: Dictionary) -> bool:
+	return String(a.get("axis", "")) == String(b.get("axis", ""))
 
 
 ## 가려진 슬롯 번호들. cards 는 우선순위 순서의 카드 id 배열.
@@ -91,7 +90,7 @@ static func _shadowed_by(cards: Array, i: int, atk_range: int) -> String:
 		if not Cards.TABLE.has(cards[j]):
 			continue
 		var upper: Dictionary = Cards.TABLE[cards[j]]
-		if not _blocks(String(upper["act"])):
+		if not same_axis(Cards.TABLE[cards[i]], upper):
 			continue
 		var ue := effective(upper, atk_range)
 		if implies(String(le[0]), int(le[1]), String(ue[0]), int(ue[1])):

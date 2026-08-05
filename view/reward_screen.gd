@@ -92,7 +92,7 @@ func _roll_rewards() -> Array:
 	# 이제 상점과 같은 기준을 본다: 3티어 카드 + 궁극기 전부.
 	# 궁극기는 뒤로 갈수록 더 자주 섞인다 - 상점의 등장 곡선과 방향을 맞춘다.
 	var rare_pool: Array[String] = []
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		if int(Cards.TABLE[cid].get("tier", 1)) >= 3:
 			rare_pool.append(cid)
 	var special_copies: int = 1 + run.cleared / 2

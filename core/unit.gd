@@ -94,6 +94,13 @@ var kill_pending: bool = false
 ## 인덱스로 들면 순환이 생기지 않는다.
 var last_attacker_index: int = -1
 
+## 이 대원에게 활성화된 교리. { 태그: 교리 } 형태다.
+##
+## 한 축의 모듈이 전부 같은 태그일 때만 켜진다. 편성이 확정될 때 한 번 계산하고
+## 전투 내내 안 바뀐다 - 모듈은 전투 중에 못 바꾸기 때문이다.
+## (data/doctrines.gd 참조)
+var doctrines: Dictionary = {}
+
 ## 이 대원이 마지막으로 고른 표적.
 ##
 ## 협력 축이 이걸 읽는다. [협공] 은 아군의 표적을 그대로 쓰고 [분산] 은 그
@@ -148,6 +155,17 @@ static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i
 			continue
 		u.cards.append(cid)
 		u.card_rules.append(Cards.leveled(cid, int(p_levels.get(cid, 1))))
+	# 교리는 편성이 확정되는 이 순간 한 번만 계산한다. 전투 중에는 모듈을
+	# 못 바꾸므로 매 틱 다시 셀 이유가 없다.
+	var by_axis: Dictionary = {}
+	for r in u.card_rules:
+		var ax := String(r.get("axis", ""))
+		if ax == "":
+			continue
+		if not by_axis.has(ax):
+			by_axis[ax] = []
+		by_axis[ax].append(r)
+	u.doctrines = Doctrines.active(by_axis)
 
 	# 기본 AI 는 이제 규칙 목록이 아니라 직업별 표다. 파이프라인이 직접 읽으므로
 	# 유닛이 들고 다닐 이유가 없다. (data/innates.gd 참조)
@@ -168,10 +186,20 @@ func special_ready() -> bool:
 	return special != "" and not special_used and not Specials.is_passive(special)
 
 
+## 위력 백분율을 실제 피해로. 교리 보너스가 여기서 얹힌다.
+##
+## 맹진(공격 +15%)과 집중(같은 표적 아군 1명당 +8%)이 곱이 아니라 **합**으로
+## 들어간다. 곱으로 두면 교리를 둘 겹쳤을 때 수치가 갑자기 튀어서, 밸런스를
+## 잡을 때 어느 쪽을 깎아야 하는지 알 수 없게 된다.
 func power_damage(percent: int) -> int:
 	# 정수 연산만 쓴다. 결정론을 깨지 않기 위해서다.
 	# focus_bonus 는 [집중사격] 이 붙인 영구 가산치다.
-	return maxi(1, atk * (percent + focus_bonus) / 100)
+	#
+	# 교리 보너스도 곱이 아니라 **합**으로 들어간다. 곱으로 두면 교리를 둘
+	# 겹쳤을 때 수치가 갑자기 튀어서, 밸런스를 잡을 때 어느 쪽을 깎아야 하는지
+	# 알 수 없게 된다.
+	var doc := Doctrines.amount(doctrines, "attack_pct")
+	return maxi(1, atk * (percent + focus_bonus + doc) / 100)
 
 
 func is_enemy_of(other: Unit) -> bool:
@@ -185,6 +213,11 @@ func hp_percent_below(pct: int) -> bool:
 
 func take_damage(amount: int, from: Unit) -> int:
 	var dealt: int = amount
+	# 인내 교리: 받는 피해 -15%. 방어 계산보다 **먼저** 건다.
+	# 나중에 걸면 방어 중일 때 정수 나눗셈 때문에 거의 사라진다.
+	var soak := Doctrines.amount(doctrines, "damage_taken_pct")
+	if soak != 0:
+		dealt = maxi(1, dealt * (100 + soak) / 100)
 	if defending:
 		# 정수 나눗셈. 기본은 절반이고, 합성 단계마다 한 몫씩 더 깎는다.
 		# 2 -> 3 -> 4 로 나누므로 50% -> 33% -> 25% 가 된다.

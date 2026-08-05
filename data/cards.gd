@@ -145,7 +145,7 @@ const TABLE: Dictionary = {
 		"cond": "tick_below",
 		"cond_arg": 4,
 		"stance": "wait",
-		"text": "4픸까지 → 진형을 갖추고 기다린다",
+		"text": "4틱까지 → 진형을 갖추고 기다린다",
 	},
 	"pursue": {
 		"axis": "engage",
@@ -283,7 +283,7 @@ const TABLE: Dictionary = {
 		"coop": "solo",
 		"text": "아군을 참조하지 않는다",
 	},
-	"focus_fire": {
+	"coop_fire": {
 		"axis": "squad",
 		"tag": "focus",
 		"tier": 2,
@@ -330,26 +330,16 @@ const TABLE: Dictionary = {
 
 }
 
-const DECK_ORDER: Array[String] = [
-	"engage",
-	"finisher",
-	"snipe",
-	"charge",
-	"retreat",
-	"resolve",
-	"keep_distance",
-	"counter",
-	"guard_stance",
-	"mend",
-	"hold_ground",
-	"pursue",
-	"all_in",
-	"revenge",
-	"escort",
-	"crossfire",
-	"berserk",
-	"assassinate",
-]
+## 손패·상점에서 모듈을 늘어놓는 순서.
+##
+## 표에 적은 순서를 그대로 쓴다. 축별로 묶여 있으므로 화면에서도 축별로 모인다.
+## 예전에는 이 목록을 손으로 관리했는데, 모듈 id 를 바꿀 때마다 여기가 조용히
+## 어긋나서 어떤 모듈은 아예 상점에 안 나왔다.
+static func deck_order() -> Array[String]:
+	var out: Array[String] = []
+	for cid in TABLE:
+		out.append(String(cid))
+	return out
 
 ## 스테이지별 티어 등장 장수. 인덱스는 스테이지 1~5.
 ##

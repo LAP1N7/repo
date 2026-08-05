@@ -229,7 +229,13 @@ func _draw() -> void:
 	var special := is_special()
 	var cost := int(c["cost"])
 	# 특수는 코스트와 무관하게 금색으로 통일한다. 한눈에 "이건 다른 종류" 여야 한다.
-	var ccol: Color = UiKit.ACCENT if special else UiKit.cost_color(cost)
+	# ── 왜 코스트 색이 아니라 축 색인가 ──────────────────────────────────
+	# 상점에 스무 장이 깔렸을 때 먼저 알아야 하는 건 "얼마인가" 가 아니라
+	# "무슨 종류인가" 다. 표적 모듈이 필요한 판에서 위치 모듈을 훑고 있으면
+	# 아무리 싸도 소용이 없다. 코스트는 배지 숫자로 이미 보인다.
+	var axis := String(c.get("axis", ""))
+	var ccol: Color = UiKit.ACCENT if special else (
+		Axes.color(axis) if axis != "" else UiKit.cost_color(cost))
 	var s := card_size()
 	# 카드는 한 장 안에서 크기가 9~14 로 섞인다. 작은 글씨는 v2 를 써야 읽힌다.
 	var f := UiKit.font()
@@ -298,6 +304,12 @@ func _draw() -> void:
 
 	# 이름. 코스트 배지가 차지하는 폭만 정확히 비켜 준다.
 	# 넉넉히 빼면 미니 카드에서 "거리 유지" 같은 이름이 잘린다.
+	# 영문 축 라벨. 전부 영문이면 한국어 톤과 충돌하고 전부 한글이면 축이
+	# 안 보인다. 축만 영문으로 두면 계기판처럼 읽히면서 본문은 그대로다.
+	if axis != "":
+		draw_string(fs, Vector2(pad, pad + 10.0), Axes.label(axis),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(ccol.r, ccol.g, ccol.b, 0.85))
+
 	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 24.0), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2 - (badge_r * 2.0 + 2.0),
 		name_size, UiKit.TEXT * dim)

@@ -144,12 +144,16 @@ static func _pick_target(unit: Unit, state, trace: Dictionary, coop: String) -> 
 			return { "target": shared }
 
 	var banned: Unit = _ally_focus(unit, state) if coop == "spread" else null
+	var won: Dictionary = {}
 
 	for slot in unit.card_rules.size():
 		var rule: Dictionary = unit.card_rules[slot]
 		if rule.is_empty() or String(rule.get("axis", "")) != Axes.TARGET:
 			continue
 		var name := String(rule.get("name", ""))
+		if not won.is_empty():
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "위가 성립" })
+			continue
 		if not eval_condition(unit, String(rule["cond"]), int(rule["cond_arg"]), state):
 			rows.append({ "slot": slot, "name": name, "hit": false, "why": "조건 불성립" })
 			continue
@@ -158,10 +162,12 @@ static func _pick_target(unit: Unit, state, trace: Dictionary, coop: String) -> 
 			rows.append({ "slot": slot, "name": name, "hit": false, "why": "대상 없음" })
 			continue
 		rows.append({ "slot": slot, "name": name, "hit": true, "why": "" })
-		trace[Axes.TARGET] = rows
-		return { "target": t, "rule": rule, "slot": slot }
+		if won.is_empty():
+			won = { "target": t, "rule": rule, "slot": slot }
 
 	trace[Axes.TARGET] = rows
+	if not won.is_empty():
+		return won
 	# 기본값. 악사는 아군을 살리는 게 기본이므로 표적도 아군 쪽이다.
 	var ai := Innates.base_ai(unit.type_id)
 	if String(ai["act"]) == "heal":
@@ -205,8 +211,13 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			# "물러나라" 는 지시가 조용히 뒤집힌다.
 			return _rule(unit, "회피 불가", "hold", target, 0, 0)
 
+	# 표적이 없어도 자리는 지킨다.
+	#
+	# 예전에는 여기서 빈 손으로 돌아갔는데, 그러면 전투 로그에 "행동 없음" 만
+	# 남고 그 대원이 왜 멈췄는지 아무 데도 안 적힌다. 실제로 아군이 전부
+	# 만피인 악사가 통째로 사라진 것처럼 보였다.
 	if target == null:
-		return {}
+		return _rule(unit, "대상 없음", "hold", unit, 0, 0)
 
 	# ── 사거리 안이면 일한다 ─────────────────────────────────────────────
 	var dist: int = Grid.manhattan(unit.pos, target.pos)
@@ -214,6 +225,8 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		if act_kind == "heal":
 			if target.team == unit.team and target.missing_hp() > 0:
 				return _rule(unit, "회복", "heal", target, power, 0)
+			# 살릴 사람이 없으면 자리를 지킨다. 악사는 밀고 들어가는 직업이 아니다.
+			return _rule(unit, "대기", "hold", unit, 0, 0)
 		elif state.has_shot(unit, target):
 			# 원거리는 적이 코앞이면 한 칸 물러나며 쏠 자리를 만든다.
 			# 이게 기본 AI 의 flee_within 이다. 태세가 추격이면 안 물러난다.

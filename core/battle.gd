@@ -309,6 +309,12 @@ func step() -> bool:
 			"innate": bool(choice["innate"]),
 			"special": bool(choice.get("special", false)),
 			"rule_name": String(choice["card"]["name"]),
+			# 축별 판단 기록. 성립한 것뿐 아니라 **건너뛴 것과 그 이유**도 들어
+			# 있다. 성립한 것만 보여 주면 플레이어는 "왜 2번이 안 걸렸지" 를
+			# 답할 수 없고, 자기 교리가 틀린 건지 게임이 이상한 건지 구별하지
+			# 못한다. AI 를 설계하는 게임에서 그건 치명적이다.
+			"trace": choice.get("trace", {}),
+			"target": (chosen.index if chosen != null else -1),
 		})
 
 		_execute(u, choice)

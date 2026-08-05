@@ -61,6 +61,9 @@ var lbl_result: Label
 var lbl_result_sub: Label
 var rules_root: Control
 
+## 이번 틱의 판단 네 줄이 뜨는 곳. (_show_trace 주석 참조)
+var trace_root: Control
+
 ## 규칙 슬롯 줄의 배경판. 방금 발동한 슬롯을 밝혀서 "어느 규칙이 지금 터졌는지" 를
 ## 목록 위에서 직접 짚어 준다. key: "%d:%d" % [유닛번호, 슬롯번호] (기본기는 슬롯 -1)
 var slot_rows: Dictionary = {}
@@ -193,6 +196,13 @@ func _build_ui() -> void:
 	rules_root = Control.new()
 	rules_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(rules_root)
+
+	# 판단 패널. 판 왼쪽 아래의 빈 구역을 쓴다 - 격자(y176~560)와 조작줄(y592~)
+	# 사이가 비어 있고, 오른쪽 알고리즘 패널과도 안 겹친다.
+	trace_root = Control.new()
+	trace_root.position = Vector2(48, 176)
+	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(trace_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
@@ -387,6 +397,54 @@ func _refresh_contrib() -> void:
 			lab.text = UiText.t("battle.m19", "피해 %d") % u.damage_dealt
 
 
+## 이번 틱에 그 대원이 어떤 판단을 거쳤는지 네 축으로 보여 준다.
+##
+## ── 왜 건너뛴 항목까지 보여 주는가 ───────────────────────────────────────
+## AI 를 설계하는 게임에서 AI 의 판단이 안 보이면, 플레이어는 자기 교리가 틀린
+## 건지 게임이 이상한 건지 구별할 수 없다. "왜 저놈 저기로 갔지?" 가 나오는
+## 순간 이 게임은 망한다.
+##
+## 성립한 항목만 보여 주는 것으로는 부족하다. "2번이 왜 안 걸렸지" 를 답할 수
+## 없기 때문이다. 그래서 건너뛴 줄과 그 이유를 같이 적는다.
+func _show_trace(who: Unit, e: Dictionary) -> void:
+	if trace_root == null or not is_instance_valid(trace_root):
+		return
+	for c in trace_root.get_children():
+		c.queue_free()
+
+	var trace: Dictionary = e.get("trace", {})
+	var y := 0.0
+	UiKit.label(trace_root, Vector2(0, y), Vector2(300, 20),
+		"%s · %d틱" % [who.display_name, battle.tick], 14, UiKit.ACCENT)
+	y += 22.0
+
+	for axis in Axes.ORDER:
+		var rows: Array = trace.get(axis, [])
+		UiKit.label(trace_root, Vector2(0, y), Vector2(120, 16),
+			Axes.label(axis), 10, Axes.color(axis))
+		if rows.is_empty():
+			# 그 축에 모듈이 없으면 직업 기본 AI 가 정한 것이다.
+			UiKit.label(trace_root, Vector2(96, y), Vector2(230, 16),
+				UiText.t("battle.trace_base", "기본 AI"), 10, UiKit.FAINT)
+			y += 17.0
+			continue
+		for r in rows:
+			var hit := bool(r["hit"])
+			var mark := "▶" if hit else "  "
+			var col: Color = UiKit.TEXT if hit else UiKit.FAINT
+			var txt := "%s %s" % [mark, String(r["name"])]
+			if not hit:
+				txt += "  (%s)" % String(r["why"])
+			UiKit.label(trace_root, Vector2(96, y), Vector2(230, 16), txt, 10, col)
+			y += 17.0
+
+	# 마지막 줄은 실제로 한 행동이다. 위 네 축이 이 한 줄로 모인다.
+	UiKit.label(trace_root, Vector2(0, y + 4), Vector2(120, 16),
+		"ACTION", 10, UiKit.GOOD)
+	UiKit.label(trace_root, Vector2(96, y + 4), Vector2(230, 16),
+		String(e.get("rule_name", "")), 10, UiKit.GOOD)
+
+
 func _flash_slot(unit_i: int, slot: int) -> void:
 	var key := "%d:%d" % [unit_i, slot]
 	if not slot_rows.has(key):
@@ -578,6 +636,8 @@ func _play_events(evs: Array, my_id: int) -> void:
 				_log(UiText.t("battle.m13", "[틱 %d] %s %s · %s - %s") % [
 					battle.tick, "" if who.team == Unit.TEAM_PLAYER else "적",
 					who.display_name, src, e.get("rule_name", "")])
+				if who.team == Unit.TEAM_PLAYER:
+					_show_trace(who, e)
 				await _wait(ACT_TIME * 0.45)
 
 			"move":

@@ -136,7 +136,7 @@ func test_ban() -> void:
 
 	# 전부 추방하면 제시가 비어야 하고 리롤도 막혀야 한다 (무한 루프 방지)
 	var r2 := fresh()
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		r2.banned[cid] = true
 	for sid in Specials.ORDER:
 		r2.banned[sid] = true
@@ -219,11 +219,11 @@ func test_run_reset() -> void:
 	r.start_run(Stages.TUTORIAL_ID)
 
 	# 튜토리얼처럼 사서 꽂아 둔 상태를 만든다.
-	r.hand.append("engage")
-	r.hand.append("keep_distance")
+	r.hand.append("near_first")
+	r.hand.append("keep_range")
 	ok(r.place("archer", 0), "유닛 배치")
-	ok(r.equip(0, "engage"), "카드 장착 1")
-	ok(r.equip(0, "keep_distance"), "카드 장착 2")
+	ok(r.equip(0, "near_first"), "카드 장착 1")
+	ok(r.equip(0, "keep_range"), "카드 장착 2")
 	ok(r.hand.is_empty(), "손패가 비었다 (전부 꽂힘)")
 
 	# 여기서 새 런을 시작한다.
@@ -238,12 +238,12 @@ func test_run_reset() -> void:
 	var r2 := RunState.new()
 	r2.fixed_seed = 1
 	r2.start_run(1)
-	r2.hand.append("engage")
+	r2.hand.append("near_first")
 	r2.place("archer", 0)
-	r2.equip(0, "engage")
+	r2.equip(0, "near_first")
 	r2.on_stage_cleared()
 	r2.advance()
-	ok(r2.hand.has("engage"), "스테이지를 넘어가면 꽂았던 카드가 손패로 돌아온다",
+	ok(r2.hand.has("near_first"), "스테이지를 넘어가면 꽂았던 카드가 손패로 돌아온다",
 		str(r2.hand))
 
 
@@ -369,14 +369,14 @@ func test_rarity_curve() -> void:
 
 	# 고가치 카드(3티어)는 1스테이지에 거의 안 뜨고 5스테이지에 흔해야 한다.
 	# 이게 런의 파워 곡선이다.
-	var early: int = Cards.copies("mend", 1)
-	var late: int = Cards.copies("mend", 5)
+	var early: int = Cards.copies("cut_support", 1)
+	var late: int = Cards.copies("cut_support", 5)
 	ok(late > early, "구호(3티어)는 뒤로 갈수록 흔해진다", "%d → %d" % [early, late])
 
 	# 기본 도구는 반대다. 처음부터 흔해야 빌드의 바닥이 깔린다.
-	ok(Cards.copies("engage", 1) >= Cards.copies("mend", 5),
+	ok(Cards.copies("near_first", 1) >= Cards.copies("cut_support", 5),
 		"교전(1티어)은 처음부터 흔하다",
-		"%d vs %d" % [Cards.copies("engage", 1), Cards.copies("mend", 5)])
+		"%d vs %d" % [Cards.copies("near_first", 1), Cards.copies("cut_support", 5)])
 
 	# ── 선언한 확률이 실제 동작과 같은가 ──────────────────────────────
 	# 지금까지 반복된 버그가 전부 이 어긋남이었다. CARD_WEIGHT 는 테이블에
@@ -505,11 +505,11 @@ func test_roster() -> void:
 	ok(not r.place("dragon", 5), "없는 유닛 타입 거부")
 
 	# 자리를 무르면 꽂아둔 카드는 손패로 돌아와야 한다. 카드가 증발하면 안 된다.
-	r.hand.append("engage")
-	r.equip(0, "engage")
+	r.hand.append("near_first")
+	r.equip(0, "near_first")
 	ok(r.hand.is_empty(), "장착하면 손패에서 빠짐")
 	ok(r.remove_member(0), "배치 무르기")
-	ok(r.hand.has("engage"), "무른 유닛의 카드가 손패로 복귀")
+	ok(r.hand.has("near_first"), "무른 유닛의 카드가 손패로 복귀")
 	ok(r.roster.size() == 2, "인원 감소")
 
 
@@ -517,18 +517,18 @@ func test_equip() -> void:
 	print("\n[5] 규칙 장착 · 우선순위")
 	var r := fresh()
 	r.place("archer", 0)
-	r.hand = ["engage", "pursue", "retreat", "snipe"] as Array[String]
+	r.hand = ["near_first", "pursue", "fall_back", "snipe"] as Array[String]
 
-	ok(r.equip(0, "engage"), "1번 슬롯")
+	ok(r.equip(0, "near_first"), "1번 슬롯")
 	ok(r.equip(0, "pursue"), "2번 슬롯")
-	ok(r.equip(0, "retreat"), "3번 슬롯")
+	ok(r.equip(0, "fall_back"), "3번 슬롯")
 	ok(not r.equip(0, "snipe"), "슬롯 3칸 초과 거부")
 	ok(r.hand == ["snipe"], "쓴 카드만 손패에서 빠짐", str(r.hand))
-	ok(not r.equip(0, "mend"), "손패에 없는 카드는 못 꽂음")
+	ok(not r.equip(0, "cut_support"), "손패에 없는 카드는 못 꽂음")
 
 	# 순서 바꾸기 = 전략 바꾸기
 	ok(r.move_slot(0, 0, 1), "1↔2 교체")
-	ok(r.unit_cards[0][0] == "pursue" and r.unit_cards[0][1] == "engage",
+	ok(r.unit_cards[0][0] == "pursue" and r.unit_cards[0][1] == "near_first",
 		"순서가 실제로 바뀜", str(r.unit_cards[0]))
 	ok(not r.move_slot(0, 0, -1), "맨 위에서 더 못 올림")
 	ok(not r.move_slot(0, 2, 1), "맨 아래에서 더 못 내림")
@@ -606,12 +606,12 @@ func test_run_progression() -> void:
 	ok(r.budget == RunState.START_BUDGET, "시작 예산 %d" % RunState.START_BUDGET)
 
 	# 덱을 좀 만들고 편성한다
-	r.hand = ["engage", "charge", "snipe", "retreat"] as Array[String]
+	r.hand = ["near_first", "forced_march", "snipe", "fall_back"] as Array[String]
 	r.special_hand = ["unyielding"] as Array[String]
 	r.place("warrior", 4)
 	r.place("archer", 0)
 	r.place("archer", 2)
-	r.equip(0, "engage")
+	r.equip(0, "near_first")
 	r.equip_special(0, "unyielding")
 
 	var deck_before := r.hand.size()
@@ -689,31 +689,32 @@ func test_shadowing() -> void:
 	# 저격의 조건은 `적이 사거리 안` 이라 적이 들어오는 순간 항상 참이 된다.
 	# 그래서 아래의 거리 유지는 단 한 번도 발동하지 못하고, 궁수는 물러나지 않는다.
 	# 궁수(사거리 3) 기준. 전사(사거리 1)면 2칸 이내가 사거리 밖이라 안 가려진다.
-	var bad := ["snipe", "keep_distance"]
+	var bad := ["snipe", "backline"]
 	var dead := Shadow.shadowed_slots(bad, 3)
-	ok(dead.has(1), "저격이 거리 유지를 가린다", str(dead))
+	ok(dead.has(1), "같은 축이면 위가 아래를 가린다", str(dead))
 	var w := Shadow.warnings(bad, 3)
-	ok(w.size() == 1 and w[0].contains("거리 유지") and w[0].contains("저격"),
+	ok(w.size() == 1 and w[0].contains("후열 침투") and w[0].contains("저격"),
 		"경고 문장이 가린 카드와 가려진 카드를 모두 지목한다",
 		"" if w.is_empty() else w[0])
 
 	# 순서를 뒤집으면 문제가 사라진다 — 이게 이 게임의 핵심 조작이다.
-	ok(Shadow.shadowed_slots(["keep_distance", "snipe"], 3).is_empty(),
-		"순서를 뒤집으면 가림이 사라진다")
+	ok(Shadow.shadowed_slots(["snipe", "keep_range"], 3).is_empty(),
+		"축이 다르면 서로 안 가린다")
 
 	# `항상` 조건 공격은 그 아래 전부를 가린다.
-	var always_first := ["engage", "snipe", "finisher"]
+	var always_first := ["near_first", "snipe", "execute"]
 	var dead2 := Shadow.shadowed_slots(always_first, 3)
-	ok(dead2.has(1) and dead2.has(2), "교전(항상)은 아래 공격 카드를 전부 가린다", str(dead2))
+	ok(dead2.has(1) and dead2.has(2), "조건 없는 표적 모듈은 아래 표적을 전부 가린다", str(dead2))
 
 	# 이동 카드는 벽에 몰리면 실행 불가가 되어 아래로 양보한다 → 가림으로 보지 않는다.
 	# 이걸 가림으로 잡으면 정상적인 카이팅 빌드에 오경보가 뜬다.
-	ok(Shadow.shadowed_slots(["keep_distance", "engage"], 3).is_empty(),
+	ok(Shadow.shadowed_slots(["keep_range", "near_first"], 3).is_empty(),
 		"이동 카드는 아래를 가리지 않는다 (실행 불가 시 양보)")
 
 	# 조건 문턱 비교 — 넓은 조건이 좁은 조건을 가린다
-	ok(Shadow.shadowed_slots(["retreat", "resolve"], 1).is_empty(),
-		"HP 50% 후퇴는 이동이라 HP 25% 결사를 가리지 않는다")
+	# 같은 교전 축이고 위가 더 넓은 조건(50% > 40%)이면 아래는 절대 안 걸린다.
+	ok(not Shadow.shadowed_slots(["fall_back", "berserk"], 1).is_empty(),
+		"넓은 HP 조건이 좁은 HP 조건을 가린다 (같은 축)")
 	ok(Shadow.implies("self_hp_below", 25, "self_hp_below", 50),
 		"HP<25% 는 HP<50% 에 포함된다")
 	ok(not Shadow.implies("self_hp_below", 50, "self_hp_below", 25),
@@ -721,10 +722,10 @@ func test_shadowing() -> void:
 
 	# 빈 슬롯·미지의 카드에 죽지 않는다
 	ok(Shadow.shadowed_slots([], 3).is_empty(), "빈 목록도 처리한다")
-	ok(Shadow.shadowed_slots(["engage", "없는카드"], 3).size() >= 0, "없는 카드에 죽지 않는다")
+	ok(Shadow.shadowed_slots(["near_first", "없는카드"], 3).size() >= 0, "없는 카드에 죽지 않는다")
 
 	# 같은 카드 조합도 유닛에 따라 가림 여부가 달라야 한다 — 이게 사거리를 받는 이유다.
-	ok(Shadow.shadowed_slots(["snipe", "keep_distance"], 1).is_empty(),
+	ok(Shadow.shadowed_slots(["snipe", "keep_range"], 1).is_empty(),
 		"전사(사거리 1)에게는 저격이 거리 유지를 가리지 않는다")
 
 
@@ -793,12 +794,12 @@ func test_tutorial() -> void:
 	# 고정 상점 — 대본이 지목한 카드가 실제로 깔리는가
 	var r := RunState.new()
 	r.start_run(1)
-	r.fixed_offers = ["engage", "keep_distance", "finisher"] as Array[String]
+	r.fixed_offers = ["near_first", "keep_range", "execute"] as Array[String]
 	r.offers.clear()
 	r._fill_offers()
-	ok(r.offers.size() == 3 and r.offers[0] == "engage", "고정 상점이 그대로 깔린다", str(r.offers))
+	ok(r.offers.size() == 3 and r.offers[0] == "near_first", "고정 상점이 그대로 깔린다", str(r.offers))
 	r.budget = 99
 	r.reroll()
-	ok(r.offers[0] == "engage", "리롤해도 고정 목록이 유지된다", str(r.offers))
+	ok(r.offers[0] == "near_first", "리롤해도 고정 목록이 유지된다", str(r.offers))
 	r.start_run(1)
 	ok(r.fixed_offers.is_empty(), "새 런에서는 고정이 풀린다")

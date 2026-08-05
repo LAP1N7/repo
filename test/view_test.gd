@@ -265,7 +265,7 @@ func test_card_fit() -> void:
 
 	var worst := ""
 	var worst_over := 0.0
-	for cid in Cards.DECK_ORDER + Specials.ORDER:
+	for cid in Cards.deck_order() + Specials.ORDER:
 		var c: Dictionary = Specials.TABLE[cid] if Specials.TABLE.has(cid) else Cards.TABLE[cid]
 		var card := CardNode.new()
 		host.add_child(card)
@@ -303,7 +303,7 @@ func test_card_fit() -> void:
 		card.queue_free()
 
 	ok(worst_over <= 0.0, "미니 카드 %d종 전부 글자가 안 넘친다"
-		% (Cards.DECK_ORDER.size() + Specials.ORDER.size()), worst)
+		% (Cards.deck_order().size() + Specials.ORDER.size()), worst)
 
 	host.queue_free()
 

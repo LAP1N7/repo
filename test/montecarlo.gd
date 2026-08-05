@@ -44,7 +44,7 @@ func sample_cards() -> Array[String]:
 	var guard := 0
 	while out.size() < RunState.PARTY_SIZE * RunState.SLOTS_PER_UNIT and guard < 100:
 		guard += 1
-		var cid: String = Cards.DECK_ORDER[rng.randi_range(0, Cards.DECK_ORDER.size() - 1)]
+		var cid: String = Cards.deck_order()[rng.randi_range(0, Cards.deck_order().size() - 1)]
 		var cost := int(Cards.TABLE[cid]["cost"])
 		if cost > budget:
 			continue
@@ -103,7 +103,7 @@ func run_stage(stage_id: int) -> void:
 
 	# 카드별 { present, present_win, fired }
 	var card_stat: Dictionary = {}
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		card_stat[cid] = { "present": 0, "win": 0, "fired": 0 }
 
 	# 유닛별 { used, win }
@@ -115,7 +115,7 @@ func run_stage(stage_id: int) -> void:
 	# 시뮬레이터는 카드를 아무 유닛에나 꽂으므로, 거리 유지처럼 궁수 전용에 가까운
 	# 카드는 평균만 보면 항상 최악으로 나온다. 카드가 나쁜 게 아니라 배치가 나쁜 것이다.
 	var cu_stat: Dictionary = {}
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		var per: Dictionary = {}
 		for tid in UnitData.playable():
 			per[tid] = { "n": 0, "win": 0 }
@@ -183,7 +183,7 @@ func run_stage(stage_id: int) -> void:
 	print("\n   카드                코스트  채용률   채용시승률   기여도   발동률")
 	print("   " + "─".repeat(68))
 	var rows: Array = []
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		var s: Dictionary = card_stat[cid]
 		var p: int = s["present"]
 		if p == 0:
@@ -226,7 +226,7 @@ func run_stage(stage_id: int) -> void:
 			else float(us["win"]) / float(us["used"]) * 100.0
 
 	var spread: Array = []
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		var best_t := ""
 		var worst_t := ""
 		var best := -999.0

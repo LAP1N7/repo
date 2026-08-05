@@ -290,7 +290,7 @@ func _return_equipped_to_hand() -> void:
 ## 추방되지 않은 카드 종류.
 func pool() -> Array[String]:
 	var out: Array[String] = []
-	for cid in Cards.DECK_ORDER:
+	for cid in Cards.deck_order():
 		if not banned.has(cid):
 			out.append(cid)
 	return out
