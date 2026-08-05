@@ -20,6 +20,7 @@ extends Node2D
 const SCN_TITLE := preload("res://scenes/title_screen.tscn")
 const SCN_HELP := preload("res://scenes/help_screen.tscn")
 const SCN_SHOP := preload("res://scenes/shop_screen.tscn")
+const SCN_COMMAND := preload("res://scenes/command_screen.tscn")
 const SCN_LOADOUT := preload("res://scenes/loadout_screen.tscn")
 const SCN_BATTLE := preload("res://scenes/battle_view.tscn")
 const SCN_REWARD := preload("res://scenes/reward_screen.tscn")
@@ -239,6 +240,14 @@ func goto_shop() -> void:
 	_attach_overlay(s, "shop")
 	s.done.connect(goto_loadout)
 	s.help.connect(func(): goto_help(false))
+	s.command.connect(goto_command)
+
+
+func goto_command() -> void:
+	var s := SCN_COMMAND.instantiate() as CommandScreen
+	_swap(s)
+	s.setup(run)
+	s.back.connect(goto_shop)
 
 
 func goto_loadout() -> void:

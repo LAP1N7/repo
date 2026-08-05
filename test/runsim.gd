@@ -221,7 +221,7 @@ func _equip(run: RunState, types: Array) -> void:
 	var pool := run.hand.duplicate()
 	for m in run.roster.size():
 		for cid in pool:
-			if String(Cards.TABLE[cid]["act"]) == "attack":
+			if String(Cards.TABLE[cid].get("act", "")) == "attack":
 				(plan[m] as Array).append(String(cid))
 				pool.erase(cid)
 				break
@@ -253,7 +253,7 @@ func _equip(run: RunState, types: Array) -> void:
 ## 이 카드가 이 유닛에게 얼마나 맞는가.
 func _fit(cid: String, tid: String) -> int:
 	var c: Dictionary = Cards.TABLE[cid]
-	var act := String(c["act"])
+	var act := String(c.get("act", ""))
 	var atk: int = int(UnitData.TABLE[tid]["atk"])
 	var rng: int = int(UnitData.TABLE[tid]["range"])
 	match act:

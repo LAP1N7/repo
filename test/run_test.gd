@@ -25,6 +25,7 @@ func _init() -> void:
 	test_run_progression()
 	test_shadowing()
 	test_tutorial()
+	test_command()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
 
@@ -808,3 +809,78 @@ func test_tutorial() -> void:
 	ok(r.offers[0] == "hold_the_line", "리롤해도 고정 목록이 유지된다", str(r.offers))
 	r.start_run(1)
 	ok(r.fixed_offers.is_empty(), "새 런에서는 고정이 풀린다")
+
+
+## ── 보조 지휘 ────────────────────────────────────────────────────────────
+## 여기서 걸리길 바라는 것: 예산이 새는 것과, 실험용 장치가 축을 넘는 것.
+##
+## 축을 넘어가면 안 된다. 표적 모듈을 위치 모듈로 바꿀 수 있으면 축을 나눈
+## 의미 자체가 사라진다. 무작위가 끼는 유일한 자리라 특히 확인해 둔다.
+func test_command() -> void:
+	print("\n[보조 지휘]")
+	var r := fresh()
+	r.budget = 30
+
+	ok(r.command_level("atk") == 0, "처음에는 전부 0단계")
+	ok(r.command_amount("atk") == 0, "0단계는 효과도 0")
+
+	ok(r.command_buy("atk") == "", "예산이 있으면 산다")
+	ok(r.command_level("atk") == 1, "단계가 오른다")
+	ok(r.budget == 30 - Command.COST_CURVE[0], "코스트만큼 빠진다", str(r.budget))
+	ok(r.command_amount("atk") == 5, "1단계 화력 +5%", str(r.command_amount("atk")))
+
+	# 값이 오르지 않으면 "하나를 끝까지" 와 "여럿을 얕게" 가 같은 값이 된다.
+	var before := r.budget
+	r.command_buy("atk")
+	ok(before - r.budget == Command.COST_CURVE[1], "두 번째가 더 비싸다")
+	r.command_buy("atk")
+	ok(r.command_level("atk") == Command.MAX_LEVEL, "3단계가 최대")
+	ok(r.command_buy("atk") != "", "최대면 더 못 산다")
+	ok(r.command_level("atk") == Command.MAX_LEVEL, "실패해도 단계가 안 오른다")
+
+	var poor := fresh()
+	poor.budget = 0
+	var kept := poor.budget
+	ok(poor.command_buy("hp") != "", "예산이 없으면 못 산다")
+	ok(poor.budget == kept and poor.command_level("hp") == 0, "실패하면 아무것도 안 변한다")
+
+	# 재검색 할인은 최소 1 아래로 못 내려간다 - 공짜 재검색은 상점을 무의미하게 만든다.
+	var cheap := fresh()
+	cheap.budget = 99
+	cheap.command_levels["reroll"] = Command.MAX_LEVEL
+	ok(cheap.reroll_cost() >= 1, "재검색은 공짜가 되지 않는다", str(cheap.reroll_cost()))
+
+	# 축 강화는 그 축 모듈을 낀 대원만 받는다.
+	var plain := Unit.create(0, "warrior", Unit.TEAM_PLAYER, Vector2i(0, 0),
+		["front_line"])
+	var base_atk := plain.atk
+	plain.apply_command({"axis_target": 8})
+	ok(plain.atk == base_atk, "위치 모듈만 낀 대원은 표적 강화를 못 받는다", str(plain.atk))
+
+	var tgt := Unit.create(0, "warrior", Unit.TEAM_PLAYER, Vector2i(0, 0),
+		["near_first"])
+	tgt.apply_command({"axis_target": 8})
+	ok(tgt.atk > base_atk, "표적 모듈을 낀 대원은 받는다", str(tgt.atk))
+
+	# ── 실험용 장치 ──────────────────────────────────────────────────────
+	var sw := fresh()
+	sw.budget = 20
+	sw.hand = ["near_first"] as Array[String]
+	ok(sw.command_swap("backline") != "", "없는 모듈은 못 바꾼다")
+	ok(sw.command_swap("near_first") == "", "보유 모듈은 바뀐다")
+	ok(sw.hand.size() == 1, "장수는 그대로")
+	ok(sw.hand[0] != "near_first", "다른 모듈이 됐다", str(sw.hand))
+	ok(String(Cards.TABLE[sw.hand[0]]["axis"]) == "target",
+		"같은 축 안에서만 바뀐다", str(sw.hand))
+	ok(sw.budget == 20 - Command.SWAP_COST, "코스트가 빠진다", str(sw.budget))
+
+	# 같은 시드면 같은 결과여야 리플레이가 성립한다.
+	var a := fresh()
+	a.budget = 20
+	a.hand = ["near_first"] as Array[String]
+	a.command_swap("near_first")
+	var b := fresh()
+	b.budget = 20
+	b.hand = ["near_first"] as Array[String]
+	b.command_swap("near_first")
+	ok(a.hand[0] == b.hand[0], "같은 시드면 같은 모듈이 나온다", str(a.hand))

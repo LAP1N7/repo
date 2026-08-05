@@ -234,6 +234,7 @@ func start_run(p_stage_id: int = 1) -> void:
 	# 튜토리얼을 마치고 [런 시작] 을 누르면 튜토리얼에서 산 [교전]·[거리 유지]가
 	# 그대로 손패에 남아 있던 게 이것이다. hand.clear() 는 분명히 했는데,
 	# 그 직후 start() 가 튜토리얼 편성에서 두 장을 되돌려 놨다.
+	command_levels.clear()
 	roster.clear()
 	unit_cards.clear()
 	unit_special.clear()
@@ -321,7 +322,8 @@ func _make_bag() -> Array[String]:
 ## 이번 슬롯에 넣을 궁극기 하나. 못 고르면 "".
 ## taken 에 이미 든 종류는 건너뛴다 - 한 상점에 같은 궁극기가 둘 뜨면 안 된다.
 func _roll_special(taken: Dictionary) -> String:
-	if rng.randi_range(1, 100) > special_chance(stage_id):
+	# 고밸류 회선이 확률을 올린다.
+	if rng.randi_range(1, 100) > special_chance(stage_id) + command_amount("rarity"):
 		return ""
 	# weight 는 궁극기끼리의 상대 빈도다. 비영천참(1)이 나머지(2)보다 귀하다.
 	var pick_bag: Array[String] = []
@@ -389,7 +391,7 @@ func surcharge() -> int:
 
 ## 지금 리롤에 드는 값.
 func reroll_cost() -> int:
-	return REROLL_COST + rerolls_this_stage
+	return maxi(1, REROLL_COST + rerolls_this_stage - command_amount("reroll"))
 
 
 ## 카드 자체의 값. 가산금은 포함하지 않는다 — 카드에 적히는 숫자다.
@@ -749,6 +751,11 @@ func refine(card_id: String) -> bool:
 ## 0 이면 보너스 없음 - 테스트나 개발용 경로에서 그냥 부를 수 있게 둔다.
 func on_stage_cleared(ticks: int = 0) -> void:
 	cleared += 1
+	# 보급 확충 - 단계를 깰 때마다 붙는다.
+	bonus_budget += command_amount("income")
+	# 예산 운용 - 남긴 예산에 이자가 붙는다. 안 쓰고 모으는 선택에 값을 준다.
+	if command_level("interest") > 0:
+		bonus_budget += budget / 8
 	last_speed_bonus = 0
 	if ticks > 0:
 		last_speed_bonus = speed_bonus(stage_id, ticks)
@@ -780,8 +787,73 @@ func to_party() -> Array:
 			"cards": (unit_cards[i] as Array).duplicate(),
 			"card_levels": card_levels.duplicate(),
 			"upgrade": upgrade_level(String(roster[i]["type"])),
+			# 보조 지휘 강화. 전투가 이 값으로 능력치를 얹는다.
+			"cmd": {
+				"atk": command_amount("atk"),
+				"def": command_amount("def"),
+				"hp": command_amount("hp"),
+				"axis_target": command_amount("axis_target"),
+				"axis_position": command_amount("axis_position"),
+				"axis_doctrine": command_amount("axis_doctrine"),
+			},
 		})
 	return out
+
+
+## 보조 지휘 강화 단계. id -> level(0~3)
+##
+## 런 내내 유지된다. 스테이지를 넘어도 안 풀린다 - 이건 부대를 키우는 것이지
+## 이번 교전을 푸는 것이 아니다. (data/command.gd 참조)
+var command_levels: Dictionary = {}
+
+
+func command_level(id: String) -> int:
+	return int(command_levels.get(id, 0))
+
+
+## 그 항목의 현재 효과값.
+func command_amount(id: String) -> int:
+	return Command.amount(id, command_level(id))
+
+
+## 한 단계 올린다. 예산이 모자라거나 최대면 실패하고 이유를 돌려준다.
+func command_buy(id: String) -> String:
+	if not Command.TABLE.has(id):
+		return UiText.t("cmd.unknown", "없는 항목입니다")
+	var lv := command_level(id)
+	var price := Command.price(lv)
+	if price < 0:
+		return UiText.t("cmd.maxed", "이미 최고 단계입니다")
+	if budget < price:
+		return UiText.t("cmd.poor", "예산 %d 이 필요합니다 (현재 %d)") % [price, budget]
+	budget -= price
+	command_levels[id] = lv + 1
+	return ""
+
+
+## 보유 모듈 하나를 같은 축의 다른 모듈로 바꾼다.
+##
+## 축을 넘어가면 안 된다. 표적을 위치로 바꿀 수 있으면 축의 의미가 사라진다.
+## 축 안에서만 도니까 "표적 교리를 다듬는다" 가 된다.
+func command_swap(cid: String) -> String:
+	if not hand.has(cid):
+		return UiText.t("cmd.not_owned", "보유하지 않은 모듈입니다")
+	if budget < Command.SWAP_COST:
+		return UiText.t("cmd.poor", "예산 %d 이 필요합니다 (현재 %d)") % [
+			Command.SWAP_COST, budget]
+	var axis := String(Cards.TABLE.get(cid, {}).get("axis", ""))
+	var pool: Array[String] = []
+	for other in Cards.shop_order():
+		if other != cid and String(Cards.TABLE[other]["axis"]) == axis \
+				and not banned.has(other):
+			pool.append(other)
+	if pool.is_empty():
+		return UiText.t("cmd.no_swap", "바꿀 대상이 없습니다")
+	budget -= Command.SWAP_COST
+	hand.erase(cid)
+	# 무작위지만 **런 시드**를 쓴다. 같은 런을 다시 돌리면 같은 결과가 나온다.
+	hand.append(pool[rng.randi_range(0, pool.size() - 1)])
+	return ""
 
 
 func spent() -> int:

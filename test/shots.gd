@@ -32,6 +32,12 @@ func _init() -> void:
 	await _shot("02_shop", load("res://scenes/shop_screen.tscn").instantiate(),
 		func(s): s.setup(run))
 
+	# 보조 지휘는 예산이 있어야 버튼이 살아 있는 모습을 볼 수 있다.
+	run.budget = 40
+	run.hand.append_array(["near_first", "backline", "keep_range", "front_line", "taunt"])
+	await _shot("09_command", load("res://scenes/command_screen.tscn").instantiate(),
+		func(s): s.setup(run))
+
 	# 편성·전투는 대원이 있어야 한다.
 	run.place("musketeer", 0)
 	run.place("assassin", 4)

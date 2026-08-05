@@ -223,6 +223,41 @@ func special_ready() -> bool:
 ## 맹진(공격 +15%)과 집중(같은 표적 아군 1명당 +8%)이 곱이 아니라 **합**으로
 ## 들어간다. 곱으로 두면 교리를 둘 겹쳤을 때 수치가 갑자기 튀어서, 밸런스를
 ## 잡을 때 어느 쪽을 깎아야 하는지 알 수 없게 된다.
+## 보조 지휘 강화를 얹는다. 편성이 확정된 뒤 한 번만.
+##
+## 축 강화는 **그 축 모듈을 장착한 대원만** 받는다. 빌드 방향을 정한 뒤 그쪽을
+## 미는 자리라, 아무나 받으면 방향을 정한 의미가 없다.
+func apply_command(cmd: Dictionary) -> void:
+	if cmd.is_empty():
+		return
+	var atk_pct := int(cmd.get("atk", 0))
+	var def_add := int(cmd.get("def", 0))
+	var hp_pct := int(cmd.get("hp", 0))
+
+	var axes: Dictionary = {}
+	for r in card_rules:
+		var ax := String((r as Dictionary).get("axis", ""))
+		if ax != "":
+			axes[ax] = true
+	if axes.has("target"):
+		atk_pct += int(cmd.get("axis_target", 0))
+	if axes.has("position"):
+		def_add += int(cmd.get("axis_position", 0))
+	if axes.has("doctrine"):
+		hp_pct += int(cmd.get("axis_doctrine", 0))
+
+	if atk_pct != 0:
+		atk = maxi(1, atk * (100 + atk_pct) / 100)
+	if hp_pct != 0:
+		max_hp = maxi(1, max_hp * (100 + hp_pct) / 100)
+		hp = max_hp
+	command_def = def_add
+
+
+## 보조 지휘가 준 방어 단계. take_damage 가 읽는다.
+var command_def: int = 0
+
+
 func power_damage(percent: int) -> int:
 	# 정수 연산만 쓴다. 결정론을 깨지 않기 위해서다.
 	# focus_bonus 는 [집중사격] 이 붙인 영구 가산치다.
@@ -266,7 +301,7 @@ func take_damage(amount: int, from: Unit) -> int:
 		# 최소 1 은 남긴다. 안 그러면 [방어 태세] 3단계(4로 나눔) 앞에서 공격력
 		# 3 이하가 통째로 0 이 되어 **면역**이 된다. 뎀감은 줄이는 것이지
 		# 무효로 만드는 것이 아니다.
-		dealt = maxi(1, dealt / (2 + defend_level + passive_def))
+		dealt = maxi(1, dealt / (2 + defend_level + passive_def + command_def))
 	hp -= dealt
 	hit_pending = true
 	last_attacker_index = from.index if from != null else -1

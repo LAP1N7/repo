@@ -8,6 +8,7 @@ extends Control
 
 signal done()
 signal help()
+signal command()
 
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다. 없으면 전부 무시된다.
 var tut: Tutorial = null
@@ -25,6 +26,7 @@ var stage_buttons: Array[Button] = []
 var btn_reroll: Button
 var btn_refine: Button
 var btn_merge: Button
+var btn_command: Button
 var sfx: Sfx
 ## 정제 모드: 손패 카드를 누르면 사는 게 아니라 영구히 버린다.
 var refining: bool = false
@@ -97,6 +99,14 @@ func setup(p_run: RunState) -> void:
 	# 노드는 남기고 보이지만 않게 한다. 지우면 배치를 다시 잡아야 한다.
 	btn_merge.visible = false
 	btn_merge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# 보조 지휘는 정제 옆이다. 셋 다 "예산을 어디에 쓸까" 라서, 재검색·정제와
+	# 나란히 놓여야 같은 저울에 올려놓고 고르게 된다.
+	# (합성 버튼이 쓰던 자리다. 그건 지금 숨어 있고 클릭도 안 먹는다.)
+	btn_command = UiKit.button(self, Vector2(460, 355), Vector2(210, 38),
+		UiText.t("shop.command", "보조 지휘  →"), 14)
+	btn_command.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
+	btn_command.pressed.connect(func(): command.emit())
 
 	# 안내문은 버튼 줄 **아래**다. 합성 버튼을 (460,355)에 넣으면서 같은 자리에
 	# 있던 이 라벨과 겹쳐 글자가 서로 위에 얹혔다.

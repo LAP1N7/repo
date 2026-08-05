@@ -653,7 +653,9 @@ const LEVEL_HEAL: int = 8
 static func can_merge(card_id: String) -> bool:
 	if not TABLE.has(card_id):
 		return false
-	return String(TABLE[card_id]["act"]) != "hold"
+	# PASSIVE 모듈에는 act 가 없다 - 조건도 행동도 아닌 상시 효과라서다.
+	# 기본값을 "hold" 로 두면 그대로 "합성 불가" 가 된다. 올릴 수치가 없으니 맞다.
+	return String(TABLE[card_id].get("act", "hold")) != "hold"
 
 
 ## 레벨이 반영된 규칙. 전투와 화면이 반드시 이걸 봐야 한다.

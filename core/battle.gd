@@ -79,6 +79,8 @@ func setup(p_stage_id: int, party: Array) -> void:
 			bool(member.get("special_first", false)),
 			member.get("card_levels", {})
 		))
+		# 보조 지휘 강화는 편성이 확정된 이 순간 한 번만 얹는다.
+		units[units.size() - 1].apply_command(member.get("cmd", {}))
 		idx += 1
 
 	var stage: Dictionary = Stages.get_stage(p_stage_id)
