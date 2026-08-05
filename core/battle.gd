@@ -291,6 +291,9 @@ func step() -> bool:
 			_emit({ "type": "idle", "unit": u.index })
 			continue
 
+		# 협력 축이 읽는다. 아군이 무엇을 보고 있는지가 남아야 협공·분산이 성립한다.
+		var chosen: Unit = choice.get("target", null)
+		u.last_target = chosen if (chosen != null and chosen.team != u.team) else null
 		u.last_card_id = String(choice["card_id"])
 		u.last_rule_text = String(choice["card"]["text"])
 

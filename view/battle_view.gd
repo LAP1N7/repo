@@ -249,11 +249,9 @@ func _build_rules_panel() -> void:
 	UiKit.label(rules_root, Vector2(px, 48), Vector2(640, 20),
 		UiText.t("battle.rules_sub", "위에서부터 처음 맞는 규칙 하나가 실행된다."), 12, UiKit.MUTED)
 
-	var base_names := PackedStringArray()
-	for r in Innates.BASE:
-		base_names.append(String(r["text"]))
 	UiKit.label(rules_root, Vector2(px, 66), Vector2(660, 18),
-		UiText.t("battle.m01", "모든 유닛 공통 기본기:  %s") % "   /   ".join(base_names), 10, UiKit.FAINT)
+		UiText.t("battle.axis_hint",
+			"네 축을 순서대로 통과해 이번 틱의 행동 하나가 정해집니다."), 10, UiKit.FAINT)
 
 	slot_rows.clear()
 	contrib_rows.clear()
@@ -330,9 +328,9 @@ func _build_rules_panel() -> void:
 				UiText.t("battle.m03", "특 -"), 11, UiKit.LINE)
 			ry += ROW_LINE
 
-		var own: Array = Innates.TABLE.get(String(party[i]["type"]), [])
+		var own_text := Innates.describe(String(party[i]["type"]))
 		_slot_row(i, -1, px, ry, "기", UiText.t("battle.m04", "기본기"),
-			UiText.t("battle.m05", "공통 골격만") if own.is_empty() else String(own[0]["text"]), UiKit.FAINT)
+			own_text, UiKit.FAINT)
 
 
 ## 규칙 한 줄. 배경판을 깔아 두고 발동할 때 밝힌다.

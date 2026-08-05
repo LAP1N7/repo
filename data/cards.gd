@@ -34,267 +34,300 @@ class_name Cards
 ## 게임이 시작을 못 한다 - 세다고 희귀하게 만들면 재미가 아니라 고통이 된다.
 
 const TABLE: Dictionary = {
-	"engage": {
+	# ── TARGET · 표적 ────────────────────────────────────────
+	"near_first": {
+		"axis": "target",
+		"tag": "none",
 		"tier": 1,
-		"cost": 2,
-		"name": "교전",
+		"cost": 1,
+		"name": "근접 우선",
 		"cond": "always",
 		"cond_arg": 0,
-		"act": "attack",
-		"target": "nearest_enemy",
-		# 평타 100%. 기본 공격(70%)보다 확실히 세야 살 이유가 생긴다.
-		"power": 100,
-		"text": "항상 → 가장 가까운 적 공격 (위력 100%)",
+		"pick": "nearest_enemy",
+		"text": "가장 가까운 적을 노린다",
 	},
-	"finisher": {
-		"tier": 3,
-		"cost": 4,
-		"name": "마무리",
+	"backline": {
+		"axis": "target",
+		"tag": "rear",
+		"tier": 2,
+		"cost": 3,
+		"name": "후열 침투",
 		"cond": "always",
 		"cond_arg": 0,
-		"act": "attack",
-		"target": "lowest_hp_enemy",
-		"text": "항상 → HP 가장 낮은 적 공격",
+		"pick": "backline_enemy",
+		"text": "가장 깊은 적을 노린다",
 	},
 	"snipe": {
+		"axis": "target",
+		"tag": "rear",
 		"tier": 2,
-		"cost": 2,
+		"cost": 3,
 		"name": "저격",
-		"cond": "enemy_in_range",
-		"cond_arg": 0,
-		"act": "attack",
-		"target": "farthest_enemy",
-		"text": "적이 사거리 안 → 가장 먼 적 공격",
-	},
-	"charge": {
-		"tier": 1,
-		"cost": 2,
-		"name": "돌격",
 		"cond": "always",
 		"cond_arg": 0,
-		"act": "move_toward",
-		"target": "nearest_enemy",
-		# 기본 전진보다 한 칸 더 간다. 이게 없으면 `돌격 ≡ 추격 ≡ 기본 전진` 이 되어
-		# 세 규칙이 완전히 같은 카드가 된다.
-		"move_bonus": 1,
-		"text": "항상 → 적에게 접근 (한 칸 더)",
+		"pick": "farthest_enemy",
+		"text": "가장 먼 적을 노린다",
 	},
-	"retreat": {
-		"tier": 1,
-		"cost": 1,   # 2→1 기여도 -6.5%p. 물러나는 틱은 못 쏘는 틱이라 구조적으로 손해다
-		"name": "후퇴",
-		"cond": "self_hp_below",
-		"cond_arg": 50,
-		"act": "move_away",
-		"target": "nearest_enemy",
-		"text": "내 HP < 50% → 적 반대로 1칸",
-	},
-	"resolve": {
-		"tier": 1,
-		"cost": 1,
-		"name": "결사",
-		"cond": "self_hp_below",
-		"cond_arg": 25,
-		"act": "attack",
-		"target": "lowest_hp_enemy",
-		"text": "내 HP < 25% → HP 가장 낮은 적 공격",
-	},
-	"keep_distance": {
-		"tier": 2,
-		"cost": 2,
-		"name": "거리 유지",
-		"cond": "enemy_within",
-		"cond_arg": 2,
-		"act": "move_away",
-		"target": "nearest_enemy",
-		# 이동 보너스를 한 번 줬다가 뺐다. 궁수가 틱당 2칸씩 물러나니 기동이 과했고,
-		# 애초에 보너스를 준 이유(적이 돌격으로 2칸씩 좁힘)는 튜토리얼 스테이지에서
-		# 돌격을 제거하면서 사라졌다. 카이팅은 "때릴 틱을 생존과 맞바꾸는" 거래여야지
-		# 공짜 기동이 되면 안 된다.
-		"text": "적이 2칸 이내 → 적 반대로 1칸",
-	},
-	"counter": {
-		"tier": 2,
-		"cost": 2,   # 3→2 기여도 -1.5%p. 발동률은 86% 로 높은데 값을 못 한다
-		"name": "반격",
-		"cond": "was_hit_last_tick",
-		"cond_arg": 0,
-		"act": "attack",
-		"target": "last_attacker",
-		"text": "직전 틱에 피격 → 때린 적 공격",
-	},
-	"guard_stance": {
-		"tier": 2,
-		"cost": 2,   # 3→2 발동률 편차가 3.7~75% 로 판을 심하게 탄다
-		"name": "방어 태세",
-		"cond": "enemies_adjacent_at_least",
-		"cond_arg": 2,
-		"act": "defend",
-		"target": "self",
-		"text": "주변 적 2명 이상 → 방어",
-	},
-	"mend": {
+	"cut_support": {
+		"axis": "target",
+		"tag": "rear",
 		"tier": 3,
 		"cost": 4,
-		"name": "구호",
-		"cond": "ally_hp_below",
-		"cond_arg": 50,
-		"act": "heal",
-		"target": "lowest_hp_ally",
-		"text": "아군 HP < 50% → 가장 HP 낮은 아군 회복",
+		"name": "지원 차단",
+		"cond": "always",
+		"cond_arg": 0,
+		"pick": "healer_enemy",
+		"text": "회복하는 적을 먼저 노린다",
 	},
-	"hold_ground": {
+	"execute": {
+		"axis": "target",
+		"tag": "execute",
+		"tier": 2,
+		"cost": 3,
+		"name": "처형",
+		"cond": "always",
+		"cond_arg": 0,
+		"pick": "lowest_hp_enemy",
+		"text": "HP 비율이 가장 낮은 적을 노린다",
+	},
+	"ignore_guard": {
+		"axis": "target",
+		"tag": "execute",
+		"tier": 2,
+		"cost": 3,
+		"name": "방패 무시",
+		"cond": "always",
+		"cond_arg": 0,
+		"pick": "unguarded_enemy",
+		"text": "방어 태세인 적을 건너뛴다",
+	},
+	"firepower": {
+		"axis": "target",
+		"tag": "execute",
+		"tier": 3,
+		"cost": 4,
+		"name": "화력 우선",
+		"cond": "always",
+		"cond_arg": 0,
+		"pick": "strongest_enemy",
+		"text": "공격력이 가장 높은 적을 노린다",
+	},
+
+	# ── ENGAGE · 교전 ────────────────────────────────────────
+	"hold_fire": {
+		"axis": "engage",
+		"tag": "patience",
 		"tier": 1,
-		"cost": 1,
-		"name": "사수",
+		"cost": 2,
+		"name": "사거리 대기",
 		"cond": "enemy_out_of_range",
 		"cond_arg": 0,
-		"act": "hold",
-		"target": "self",
-		"text": "적이 사거리 밖 → 제자리 유지",
+		"stance": "wait",
+		"text": "적이 사거리 밖 → 제자리를 지킨다",
 	},
-	# ── 조율 카드 ─────────────────────────────────────────────────────────
-	# 여기부터 네 장은 다른 축에 있다. 위의 카드들이 전부 "**언제** 싸울까" 를
-	# 바꾼다면, 이 넷은 "**누구를** 향할까" 를 바꾼다.
-	#
-	# 슬롯이 3칸뿐이라 카드의 값은 "기본기보다 얼마나 센가" 가 아니라 "이 한 장이
-	# 빌드를 만드는가" 로 정해진다. 조건만 바꾸는 카드는 아무리 세도 그 유닛이
-	# 하던 일을 조금 더 잘할 뿐이고, 대상을 바꾸는 카드는 그 유닛의 역할 자체를
-	# 바꾼다. 실제로 개편 전 13장이 쓰는 대상은 `가장 가까운 적` 에 6장이 몰려
-	# 있었고, **아군을 향해 움직이는 카드가 한 장도 없었다.**
-	"escort": {
-		"tier": 2,
+	"fall_back": {
+		"axis": "engage",
+		"tag": "patience",
+		"tier": 1,
 		"cost": 2,
-		"name": "호위",
-		"cond": "other_ally_hp_below",
-		"cond_arg": 60,
-		"act": "move_to_ally",
-		"target": "lowest_hp_other_ally",
-		# 이 게임 최초로 **아군을 향해** 움직이는 카드다. 이 한 장이면 전사든
-		# 방패병이든 "제일 앞에서 때리는 놈" 에서 "제일 약한 아군 옆에 붙는 놈" 이
-		# 된다. 슬롯 하나를 공격에서 빼는 대신 진형이 생긴다.
-		"text": "다른 아군 HP < 60% → 그 아군 곁으로 이동",
+		"name": "부상 회피",
+		"cond": "self_hp_below",
+		"cond_arg": 50,
+		"stance": "avoid",
+		"text": "자신 HP < 50% → 물러난다",
 	},
-	"crossfire": {
-		"tier": 3,
+	"delay_open": {
+		"axis": "engage",
+		"tag": "patience",
+		"tier": 2,
 		"cost": 3,
+		"name": "개전 지연",
+		"cond": "tick_below",
+		"cond_arg": 4,
+		"stance": "wait",
+		"text": "4픸까지 → 진형을 갖추고 기다린다",
+	},
+	"pursue": {
+		"axis": "engage",
+		"tag": "charge",
+		"tier": 2,
+		"cost": 3,
+		"name": "끝까지 추격",
+		"cond": "enemy_out_of_range",
+		"cond_arg": 0,
+		"stance": "pursue",
+		"text": "적이 사거리 밖 → 끝까지 쪽는다",
+	},
+	"berserk": {
+		"axis": "engage",
+		"tag": "charge",
+		"tier": 2,
+		"cost": 3,
+		"name": "광전",
+		"cond": "self_hp_below",
+		"cond_arg": 40,
+		"stance": "engage",
+		"text": "자신 HP < 40% → 물러나지 않는다",
+	},
+	"guard_stance": {
+		"axis": "engage",
+		"tag": "none",
+		"tier": 1,
+		"cost": 2,
+		"name": "방어 우선",
+		"cond": "enemies_adjacent_at_least",
+		"cond_arg": 2,
+		"stance": "defend",
+		"text": "인접한 적 2명 이상 → 방어한다",
+	},
+	"preempt": {
+		"axis": "engage",
+		"tag": "charge",
+		"tier": 3,
+		"cost": 5,
+		"name": "선제 차단",
+		"cond": "enemy_special_ready",
+		"cond_arg": 0,
+		"stance": "engage",
+		"text": "적이 궁극기 직전 → 물러나지 않는다",
+	},
+	"finish_call": {
+		"axis": "engage",
+		"tag": "charge",
+		"tier": 2,
+		"cost": 3,
+		"name": "마무리 신호",
+		"cond": "target_hp_below",
+		"cond_arg": 30,
+		"stance": "engage",
+		"text": "표적 HP < 30% → 물러나지 않는다",
+	},
+
+	# ── POSITION · 위치 ────────────────────────────────────
+	"keep_range": {
+		"axis": "position",
+		"tag": "skirmish",
+		"tier": 2,
+		"cost": 3,
+		"name": "거리 유지",
+		"cond": "always",
+		"cond_arg": 0,
+		"stand": "keep_range",
+		"text": "최대 사거리를 유지한다",
+	},
+	"flank": {
+		"axis": "position",
+		"tag": "skirmish",
+		"tier": 2,
+		"cost": 3,
+		"name": "측면 기동",
+		"cond": "always",
+		"cond_arg": 0,
+		"stand": "flank",
+		"text": "가장자리로 우회한다",
+	},
+	"forced_march": {
+		"axis": "position",
+		"tag": "skirmish",
+		"tier": 3,
+		"cost": 4,
+		"name": "강행군",
+		"cond": "always",
+		"cond_arg": 0,
+		"stand": "march",
+		"text": "이동 거리 +1",
+	},
+	"front_line": {
+		"axis": "position",
+		"tag": "formation",
+		"tier": 1,
+		"cost": 2,
+		"name": "전열 유지",
+		"cond": "always",
+		"cond_arg": 0,
+		"stand": "frontline",
+		"text": "아군 중 가장 앞에 선다",
+	},
+	"behind_guard": {
+		"axis": "position",
+		"tag": "formation",
+		"tier": 2,
+		"cost": 3,
+		"name": "방패 뒤",
+		"cond": "always",
+		"cond_arg": 0,
+		"stand": "behind_guard",
+		"text": "방패병·전사보다 뒤에 선다",
+	},
+	"cluster": {
+		"axis": "position",
+		"tag": "formation",
+		"tier": 1,
+		"cost": 2,
+		"name": "밀집",
+		"cond": "always",
+		"cond_arg": 0,
+		"stand": "cluster",
+		"text": "아군과 1칸 이내를 유지한다",
+	},
+
+	# ── SQUAD · 협력 ──────────────────────────────────────────
+	"solo": {
+		"axis": "squad",
+		"tag": "none",
+		"tier": 1,
+		"cost": 1,
+		"name": "단독 행동",
+		"cond": "always",
+		"cond_arg": 0,
+		"coop": "solo",
+		"text": "아군을 참조하지 않는다",
+	},
+	"focus_fire": {
+		"axis": "squad",
+		"tag": "focus",
+		"tier": 2,
+		"cost": 4,
 		"name": "협공",
 		"cond": "ally_engaged",
 		"cond_arg": 0,
-		"act": "attack",
-		"target": "focused_enemy",
-		"power": 100,
-		# 화력 분산이 이 게임에서 지는 가장 흔한 이유다. 셋이 각자 다른 적을 때리면
-		# 아무도 안 죽고 적은 셋 다 살아서 반격한다. 이 카드는 "먼저 친 아군이
-		# 대상을 정하고 나머지가 얹는다" 를 규칙으로 만든다.
-		#
-		# 슬롯 순서가 그대로 역할이 된다 - 협공을 1번에 두면 추종자, 아래 두면
-		# 자기 판단이 먼저인 선봉이 된다.
-		"text": "아군이 교전 중 → 그 적을 같이 공격",
+		"coop": "focus",
+		"text": "아군이 노리는 적을 같이 노린다",
 	},
-	"berserk": {
+	"rally": {
+		"axis": "squad",
+		"tag": "focus",
 		"tier": 2,
-		"cost": 2,   # 3→2 발동률 22%/4.6%. 터질 땐 세지만 기댓값이 3코에 못 미친다
-		"name": "광전사",
-		"cond": "team_killed_last_tick",
+		"cost": 3,
+		"name": "집결",
+		"cond": "always",
 		"cond_arg": 0,
-		"act": "attack",
-		"target": "lowest_hp_enemy",
-		"power": 140,
-		# 처음엔 `처치 직후 → 다음 적에게 두 칸 접근` 이었는데 감사가 [돌격] 에게
-		# 지배당한다고 잡았다. 맞는 지적이다 - 행동도 대상도 돌격과 같고 조건만
-		# 빡빡한데 값은 더 비쌌다. 이동 보너스 1칸 차이로는 카드가 안 된다.
-		#
-		# 한 틱에 한 행동뿐인 엔진에서 "접근하거나 공격" 중 살릴 쪽은 공격이다.
-		# 접근은 이미 돌격·추격·암살 세 장이 하고 있고, 처치 직후에만 켜지는
-		# 강타는 어느 카드도 안 하기 때문이다. 죽이면 피 냄새를 맡고 제일 약한
-		# 놈에게 달려드는, 굴러가기 시작하면 멈추지 않는 카드가 된다.
-		#
-		# 조건은 **팀 단위**다. 본인 처치로 잡았더니 1680회 전투에서 39번밖에
-		# 안 터졌다(0.02회/전투) - 한 유닛이 직접 막타를 치는 일 자체가 드물다.
-		# 팀 단위로 열면 "누가 하나 눕히면 전원이 달려든다" 가 되어, 협공과 함께
-		# 화력 집중 빌드의 두 번째 장이 된다.
-		"text": "직전 틱에 아군이 적 처치 → HP 가장 낮은 적 강타 (위력 140%)",
+		"coop": "rally",
+		"text": "아군이 모일 때까지 기다린다",
 	},
-	"assassinate": {
+	"spread_out": {
+		"axis": "squad",
+		"tag": "spread",
 		"tier": 2,
-		"cost": 2,   # 3→2 기여도 최하위권. 역할 카드라 값을 낮춰 시험 비용을 줄인다
-		"name": "암살",
-		"cond": "tick_below",
-		"cond_arg": 6,
-		"act": "move_toward",
-		# farthest_enemy 가 아니라 backline_enemy 다. 맨해튼 거리로 고르면
-		# 대각선에 있는 전열이 후열과 동점이 되어 앞줄로 간다. (rules.gd 주석)
-		"target": "backline_enemy",
-		"move_bonus": 1,
-		# 전열을 지나쳐 후열로 간다. 그 사이 맞는 건 이 카드의 값이지 결함이 아니다.
-		#
-		# ── 조건이 `항상` 이면 안 된다 ────────────────────────────────────
-		# 처음엔 `항상` 이었다. 가장 먼 적은 정의상 거의 사거리 밖이라
-		# `move_toward` 가 매 틱 실행 가능했고, 발동률 98.4% 에 기여도 -7.4%p -
-		# 이 카드를 꽂은 유닛이 전투 내내 걷기만 하고 한 번도 공격하지 않았다.
-		# 역할 카드가 아니라 함정 카드였다.
-		#
-		# 개전 6틱으로 끊으면 "파고드는 국면" 과 "싸우는 국면" 이 나뉜다.
-		# 그 안에 후열에 닿고, 그 뒤로는 아래 슬롯의 공격 카드가 이어받는다.
-		# [암살] 1번 + [교전] 2번이 "후열까지 파고들고, 그 다음 친다" 는 한 문장이
-		# 되고, 순서를 뒤집으면 그냥 앞의 적을 때리는 유닛이 된다.
-		"text": "개전 6틱 안 → 가장 먼 적(후열)에게 파고든다 (한 칸 더)",
-	},
-	# ── 국면 카드 ─────────────────────────────────────────────────────────
-	# 조율 카드가 "누구를 향할까" 를 바꿨다면, 이 둘은 "**언제부터 다르게 싸울까**"
-	# 를 바꾼다. 전투에 국면이 생긴다.
-	#
-	# 어휘 분포를 세어 보고 넣었다. 조건 12종 중 시간 조건은 `개전 n틱 안` 하나뿐이라
-	# **후반에 태세를 바꾸는 수단이 아예 없었고**, 아군의 죽음에 반응하는 조건은
-	# 0개였다. 그 사이 타임아웃이 전체 결말의 16.7% 로 세 번째로 흔했다.
-	"all_in": {
-		"tier": 2,
-		# 1코다. 20틱 전에는 아무 일도 안 하는 카드라 값이 싸야 슬롯을 걸 만하다.
-		# (돌격 2코보다 싸야 감사의 지배 판정도 통과한다 - 돌격은 `항상` 이라
-		#  더 자주 발동하므로, 같은 값이면 이 카드가 존재할 이유가 없다)
-		"cost": 1,
-		"name": "총력전",
-		"cond": "tick_above",
-		# 20 으로 잡았다가 발동률 2.3% 로 죽은 카드가 됐다. 평균 전투가 24.7틱이라
-		# 20틱은 사실상 "끝나기 직전" 이었다. 12 면 중반부터 태세가 바뀐다.
-		"cond_arg": 12,
-		"act": "move_toward",
-		"target": "nearest_enemy",
-		"move_bonus": 1,
-		# [거리 유지] 위에 [총력전] 을 두면 "초반엔 물러나며 쏘고, 20틱부터는
-		# 붙는다" 가 된다. 카이팅 교착을 플레이어가 직접 끊는 유일한 수단이다.
-		"text": "12틱 이후 → 적에게 접근 (한 칸 더)",
-	},
-	"revenge": {
-		"tier": 2,
-		"cost": 2,
-		"name": "복수",
-		# 처음엔 `직전 틱에 아군 사망` 이었는데 1680회 전투에서 39번(0.02회/전투)
-		# 밖에 안 터졌다. 아군이 죽는 순간은 드물고, 죽고 나면 대개 곧 진다.
-		# 조건을 `아군 HP 35% 미만` 으로 넓혀 **잃기 전에** 반응하게 한다.
-		# 그래야 만회 카드가 아니라 위기 카드가 된다.
-		"cond": "other_ally_hp_below",
-		"cond_arg": 35,
-		"act": "attack",
-		"target": "lowest_hp_enemy",
-		# [광전사](우리가 죽였을 때)의 거울이다. 유리할 때와 불리할 때가 같은
-		# 규칙으로 돌아가면 전투에 국면이 없다.
-		"power": 130,
-		"text": "다른 아군 HP < 35% → HP 가장 낮은 적 강타 (위력 130%)",
-	},
-	"pursue": {
-		"tier": 1,
-		"cost": 1,
-		"name": "추격",
-		"cond": "enemy_out_of_range",
+		"cost": 3,
+		"name": "분산",
+		"cond": "ally_engaged",
 		"cond_arg": 0,
-		"act": "move_toward",
-		# 기본 전진은 "가장 가까운 적" 으로 간다. 추격은 "HP 가장 낮은 적" 을 쫓아가
-		# 마무리한다. 대상이 달라야 기본기와 다른 카드가 된다.
-		"target": "lowest_hp_enemy",
-		"text": "적이 사거리 밖 → HP 가장 낮은 적을 쫓는다",
+		"coop": "spread",
+		"text": "아군이 노리지 않는 적을 노린다",
 	},
+	"escort": {
+		"axis": "squad",
+		"tag": "spread",
+		"tier": 2,
+		"cost": 3,
+		"name": "엄호",
+		"cond": "always",
+		"cond_arg": 0,
+		"coop": "escort",
+		"text": "HP가 가장 낮은 아군 곁에 선다",
+	},
+
 }
 
 const DECK_ORDER: Array[String] = [

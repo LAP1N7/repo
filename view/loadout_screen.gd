@@ -249,12 +249,11 @@ func _build_roster() -> void:
 			13, UiKit.MUTED)
 		return
 
-	# 공통 골격은 유닛마다 반복하면 줄이 길어져 잘린다. 한 번만 범례로 적는다.
-	var base_names := PackedStringArray()
-	for r in Innates.BASE:
-		base_names.append(String(r["text"]))
+	# 기본 AI 는 직업마다 다르므로 범례로 한 번에 못 적는다. 대원 줄마다 붙인다.
 	UiKit.label(roster_root, Vector2(RIGHT_X, 116), Vector2(700, 18),
-		UiText.t("battle.m01", "모든 유닛 공통 기본기:  %s") % "   /   ".join(base_names), 10, UiKit.FAINT)
+		UiText.t("loadout.base_hint",
+			"대원은 모듈이 없어도 자기 직업의 일을 합니다. 모듈은 그 판단을 수정합니다."),
+		10, UiKit.FAINT)
 
 	for i in run.roster.size():
 		var y := ROSTER_Y + i * ROW_H
@@ -342,13 +341,13 @@ func _build_roster() -> void:
 
 		# 직업 고유 기본기를 슬롯 바로 아래에 회색으로 붙인다.
 		# "카드 3장이 전부 어긋나면 여기로 떨어진다" 는 관계가 화면에 그대로 보여야 한다.
-		var own: Array = Innates.TABLE.get(tid, [])
+		var own_text := Innates.describe(tid)
 		var iy := y + INNATE_DY
 		var txt := UiText.t("loadout.m16", "기본기 ↓  ")
-		if own.is_empty():
-			txt += UiText.t("loadout.m17", "(공통 골격만)")
+		if own_text == "":
+			txt += UiText.t("loadout.m17", "(없음)")
 		else:
-			txt += "%s · %s" % [own[0]["name"], own[0]["text"]]
+			txt += own_text
 		var il := UiKit.label(roster_root, Vector2(RIGHT_X + 16, iy), Vector2(640, 18),
 			txt, 10, UiKit.FAINT)
 		il.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -94,6 +94,13 @@ var kill_pending: bool = false
 ## 인덱스로 들면 순환이 생기지 않는다.
 var last_attacker_index: int = -1
 
+## 이 대원이 마지막으로 고른 표적.
+##
+## 협력 축이 이걸 읽는다. [협공] 은 아군의 표적을 그대로 쓰고 [분산] 은 그
+## 표적을 후보에서 뺀다. 부대가 서로를 참조하려면 "누가 누구를 보고 있는가" 가
+## 어딘가에 남아 있어야 하는데, 그 자리가 여기다.
+var last_target: Unit = null
+
 ## 이번 교전에서 이 대원이 **입힌** 피해와 **회복시킨** 양의 누적.
 ##
 ## 순수 표시용이라 전투 판정에는 쓰지 않는다. 그런데 이게 없으면 "누가 실제로
@@ -142,7 +149,9 @@ static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i
 		u.cards.append(cid)
 		u.card_rules.append(Cards.leveled(cid, int(p_levels.get(cid, 1))))
 
-	u.innate = Innates.for_unit(p_type_id)
+	# 기본 AI 는 이제 규칙 목록이 아니라 직업별 표다. 파이프라인이 직접 읽으므로
+	# 유닛이 들고 다닐 이유가 없다. (data/innates.gd 참조)
+	u.innate = [] as Array[Dictionary]
 
 	# 직업이 안 맞는 특수 스킬은 조용히 버린다. UI 가 이미 막지만 여기서도 지킨다.
 	if p_special != "" and Specials.usable_by(p_special, p_type_id):

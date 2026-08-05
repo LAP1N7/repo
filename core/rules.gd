@@ -1,92 +1,325 @@
 class_name Rules
 extends RefCounted
 
-## 규칙 엔진. 매 틱 유닛의 슬롯을 1 → 2 → 3 순으로 읽어 실행할 규칙 하나를 고른다.
+## 판단 파이프라인.
 ##
-## ── 폴스루(fall-through) 결정 ─────────────────────────────────────────────
-## DESIGN 2.3 은 "처음 조건이 맞는 규칙 하나"라고만 썼지만, 그대로 구현하면
-## 스테이지 1의 적 전략 `돌격 → 교전` 이 성립하지 않는다. 돌격의 조건은 `항상`
-## 이므로 슬롯 1에서 무조건 참이 되고, 슬롯 2의 교전은 영원히 실행되지 않는다.
-## 적이 플레이어에게 붙기만 하고 때리지는 않는다.
+## 매 틱 대원 하나가 네 축을 **순서대로 통과해 행동 하나를 조립한다.**
 ##
-## 그래서 발동 조건을 두 단계로 나눴다:
-##   1. 조건이 참인가          (eval_condition)
-##   2. 그 행동이 실제로 가능한가 (is_viable - 대상이 존재하고 사거리/이동이 성립)
-## 둘 다 만족해야 발동하고, 하나라도 실패하면 다음 슬롯으로 내려간다.
+##   1) SQUAD    아군을 어떻게 참조할지 정한다 (협공 / 분산 / 엄호 / 집결)
+##   2) TARGET   누구를 노릴지 고른다
+##   3) ENGAGE   지금 싸울지 정한다 (교전 / 회피 / 대기 / 추격 / 방어)
+##   4) POSITION 사거리 밖일 때 어디로 갈지 정한다
+##   5) 조립     사거리 안이고 태세가 교전이면 공격(회복), 아니면 이동
 ##
-## FFXII 갬빗도 대상이 없는 갬빗은 건너뛴다. 이 규칙이 있어야
-## `돌격 → 교전` = "사거리 밖이면 붙고, 닿으면 때린다" 라는 자연스러운 문장이 된다.
-## ─────────────────────────────────────────────────────────────────────────
+## ── 왜 목록이 아니라 파이프라인인가 ──────────────────────────────────────
+## 예전에는 모듈 한 장이 조건과 행동을 다 들고 있었고, 엔진은 목록을 위에서부터
+## 훑어 처음 맞는 하나를 실행했다. 그래서 모듈을 장착하는 행위가 "이 대원에게
+## 동작 하나를 준다" 가 됐다. 그건 전술이 아니라 매크로 편집이다.
+##
+## 축을 넷으로 갈라도 대원은 한 틱에 행동 하나만 한다. 표적·위치·교전이 각자
+## 답을 내놓으면 셋 중 무엇을 실행할지가 정해져야 한다. 그래서 목록이 아니라
+## 조립 라인이다.
+##
+## ── 축 안에서는 폴스루가 그대로다 ────────────────────────────────────────
+## 한 축의 모듈은 위에서부터 읽어 **처음 성립하는 하나**가 이긴다. 조건이 없는
+## 모듈 아래는 죽은 칸이다. 플레이어가 이미 배운 규칙("위에 있는 게 먼저다")을
+## 버리지 않는다. 달라지는 건 그 목록이 넷으로 갈렸다는 것뿐이다.
+##
+## ── 축끼리 충돌하면 ──────────────────────────────────────────────────────
+##     교전  >  위치  >  표적
+## "싸울 것인가" 가 "어디 설 것인가" 를 이기고, 그게 "누구를 칠 것인가" 를
+## 이긴다. [교전: 회피] 가 걸리면 [표적: 후열 우선] 이 무엇을 고르든 물러난다.
+## 이 한 줄이 없으면 두 축이 충돌할 때마다 임의 판정이 된다.
+##
+## 표적을 교전보다 **먼저 계산**하는 것은 순서가 아니라 의존성 때문이다.
+## [마무리 신호](표적 HP < 30%) 같은 교전 조건이 표적을 알아야 판정된다.
+## 우선순위는 조립 단계에서 지켜진다.
+
+
+## 표적을 참조하는 교전 조건을 위해 파이프라인이 채워 두는 값.
+##
+## eval_condition 에 인자를 하나 더 다는 대신 여기 둔다. 조건 평가기는
+## 검사와 화면 양쪽에서 불리는데, 시그니처를 바꾸면 그 호출부가 전부 깨진다.
+static var _ctx_target: Unit = null
 
 
 ## 발동할 규칙을 고른다.
 ##
-## 평가 순서: 꽂은 카드 1 → 2 → 3, 그 다음 직업 기본기, 마지막으로 공통 골격.
-## 기본기가 맨 아래에 있으므로 산 카드가 항상 우선한다. 그리고 공통 골격에
-## "사거리 밖 → 접근" 이 있으므로 사실상 빈손으로도 유닛은 반드시 무언가 한다.
-##
-## 반환: { "card_id", "card", "target", "slot", "innate", "special" }.
-## 전부 실패하면 빈 Dictionary.
+## 반환은 예전 그대로다: { "card_id", "card", "target", "slot", "innate",
+## "special", "trace" }. card 는 이제 표에서 꺼낸 것이 아니라 **조립된** 것이다.
+## 전투 실행부(battle.gd)는 그 차이를 몰라도 된다.
 static func select(unit: Unit, state) -> Dictionary:
-	# 특수를 규칙 슬롯보다 먼저 볼지는 플레이어가 정한다.
-	# 무조건 최우선으로 두면 특수가 준비된 동안 슬롯 1~3 이 통째로 무시되어
-	# "우선순위가 곧 전략" 이라는 명제가 깨진다. (unit.gd 의 special_first 주석 참조)
+	# 궁극기를 슬롯보다 먼저 볼지는 플레이어가 정한다.
 	if unit.special_first:
 		var early := _try_special(unit, state)
 		if not early.is_empty():
 			return early
 
-	for slot in unit.card_rules.size():
-		var card_id: String = unit.cards[slot]
-		# 반드시 card_rules 를 본다. Cards.TABLE 을 직접 읽으면 합성 단계가
-		# 통째로 무시된다. (unit.gd 의 card_rules 주석 참조)
-		var hit := _try_rule(unit, unit.card_rules[slot], state)
-		if not hit.is_empty():
-			hit["card_id"] = card_id
-			hit["slot"] = slot
-			hit["innate"] = false
-			hit["special"] = false
-			return hit
+	var trace: Dictionary = {}
 
-	# 특수가 "전술 뒤" 면 카드가 전부 어긋난 뒤, 기본기보다는 먼저 본다.
+	# 1) SQUAD - 아군 참조 방식
+	var squad := _axis(unit, Axes.SQUAD, state, trace)
+	var coop := String(squad.get("value", "solo"))
+
+	# 2) TARGET - 누구를
+	var picked := _pick_target(unit, state, trace, coop)
+	var target: Unit = picked.get("target", null)
+
+	# 3) ENGAGE - 지금 싸우는가
+	_ctx_target = target
+	var eng := _axis(unit, Axes.ENGAGE, state, trace)
+	_ctx_target = null
+	var stance := String(eng.get("value", "engage"))
+
+	# 4) POSITION - 어디에
+	var pos := _axis(unit, Axes.POSITION, state, trace)
+	var stand := String(pos.get("value", ""))
+
+	# 궁극기가 "전술 뒤" 면 축을 다 읽은 다음, 기본 판단보다는 먼저 본다.
 	if not unit.special_first:
 		var late := _try_special(unit, state)
 		if not late.is_empty():
+			late["trace"] = trace
 			return late
 
-	for rule in unit.innate:
-		var hit2 := _try_rule(unit, rule, state)
-		if not hit2.is_empty():
-			hit2["card_id"] = ""
-			hit2["slot"] = -1
-			hit2["innate"] = true
-			hit2["special"] = false
-			return hit2
+	var built := _assemble(unit, state, target, stance, stand, coop)
+	if built.is_empty():
+		return {}
 
-	return {}
+	built["trace"] = trace
+	# slot 은 이제 "어느 축이 이번 행동을 정했는가" 다. 화면이 이걸로 줄을 밝힌다.
+	built["slot"] = int(built.get("slot", -1))
+	built["innate"] = bool(built.get("innate", true))
+	built["special"] = false
+	return built
+
+
+# ── 축 하나를 읽는다 ─────────────────────────────────────────────────────
+
+## 그 축의 모듈을 위에서부터 읽어 처음 성립하는 것을 고른다.
+##
+## trace 에 축별로 [{ slot, name, hit, why }] 를 남긴다. **건너뛴 항목과 그
+## 이유를 같이 남기는 게 핵심이다.** 성립한 것만 보여 주면 플레이어는
+## "왜 2번이 안 걸렸지" 를 답할 수 없고, 그러면 자기 교리가 틀린 건지 게임이
+## 이상한 건지 구별하지 못한다.
+static func _axis(unit: Unit, axis: String, state, trace: Dictionary) -> Dictionary:
+	var rows: Array = []
+	var out: Dictionary = {}
+	var key := String(Axes.PAYLOAD[axis])
+
+	for slot in unit.card_rules.size():
+		var rule: Dictionary = unit.card_rules[slot]
+		if rule.is_empty() or String(rule.get("axis", "")) != axis:
+			continue
+		var name := String(rule.get("name", ""))
+		if not out.is_empty():
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "위가 성립" })
+			continue
+		if not eval_condition(unit, String(rule["cond"]), int(rule["cond_arg"]), state):
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "조건 불성립" })
+			continue
+		rows.append({ "slot": slot, "name": name, "hit": true, "why": "" })
+		out = { "value": String(rule.get(key, "")), "rule": rule, "slot": slot }
+
+	trace[axis] = rows
+	return out
+
+
+# ── 2) 표적 ──────────────────────────────────────────────────────────────
+
+## 표적 축을 읽어 대상을 고른다. 아무것도 안 걸리면 가장 가까운 적.
+##
+## 협력 축이 여기에 개입한다. [협공] 은 아군이 이미 노리는 적을 그대로 쓰고,
+## [분산] 은 그 적을 후보에서 뺀다. 표적 축보다 **먼저** 걸리는 이유는,
+## 협력이 "부대 차원의 결정" 이고 표적은 "개인의 취향" 이기 때문이다.
+static func _pick_target(unit: Unit, state, trace: Dictionary, coop: String) -> Dictionary:
+	var rows: Array = []
+
+	# 협공: 아군이 노리는 적이 있으면 그쪽으로 확정한다.
+	if coop == "focus":
+		var shared := _ally_focus(unit, state)
+		if shared != null:
+			rows.append({ "slot": -1, "name": "협공", "hit": true, "why": "" })
+			trace[Axes.TARGET] = rows
+			return { "target": shared }
+
+	var banned: Unit = _ally_focus(unit, state) if coop == "spread" else null
+
+	for slot in unit.card_rules.size():
+		var rule: Dictionary = unit.card_rules[slot]
+		if rule.is_empty() or String(rule.get("axis", "")) != Axes.TARGET:
+			continue
+		var name := String(rule.get("name", ""))
+		if not eval_condition(unit, String(rule["cond"]), int(rule["cond_arg"]), state):
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "조건 불성립" })
+			continue
+		var t := resolve_target(unit, String(rule.get("pick", "nearest_enemy")), state, "attack")
+		if t == null or (banned != null and t.index == banned.index):
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "대상 없음" })
+			continue
+		rows.append({ "slot": slot, "name": name, "hit": true, "why": "" })
+		trace[Axes.TARGET] = rows
+		return { "target": t, "rule": rule, "slot": slot }
+
+	trace[Axes.TARGET] = rows
+	# 기본값. 악사는 아군을 살리는 게 기본이므로 표적도 아군 쪽이다.
+	var ai := Innates.base_ai(unit.type_id)
+	if String(ai["act"]) == "heal":
+		return { "target": resolve_target(unit, "lowest_hp_ally", state, "heal") }
+	return { "target": resolve_target(unit, "nearest_enemy", state, "attack") }
+
+
+## 아군이 이번 판에 노리고 있는 적. 없으면 null.
+## 아군이 지금 붙어 있는 적. 없으면 null.
+##
+## Battle 이 이미 팀별로 들고 있는 값을 그대로 쓴다. 자기가 정한 대상은
+## 제외되므로 혼자서 조건이 참이 되는 일이 없다 - 협력 축이 성립하는 근거다.
+static func _ally_focus(unit: Unit, state) -> Unit:
+	return state.focus_target_for(unit)
+
+
+# ── 5) 조립 ──────────────────────────────────────────────────────────────
+
+## 표적·태세·자리를 받아 이번 틱에 실제로 할 행동 하나를 만든다.
+##
+## 여기가 `교전 > 위치 > 표적` 우선순위가 실제로 지켜지는 곳이다.
+static func _assemble(unit: Unit, state, target: Unit, stance: String,
+		stand: String, coop: String) -> Dictionary:
+	var ai := Innates.base_ai(unit.type_id)
+	var act_kind := String(ai["act"])
+	var power := int(ai["power"])
+	# 강행군은 자리가 아니라 **이동력 보정**이다. 다른 자리 판단과 같이 걸린다.
+	var bonus := 1 if stand == "march" else 0
+
+	# ── 교전이 위치와 표적을 이긴다 ──────────────────────────────────────
+	match stance:
+		"wait":
+			return _rule(unit, "대기", "hold", target, 0, 0)
+		"defend":
+			return _rule(unit, "방어", "defend", unit, 0, 0)
+		"avoid":
+			var away := resolve_target(unit, "nearest_enemy", state, "")
+			if away != null and state.plan_move(unit, away, false, bonus) != unit.pos:
+				return _rule(unit, "회피", "move_away", away, 0, bonus)
+			# 물러날 칸이 없으면 버틴다. 회피가 실패했다고 공격으로 넘어가면
+			# "물러나라" 는 지시가 조용히 뒤집힌다.
+			return _rule(unit, "회피 불가", "hold", target, 0, 0)
+
+	if target == null:
+		return {}
+
+	# ── 사거리 안이면 일한다 ─────────────────────────────────────────────
+	var dist: int = Grid.manhattan(unit.pos, target.pos)
+	if dist <= unit.atk_range:
+		if act_kind == "heal":
+			if target.team == unit.team and target.missing_hp() > 0:
+				return _rule(unit, "회복", "heal", target, power, 0)
+		elif state.has_shot(unit, target):
+			# 원거리는 적이 코앞이면 한 칸 물러나며 쏠 자리를 만든다.
+			# 이게 기본 AI 의 flee_within 이다. 태세가 추격이면 안 물러난다.
+			var flee := int(ai["flee_within"])
+			if flee > 0 and dist <= flee and stance != "pursue":
+				var near := resolve_target(unit, "nearest_enemy", state, "")
+				if near != null and state.plan_move(unit, near, false, bonus) != unit.pos:
+					return _rule(unit, "간격 확보", "move_away", near, 0, bonus)
+			return _rule(unit, "공격", "attack", target, power, 0)
+
+	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
+	return _move_by_stand(unit, state, target, stance, stand, bonus)
+
+
+static func _move_by_stand(unit: Unit, state, target: Unit, stance: String,
+		stand: String, bonus: int) -> Dictionary:
+	var ai := Innates.base_ai(unit.type_id)
+
+	match stand:
+		"keep_range":
+			# 최대 사거리를 유지한다. 너무 가까우면 물러나고 멀면 붙는다.
+			var d: int = Grid.manhattan(unit.pos, target.pos)
+			if d < unit.atk_range and state.plan_move(unit, target, false, bonus) != unit.pos:
+				return _rule(unit, "간격 유지", "move_away", target, 0, bonus)
+			return _approach(unit, state, target, bonus, "거리 좁힘")
+
+		"behind_guard":
+			# 방패병·전사보다 앞에 서 있으면 물러난다. 없으면 그냥 붙는다.
+			var guard := _guard_ally(unit, state)
+			if guard != null and _is_ahead_of(unit, guard):
+				if state.plan_move(unit, guard, true, bonus) != unit.pos:
+					return _rule(unit, "방패 뒤", "move_to_ally", guard, 0, bonus)
+			return _approach(unit, state, target, bonus, "전진")
+
+		"cluster":
+			# 아군과 떨어져 있으면 붙는다.
+			var mate := _nearest_ally(unit, state)
+			if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1:
+				if state.plan_move(unit, mate, true, bonus) != unit.pos:
+					return _rule(unit, "밀집", "move_to_ally", mate, 0, bonus)
+			return _approach(unit, state, target, bonus, "전진")
+
+		"frontline", "flank", "march":
+			return _approach(unit, state, target, bonus, "전진")
+
+	# 위치 모듈이 없다. 직업 기본 AI 가 정한다.
+	if String(ai["stand"]) == "advance" or stance == "pursue":
+		return _approach(unit, state, target, bonus, "전진")
+	return _rule(unit, "제자리", "hold", target, 0, 0)
+
+
+static func _approach(unit: Unit, state, target: Unit, bonus: int, name: String) -> Dictionary:
+	if state.plan_move(unit, target, true, bonus) == unit.pos:
+		return _rule(unit, "정체", "hold", target, 0, 0)
+	return _rule(unit, name, "move_toward", target, 0, bonus)
+
+
+## 조립된 규칙 하나. 표에서 꺼낸 모듈과 같은 모양이라 실행부가 구분하지 않는다.
+static func _rule(unit: Unit, name: String, act: String, target: Unit,
+		power: int, move_bonus: int) -> Dictionary:
+	var card := { "name": name, "act": act, "text": name, "cond": "always",
+		"cond_arg": 0, "target": "", "move_bonus": move_bonus }
+	if power > 0:
+		card["power"] = power
+	return { "card": card, "target": target, "card_id": "", "slot": -1,
+		"innate": true, "special": false }
+
+
+static func _guard_ally(unit: Unit, state) -> Unit:
+	for a in state.living_allies_of(unit):
+		if a.index != unit.index and (a.type_id == "shieldman" or a.type_id == "warrior"):
+			return a
+	return null
+
+
+static func _nearest_ally(unit: Unit, state) -> Unit:
+	var best: Unit = null
+	var best_d: int = Grid.UNREACHABLE
+	for a in state.living_allies_of(unit):
+		if a.index == unit.index:
+			continue
+		var d: int = Grid.manhattan(unit.pos, a.pos)
+		if d < best_d:
+			best_d = d
+			best = a
+	return best
+
+
+## 적진 쪽으로 더 나가 있는가. 진영마다 "앞" 의 방향이 반대다.
+static func _is_ahead_of(unit: Unit, other: Unit) -> bool:
+	if unit.team == Unit.TEAM_PLAYER:
+		return unit.pos.x > other.pos.x
+	return unit.pos.x < other.pos.x
 
 
 static func _try_special(unit: Unit, state) -> Dictionary:
 	if not unit.special_ready():
 		return {}
-	var hit := _try_rule(unit, Specials.TABLE[unit.special], state)
-	if hit.is_empty():
+	var rule: Dictionary = Specials.TABLE[unit.special]
+	if not eval_condition(unit, String(rule["cond"]), int(rule["cond_arg"]), state):
 		return {}
-	hit["card_id"] = unit.special
-	hit["slot"] = -2
-	hit["innate"] = false
-	hit["special"] = true
-	return hit
-
-
-## 규칙 하나가 지금 발동 가능한지 본다. 되면 { "card", "target" }, 아니면 {}.
-static func _try_rule(unit: Unit, rule: Dictionary, state) -> Dictionary:
-	if not eval_condition(unit, rule["cond"], int(rule["cond_arg"]), state):
-		return {}
-	var target: Unit = resolve_target(unit, String(rule["target"]), state, String(rule["act"]))
+	var target := resolve_target(unit, String(rule["target"]), state, String(rule["act"]))
 	if not is_viable(unit, rule, target, state):
 		return {}
-	return { "card": rule, "target": target }
+	return { "card": rule, "target": target, "card_id": unit.special,
+		"slot": -2, "innate": false, "special": true, "trace": {} }
 
 
 # ── 조건 ─────────────────────────────────────────────────────────────────
@@ -168,6 +401,18 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 		"tick_below":
 			# 개전 직후에만 발동하는 규칙용. state.tick 은 1부터 센다.
 			return state.tick < arg
+
+		"enemy_special_ready":
+			# 적 중에 궁극기가 준비된 자가 있는가. [선제 차단] 이 이걸 본다.
+			for e in state.living_enemies_of(unit):
+				if e.special_ready():
+					return true
+			return false
+
+		"target_hp_below":
+			# 지금 노리고 있는 표적의 HP. 파이프라인이 _ctx_target 을 채워 준다.
+			# 표적이 아직 안 정해진 경로에서 불리면 성립하지 않는다.
+			return _ctx_target != null and _ctx_target.hp_percent_below(arg)
 
 		"never":
 			# 패시브 궁극기의 자리 표시. 규칙 엔진은 이걸 절대 고르지 않는다.
@@ -286,6 +531,36 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 		"all_enemies":
 			# 광역기는 개별 대상이 없다. 생존 적이 하나라도 있으면 성립한다.
 			return enemies[0] if enemies.size() > 0 else null
+
+		"healer_enemy":
+			# 회복하는 적 우선. 방벽 뒤의 악사를 끊는 표적 교리다.
+			var h: Unit = null
+			for e in enemies:
+				if String(Innates.base_ai(e.type_id)["act"]) == "heal":
+					h = e
+					break
+			return h
+
+		"unguarded_enemy":
+			# 방어 태세인 적을 건너뛴다. 전부 방어 중이면 아무도 안 고른다 -
+			# 그게 이 모듈의 대가다. 아래 칸으로 폴스루한다.
+			var u: Unit = null
+			var ud: int = Grid.UNREACHABLE
+			for e in enemies:
+				if e.defend_level > 0:
+					continue
+				var d: int = Grid.manhattan(unit.pos, e.pos)
+				if d < ud:
+					ud = d
+					u = e
+			return u
+
+		"strongest_enemy":
+			var sbest: Unit = null
+			for e in enemies:
+				if sbest == null or e.atk > sbest.atk:
+					sbest = e
+			return sbest
 
 	push_error("Rules: 알 수 없는 대상 '%s'" % target_kind)
 	return null

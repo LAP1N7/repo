@@ -129,7 +129,7 @@
 	"loadout.m14": "우선순위 하향",
 	"loadout.m15": "%d.  비어 있음",
 	"loadout.m16": "기본 알고리즘  ",
-	"loadout.m17": "(기본 알고리즘)",
+	"loadout.m17": "(없음)",
 	"loadout.m18": "배치 미완료",
 	"reward.m01": "+%d → +%d\n\nHP %d → %d\n공격 %d → %d\n\n%s",
 	"reward.m02": "모듈 슬롯에 장착합니다",
@@ -196,5 +196,7 @@
 	"battle.m18": "회복 %d",
 	"battle.m19": "피해 %d",
 	"title.audio_locked": "화면을 한 번 누르면 음악이 재생됩니다.",
-	"title.audio_fail": "음악 재생 실패 · %s"
+	"title.audio_fail": "음악 재생 실패 · %s",
+	"loadout.base_hint": "대원은 모듈이 없어도 자기 직업의 일을 합니다. 모듈은 그 판단을 수정합니다.",
+	"battle.axis_hint": "네 축을 순서대로 통과해 이번 틱의 행동 하나가 정해집니다."
 }
