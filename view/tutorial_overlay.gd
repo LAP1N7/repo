@@ -107,7 +107,7 @@ func setup(p_tut: Tutorial, p_screen: Node = null) -> void:
 	# "아무 데나 클릭" 하나에만 의존하면, 클릭이 다른 Control 에 먹히거나 rect 계산이
 	# 어긋났을 때 플레이어가 그냥 갇힌다. 실제로 그렇게 막혔다.
 	# 눌러야 할 대상이 눈에 보이는 게 가장 확실하다.
-	_btn_next = UiKit.button(_bubble, Vector2.ZERO, Vector2(120, 30), "계속  ▶", 14)
+	_btn_next = UiKit.button(_bubble, Vector2.ZERO, Vector2(120, 30), UiText.t("tut.m01", "계속  >"), 14)
 	_btn_next.mouse_filter = Control.MOUSE_FILTER_STOP
 	_btn_next.pressed.connect(_advance_if_click_step)
 
@@ -134,16 +134,16 @@ func refresh() -> void:
 	var click_step := tut.advances_on_click()
 	_btn_next.visible = click_step
 	if click_step:
-		_lbl_hint.text = "[계속] 을 눌러라"
+		_lbl_hint.text = UiText.t("tut.m02", "[계속] 을 눌러라")
 	elif tut.anchor_node() != null:
 		# 잠긴 버튼을 가리키고 있으면 그렇다고 말해야 한다.
 		# 실제로 [전투 시작] 이 인원 미달로 비활성인 채 강조된 적이 있는데,
 		# 화면은 "표시된 곳을 눌러라" 라고만 해서 진행이 막힌 것처럼 보였다.
 		var an := tut.anchor_node()
 		if an is BaseButton and (an as BaseButton).disabled:
-			_lbl_hint.text = "표시된 곳이 아직 잠겨 있다 - 위의 조건을 먼저 채워라"
+			_lbl_hint.text = UiText.t("tut.m03", "표시된 곳이 아직 잠겨 있다 - 위의 조건을 먼저 채워라")
 		else:
-			_lbl_hint.text = "표시된 곳을 눌러라"
+			_lbl_hint.text = UiText.t("tut.m04", "표시된 곳을 눌러라")
 	else:
 		_lbl_hint.text = ""
 
@@ -349,7 +349,7 @@ func _draw() -> void:
 		draw_circle(Vector2(cx, base - 300.0), 56.0, Color(0.22, 0.24, 0.30, 0.9))
 		draw_rect(Rect2(cx - 62.0, base - 250.0, 124.0, 250.0), Color(0.18, 0.20, 0.26, 0.9))
 		var f := UiKit.font(12)
-		var t := "(초상 준비 중)"
+		var t := UiText.t("tut.m05", "(초상 준비 중)")
 		var w := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 		draw_string(f, Vector2(cx - w * 0.5, base + 22.0), t,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiKit.LINE)

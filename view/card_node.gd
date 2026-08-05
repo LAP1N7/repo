@@ -74,7 +74,7 @@ func setup(p_card_id: String, p_index: int, p_mini: bool = false,
 		# 이모지(🚫)는 맑은 고딕에 글리프가 없어서 빈 네모로 뜬다. 글자로 쓴다.
 		var s := card_size()
 		_ban_btn = UiKit.button(self, Vector2(8, s.y - 26), Vector2(s.x - 16, 20), UiText.t("card.ban", "제외"), 10)
-		_ban_btn.tooltip_text = "이 카드를 이번 런 전체에서 배제한다 (다음 스테이지에도 안 나옴)"
+		_ban_btn.tooltip_text = UiText.t("card.m01", "이 카드를 이번 런 전체에서 배제한다 (다음 스테이지에도 안 나옴)")
 		_ban_btn.pressed.connect(func(): banned.emit(self))
 
 	# 살짝 다른 위상으로 흔들리게 해서 카드가 한 덩어리로 보이지 않게 한다.

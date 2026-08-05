@@ -13,7 +13,11 @@ func _init() -> void:
 	print("=== 글리프 검사 ===\n")
 	# 폰트가 크기별로 둘이다. 한쪽만 검사하면 나머지 하나에서 네모가 뜬다 -
 	# 작은 글씨용을 v2 로 바꾼 순간 이 검사는 큰 쪽만 보고 있었다.
-	var fonts := { "큰": UiKit.font(), "작은": UiKit.font(UiKit.SMALL_MAX) }
+	var fonts := {
+		"제목": UiKit.title_font(),
+		"큰": UiKit.font(),
+		"작은": UiKit.font(UiKit.small_max()),
+	}
 
 	var files: Array[String] = []
 	_collect("res://", files)

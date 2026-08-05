@@ -1,0 +1,35 @@
+{
+	"_comment": [
+		"폰트 배정. 여기만 고치면 게임 전체 서체가 바뀐다.",
+		"",
+		"roles 의 각 값은 **우선순위 목록**이다. 앞엣것이 없으면 뒤로 내려간다.",
+		"그래서 폰트 파일을 지워도 게임이 안 깨지고 폴백으로 돈다.",
+		"",
+		"title : 게임 이름 전용. 굵고 장식적이어도 된다 - 한 줄밖에 안 쓴다.",
+		"large : small_max 보다 큰 글씨. 화면 제목·유닛 이름·버튼.",
+		"small : small_max 이하. 카드 설명·전투 로그·배지. 가독성이 전부다.",
+		"",
+		"small_max : 이 크기 이하를 small 로 본다.",
+		"pixel_render : 안티에일리어싱·서브픽셀을 끈다. 도트/비트맵 계열이면 true.",
+		"               켜 두면 획이 뭉개져 '픽셀 폰트인데 흐릿한' 최악이 된다."
+	],
+
+	"small_max": 13,
+	"pixel_render": true,
+
+	"roles": {
+		"title": [
+			"res://assets/fonts/HeirofLightBold.ttf",
+			"res://assets/fonts/DNFBitBitTTF.ttf"
+		],
+		"large": [
+			"res://assets/fonts/DNFBitBitTTF.ttf",
+			"res://assets/fonts/Pretendard-Regular.otf"
+		],
+		"small": [
+			"res://assets/fonts/DungGeunMo.otf",
+			"res://assets/fonts/DNFBitBitv2.ttf",
+			"res://assets/fonts/Pretendard-Regular.otf"
+		]
+	}
+}

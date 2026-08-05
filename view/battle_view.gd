@@ -145,7 +145,7 @@ func _build_ui() -> void:
 	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 13, UiKit.MUTED)
 
 	var cy := 592.0
-	btn_start = UiKit.button(ui, Vector2(48, cy), Vector2(200, 42), UiText.t("battle.start", "▶  전투 시작"), 15)
+	btn_start = UiKit.button(ui, Vector2(48, cy), Vector2(200, 42), UiText.t("battle.start", ">  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
@@ -241,7 +241,7 @@ func _build_rules_panel() -> void:
 	for r in Innates.BASE:
 		base_names.append(String(r["text"]))
 	UiKit.label(rules_root, Vector2(px, 66), Vector2(660, 18),
-		"모든 유닛 공통 기본기:  %s" % "   /   ".join(base_names), 10, UiKit.FAINT)
+		UiText.t("battle.m01", "모든 유닛 공통 기본기:  %s") % "   /   ".join(base_names), 10, UiKit.FAINT)
 
 	slot_rows.clear()
 	var party := run.to_party()
@@ -254,7 +254,7 @@ func _build_rules_panel() -> void:
 		var up := int(party[i].get("upgrade", 0))
 		var first: bool = bool(party[i].get("special_first", false))
 		UiKit.label(rules_root, Vector2(px, y), Vector2(560, 20),
-			"%s%s   HP %d · 공격 %d · 사거리 %d · 이동 %d" % [
+			UiText.t("battle.m02", "%s%s   HP %d · 공격 %d · 사거리 %d · 이동 %d") % [
 				s["name"], "" if up == 0 else " +%d" % up,
 				run.upgraded_stat(party[i]["type"], "hp", int(s["hp"])),
 				run.upgraded_stat(party[i]["type"], "atk", int(s["atk"])),
@@ -287,12 +287,12 @@ func _build_rules_panel() -> void:
 			ry += ROW_LINE
 		elif sp == "":
 			UiKit.label(rules_root, Vector2(px + 10, ry), Vector2(300, 18),
-				"특 -", 11, UiKit.LINE)
+				UiText.t("battle.m03", "특 -"), 11, UiKit.LINE)
 			ry += ROW_LINE
 
 		var own: Array = Innates.TABLE.get(String(party[i]["type"]), [])
-		_slot_row(i, -1, px, ry, "기", "기본기",
-			"공통 골격만" if own.is_empty() else String(own[0]["text"]), UiKit.FAINT)
+		_slot_row(i, -1, px, ry, "기", UiText.t("battle.m04", "기본기"),
+			UiText.t("battle.m05", "공통 골격만") if own.is_empty() else String(own[0]["text"]), UiKit.FAINT)
 
 
 ## 규칙 한 줄. 배경판을 깔아 두고 발동할 때 밝힌다.
@@ -350,7 +350,7 @@ func _clear_log() -> void:
 
 func _refresh_ui() -> void:
 	var st := Stages.get_stage(run.stage_id)
-	lbl_stage.text = "스테이지 %d/%d - %s     적 전략: %s" % [
+	lbl_stage.text = UiText.t("battle.m06", "스테이지 %d/%d - %s     적 전략: %s") % [
 		run.stage_id, Stages.count(), st["name"], st["strategy_text"]]
 
 	# 마지막 스테이지에서도 보상은 받는다. 그 뒤에 런 클리어 화면으로 간다.
@@ -365,10 +365,10 @@ func _refresh_ui() -> void:
 			btn_start.text = UiText.t("battle.stop", "■  중단")
 			lbl_status.text = st["hint"]
 		Phase.RESULT:
-			btn_start.text = "▶  같은 규칙으로 다시"
-			lbl_status.text = "규칙을 고치려면 아래 '편성 고치기'."
+			btn_start.text = UiText.t("battle.m07", ">  같은 규칙으로 다시")
+			lbl_status.text = UiText.t("battle.m08", "규칙을 고치려면 아래 '편성 고치기'.")
 		_:
-			btn_start.text = "▶  전투 시작"
+			btn_start.text = UiText.t("battle.start", ">  전투 시작")
 			lbl_status.text = st["hint"]
 
 
@@ -392,7 +392,7 @@ func _reset() -> void:
 	_build_unit_views()
 	_build_rules_panel()
 	_clear_log()
-	lbl_tick.text = "틱 0 / %d" % Battle.MAX_TICKS
+	lbl_tick.text = UiText.t("battle.m09", "틱 0 / %d") % Battle.MAX_TICKS
 	_refresh_ui()
 	queue_redraw()
 
@@ -492,16 +492,16 @@ func _play_events(evs: Array, my_id: int) -> void:
 			return
 		match e["type"]:
 			"tick_begin":
-				lbl_tick.text = "틱 %d / %d" % [e["tick"], Battle.MAX_TICKS]
+				lbl_tick.text = UiText.t("battle.m10", "틱 %d / %d") % [e["tick"], Battle.MAX_TICKS]
 
 			"rule":
 				var innate := bool(e.get("innate", false))
 				unit_views[e["unit"]].show_rule(String(e["text"]), innate)
 				_flash_slot(int(e["unit"]), int(e["slot"]))
 				var who := unit_views[e["unit"]].unit
-				var src := "특수" if bool(e.get("special", false)) 					else ("기본기" if innate else "슬롯%d" % (int(e["slot"]) + 1))
+				var src := UiText.t("battle.m11", "특수") if bool(e.get("special", false)) 					else (UiText.t("battle.m04", "기본기") if innate else UiText.t("battle.m12", "슬롯%d") % (int(e["slot"]) + 1))
 				# 구분자로 │(U+2502)를 쓰면 프리텐다드에 글리프가 없어 네모로 뜬다.
-				_log("[틱 %d] %s %s · %s - %s" % [
+				_log(UiText.t("battle.m13", "[틱 %d] %s %s · %s - %s") % [
 					battle.tick, "" if who.team == Unit.TEAM_PLAYER else "적",
 					who.display_name, src, e.get("rule_name", "")])
 				await _wait(ACT_TIME * 0.45)
@@ -510,7 +510,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 				sfx.play("step")
 				var mv := unit_views[e["unit"]]
 				var steps: int = maxi(0, (e.get("path", []) as Array).size() - 1)
-				_log("        → %d칸 이동" % steps)
+				_log(UiText.t("battle.m14", "        → %d칸 이동") % steps)
 				await _walk(mv, e.get("path", []), e["to"])
 
 			"attack":
@@ -531,7 +531,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 				tw2.tween_property(a, "position", home, ACT_TIME * 0.45 / speed)
 				t.hit()
 				_pop_number(t.position, "-%d" % e["damage"], UiKit.ACCENT)
-				_log("        → %s 에게 %d 피해 (HP %d)" % [
+				_log(UiText.t("battle.m15", "        → %s 에게 %d 피해 (HP %d)") % [
 					t.unit.display_name, e["damage"], e["target_hp"]])
 				_shake(3.0)
 				await tw2.finished
@@ -557,7 +557,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 				# ☠(U+2620)는 프리텐다드에 없어 네모로 떴다. 글리프 검사(test/glyph_check.gd)가
 				# 잡아낸다 - 눈으로 찾지 말 것.
 				sfx.play("death")
-				_log("        [사망] %s" % unit_views[e["unit"]].unit.display_name)
+				_log(UiText.t("battle.m16", "        [사망] %s") % unit_views[e["unit"]].unit.display_name)
 				if idx == final_death:
 					await _finisher(e["unit"])
 				else:

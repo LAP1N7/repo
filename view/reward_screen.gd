@@ -155,7 +155,7 @@ func _upgrade_summary() -> String:
 	for t in run.upgrades:
 		if int(run.upgrades[t]) > 0:
 			parts.append("%s+%d" % [UnitData.TABLE[t]["name"], int(run.upgrades[t])])
-	return "없음" if parts.is_empty() else " ".join(parts)
+	return UiText.t("loadout.m09", "없음") if parts.is_empty() else " ".join(parts)
 
 
 func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
@@ -179,7 +179,7 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 			var to: int = mini(RunState.MAX_UPGRADE, lv + up)
 			title = UiText.t("reward.upgrade_title", "%s 강화") % s["name"]
 			accent = s["color"]
-			body = "+%d → +%d\n\nHP %d → %d\n공격 %d → %d\n\n%s" % [
+			body = UiText.t("reward.m01", "+%d → +%d\n\nHP %d → %d\n공격 %d → %d\n\n%s") % [
 				lv, to,
 				run.upgraded_stat(tid, "hp", int(s["hp"])),
 				UnitData.scaled(tid, "hp", int(s["hp"]), to),
@@ -197,11 +197,11 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 			title = UiText.t("reward.rare_special", "희귀 특수") if is_sp else UiText.t("reward.rare_card", "희귀 전술")
 			accent = UiKit.ACCENT
 			# 이미 가진 카드면 합성된다는 걸 고르기 **전에** 알려 준다.
-			var fate := "규칙 슬롯에 꽂는다"
+			var fate := UiText.t("reward.m02", "규칙 슬롯에 꽂는다")
 			if is_sp:
-				fate = "%s 전용 · 전투당 1회" % UnitData.TABLE[d["unit"]]["name"]
+				fate = UiText.t("reward.m03", "%s 전용 · 전투당 1회") % UnitData.TABLE[d["unit"]]["name"]
 			elif run.can_merge(id):
-				fate = "이미 가지고 있다 → 받으면 %d단계로 합성" % (run.card_level(id) + 1)
+				fate = UiText.t("reward.m04", "이미 가지고 있다 → 받으면 %d단계로 합성") % (run.card_level(id) + 1)
 			body = "%s
 
 %s

@@ -29,52 +29,83 @@ static var _font: Font = null
 ## 그래서 OFL 폰트를 res:// 에 포함하는 것이 유일하게 옳은 방법이다.
 ## 시스템 폰트 경로는 폰트 임포트가 깨졌을 때를 위한 폴백으로만 남겨 둔다.
 ## 우선순위대로 찾는다. 앞엣것이 없으면 뒤엣것으로 내려간다.
-## 폰트를 크기에 따라 둘로 나눠 쓴다.
+## 폰트는 **역할별**로 나눠 쓴다. 배정은 data/fonts.json 에 있다.
 ##
 ## ── 왜 나누는가 ──────────────────────────────────────────────────────────
-## 비트비트체는 큰 글씨에서 성격이 살지만, 카드 설명처럼 9~13px 로 들어가면
-## 획이 뭉쳐서 못 읽는다. 픽셀 계열 폰트는 특정 크기를 전제로 그려지기 때문에
-## 그 크기를 벗어나면 급격히 무너진다.
+## 하나로 통일하면 반드시 어딘가가 깨진다. 장식적인 제목용 서체는 9~13px 로
+## 들어가면 획이 뭉쳐 못 읽고, 반대로 가독성 위주 서체로 제목을 뽑으면 밋밋하다.
 ##
-## 그래서 작은 글씨만 v2 로 바꾼다. 같은 계열이라 톤이 안 깨지면서 작은 크기를
-## 훨씬 잘 버틴다. 제목·유닛 이름 같은 큰 글씨는 원래 것을 그대로 둔다.
-const BUNDLED_FONTS: Array[String] = [
-	"res://assets/fonts/DNFBitBitTTF.ttf",      # 던파 비트비트체 (OFL)
-	"res://assets/fonts/Pretendard-Regular.otf",
-]
-const BUNDLED_FONTS_SMALL: Array[String] = [
-	"res://assets/fonts/DNFBitBitv2.ttf",       # 던파 비트비트체 v2 (OFL)
-	"res://assets/fonts/Pretendard-Regular.otf",
-]
+##   title  게임 이름 전용. 한 줄밖에 안 쓰니 굵고 장식적이어도 된다
+##   large  화면 제목·유닛 이름·버튼
+##   small  카드 설명·전투 로그·배지. **가독성이 전부다**
+##
+## ── 왜 코드가 아니라 JSON 인가 ──────────────────────────────────────────
+## 서체는 자주 갈아 끼운다. 실제로 이 프로젝트에서만 세 번 바뀌었다.
+## 파일 경로를 코드에 박으면 바꿀 때마다 여러 파일을 손대게 된다.
+const FONT_CONFIG := "res://data/fonts.json"
+
+static var _cfg: Dictionary = {}
+static var _by_role: Dictionary = {}
+
+
+static func _config() -> Dictionary:
+	if not _cfg.is_empty():
+		return _cfg
+	_cfg = {
+		"small_max": 13,
+		"pixel_render": true,
+		"roles": {},
+	}
+	if FileAccess.file_exists(FONT_CONFIG):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(FONT_CONFIG))
+		if typeof(parsed) == TYPE_DICTIONARY:
+			for k in parsed:
+				if not String(k).begins_with("_"):
+					_cfg[k] = parsed[k]
+	return _cfg
+
 
 ## 이 크기 이하는 작은 글씨용 폰트를 쓴다.
-## 카드 본문 11, 미니 카드 10, 배지 9, 전투 로그 13 이 전부 여기 걸린다.
-const SMALL_MAX: int = 13
+static func small_max() -> int:
+	return int(_config().get("small_max", 13))
 
-static var _font_small: Font = null
+
+## 역할 이름으로 폰트를 얻는다. 목록을 앞에서부터 훑어 처음 읽히는 것을 쓴다.
+static func font_role(role: String) -> Font:
+	if _by_role.has(role):
+		return _by_role[role]
+
+	var roles: Dictionary = _config().get("roles", {})
+	for path in roles.get(role, []):
+		if not ResourceLoader.exists(String(path)):
+			continue
+		var f = load(String(path))
+		if f is Font:
+			if bool(_config().get("pixel_render", true)):
+				_tune_pixel_font(f)
+			_by_role[role] = f
+			return f
+
+	# 어느 것도 못 읽었다. 시스템 폰트로라도 글자는 나와야 한다.
+	push_warning("폰트 역할 '%s' 을 못 읽었다 - 시스템 폰트로 폴백한다." % role)
+	var sys := _system_font()
+	_by_role[role] = sys
+	return sys
+
+
+## 게임 이름 전용.
+static func title_font() -> Font:
+	return font_role("title")
 
 
 ## size 를 주면 그 크기에 맞는 폰트를 돌려준다. 0 이면 큰 글씨용.
 static func font(size: int = 0) -> Font:
-	var small := size > 0 and size <= SMALL_MAX
-	if small and _font_small != null:
-		return _font_small
-	if not small and _font != null:
+	return font_role("small" if (size > 0 and size <= small_max()) else "large")
+
+
+static func _system_font() -> Font:
+	if _font != null:
 		return _font
-
-	for path in (BUNDLED_FONTS_SMALL if small else BUNDLED_FONTS):
-		if not ResourceLoader.exists(path):
-			continue
-		var bundled = load(path)
-		if bundled is Font:
-			_tune_pixel_font(bundled)
-			if small:
-				_font_small = bundled
-			else:
-				_font = bundled
-			return bundled
-	push_warning("번들 폰트를 못 읽었다 - 시스템 폰트로 폴백한다.")
-
 	for p in [
 		"C:/Windows/Fonts/malgun.ttf",
 		"C:/Windows/Fonts/NanumGothic.ttf",
@@ -91,8 +122,6 @@ static func font(size: int = 0) -> Font:
 	return _font
 
 
-## hpad 는 좌우 안쪽 여백. 좁은 아이콘 버튼(▲▼)에 기본값 8을 쓰면 내용 폭이
-## 10px 밖에 안 남아 글자가 통째로 잘려 빈 버튼처럼 보인다. 그럴 땐 2를 넘겨라.
 ## 비트맵 스타일 폰트는 안티에일리어싱을 끄고 서브픽셀을 잠가야 제 모습이 나온다.
 ## 켜 두면 획이 뭉개져서 "픽셀 폰트인데 흐릿한" 최악의 조합이 된다.
 ## 아웃라인 폰트(프리텐다드)에 걸어도 해롭지 않으므로 조건 없이 적용한다.

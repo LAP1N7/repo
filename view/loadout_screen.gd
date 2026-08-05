@@ -128,7 +128,7 @@ func refresh() -> void:
 		# 막지는 않는다. 기본기만으로도 싸울 수 있으니 알려만 준다.
 		var bare := run.bare_units()
 		lbl_warn.visible = not bare.is_empty()
-		lbl_warn.text = "%s 는 카드 없이 기본기만으로 싸운다." % ", ".join(bare)
+		lbl_warn.text = UiText.t("loadout.m01", "%s 는 카드 없이 기본기만으로 싸운다.") % ", ".join(bare)
 		lbl_warn.add_theme_color_override("font_color", UiKit.MUTED)
 
 
@@ -167,7 +167,7 @@ func _build_grid() -> void:
 			b.add_theme_stylebox_override("normal", UiKit.box(uc.darkened(0.5), uc, 5))
 			b.add_theme_stylebox_override("hover", UiKit.box(uc.darkened(0.3), Color.WHITE, 5))
 			b.add_theme_stylebox_override("pressed", UiKit.box(uc.darkened(0.2), Color.WHITE, 5))
-			b.tooltip_text = "누르면 배치를 무른다 (꽂은 카드는 손패로 돌아온다)"
+			b.tooltip_text = UiText.t("loadout.m02", "누르면 배치를 무른다 (꽂은 카드는 손패로 돌아온다)")
 			b.pressed.connect(_on_slot_remove.bind(member))
 		else:
 			# 빈 칸도 항상 보여야 한다. 어디에 놓을 수 있는지가 안 보이면 조작을 못 한다.
@@ -184,7 +184,7 @@ func _build_grid() -> void:
 			tut.register_anchor("grid_slot_%d" % i, b)
 
 	UiKit.label(grid_root, Vector2(48, 314), Vector2(460, 20),
-		"←  뒤         앞  →        (적은 오른쪽에서 온다)", 11, UiKit.MUTED)
+		UiText.t("loadout.m03", "←  뒤         앞  →        (적은 오른쪽에서 온다)"), 11, UiKit.MUTED)
 
 
 func _member_at(slot: int) -> int:
@@ -239,7 +239,7 @@ func _build_roster() -> void:
 	for r in Innates.BASE:
 		base_names.append(String(r["text"]))
 	UiKit.label(roster_root, Vector2(RIGHT_X, 116), Vector2(700, 18),
-		"모든 유닛 공통 기본기:  %s" % "   /   ".join(base_names), 10, UiKit.FAINT)
+		UiText.t("battle.m01", "모든 유닛 공통 기본기:  %s") % "   /   ".join(base_names), 10, UiKit.FAINT)
 
 	for i in run.roster.size():
 		var y := ROSTER_Y + i * ROW_H
@@ -249,18 +249,18 @@ func _build_roster() -> void:
 		var pick := UiKit.button(roster_root, Vector2(RIGHT_X, y), Vector2(140, 28),
 			String(s["name"]), 14)
 		pick.modulate = UiKit.ACCENT if sel_member == i else Color(1, 1, 1)
-		pick.tooltip_text = "이 유닛에게 카드를 꽂는다"
+		pick.tooltip_text = UiText.t("loadout.m04", "이 유닛에게 카드를 꽂는다")
 		pick.pressed.connect(func(): sel_member = i; refresh())
 
 		UiKit.label(roster_root, Vector2(RIGHT_X + 150, y + 6), Vector2(280, 20),
-			"HP %d · 공격 %d · 사거리 %d · 이동 %d" % [
+			UiText.t("loadout.m05", "HP %d · 공격 %d · 사거리 %d · 이동 %d") % [
 				s["hp"], s["atk"], s["range"], s["move"]], 11, UiKit.MUTED)
 
 		# 특수 슬롯은 규칙 3칸과 별개다. 그래서 규칙 목록 안이 아니라 헤더 줄에 둔다.
 		var sid: String = String(run.unit_special[i])
-		var sb_text := "특수: 없음"
+		var sb_text := UiText.t("loadout.m06", "특수: 없음")
 		if sid != "":
-			sb_text = "특수: %s" % Specials.TABLE[sid]["name"]
+			sb_text = UiText.t("loadout.m07", "특수: %s") % Specials.TABLE[sid]["name"]
 		var sb := UiKit.button(roster_root, Vector2(RIGHT_X + 380, y), Vector2(160, 28),
 			sb_text, 12)
 		sb.modulate = UiKit.ACCENT if sid != "" else Color(0.62, 0.64, 0.72)
@@ -270,15 +270,15 @@ func _build_roster() -> void:
 			sb.pressed.connect(func(): run.unequip_special(i); refresh())
 		else:
 			var own_sid := Specials.for_unit(String(tid))
-			sb.tooltip_text = "이 유닛 전용: %s (손패에 있어야 꽂을 수 있다)" % (
-				Specials.TABLE[own_sid]["name"] if own_sid != "" else "없음")
+			sb.tooltip_text = UiText.t("loadout.m08", "이 유닛 전용: %s (손패에 있어야 꽂을 수 있다)") % (
+				Specials.TABLE[own_sid]["name"] if own_sid != "" else UiText.t("loadout.m09", "없음"))
 			sb.disabled = true
 
 		# 특수를 전술보다 먼저 볼지. 이 순서 자체가 전략이라 플레이어가 정한다.
 		# 무조건 최우선으로 두면 특수가 준비된 동안 슬롯 1~3 이 통째로 무시된다.
 		var first: bool = bool(run.unit_special_first[i])
 		var fb := UiKit.button(roster_root, Vector2(RIGHT_X + 546, y), Vector2(86, 28),
-			"전술 먼저" if not first else "특수 먼저", 11, 3)
+			UiText.t("loadout.m10", "전술 먼저") if not first else UiText.t("loadout.m11", "특수 먼저"), 11, 3)
 		fb.disabled = sid == ""
 		fb.modulate = UiKit.ACCENT if first else Color(0.72, 0.74, 0.82)
 		fb.tooltip_text = "특수를 규칙 슬롯보다 먼저 볼지 정한다.
@@ -294,22 +294,22 @@ func _build_roster() -> void:
 				var b := UiKit.button(roster_root, Vector2(RIGHT_X + 12, by), Vector2(560, 26),
 					"%d.  %s  ·  %s" % [k + 1, c["name"], c["text"]], 12)
 				b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-				b.tooltip_text = "누르면 손패로 돌아온다"
+				b.tooltip_text = UiText.t("loadout.m12", "누르면 손패로 돌아온다")
 				b.pressed.connect(func(): run.unequip(i, k); refresh())
 				slot_buttons_row[k] = b
 
-				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, 26), "▲", 11, 2)
+				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, 26), "^", 11, 2)
 				up.disabled = k == 0
-				up.tooltip_text = "우선순위를 올린다"
+				up.tooltip_text = UiText.t("loadout.m13", "우선순위를 올린다")
 				up.pressed.connect(func(): run.move_slot(i, k, -1); refresh())
 
-				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, 26), "▼", 11, 2)
+				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, 26), "v", 11, 2)
 				dn.disabled = k >= slots.size() - 1
-				dn.tooltip_text = "우선순위를 내린다"
+				dn.tooltip_text = UiText.t("loadout.m14", "우선순위를 내린다")
 				dn.pressed.connect(func(): run.move_slot(i, k, 1); refresh())
 			else:
 				var e := UiKit.label(roster_root, Vector2(RIGHT_X + 16, by + 4), Vector2(400, 22),
-					"%d.  비어 있음" % (k + 1), 12, UiKit.LINE)
+					UiText.t("loadout.m15", "%d.  비어 있음") % (k + 1), 12, UiKit.LINE)
 				e.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 		# 위 슬롯에 가려 절대 발동하지 못하는 카드를 표시한다.
@@ -329,9 +329,9 @@ func _build_roster() -> void:
 		# "카드 3장이 전부 어긋나면 여기로 떨어진다" 는 관계가 화면에 그대로 보여야 한다.
 		var own: Array = Innates.TABLE.get(tid, [])
 		var iy := y + 30.0 + RunState.SLOTS_PER_UNIT * 27.0
-		var txt := "기본기 ↓  "
+		var txt := UiText.t("loadout.m16", "기본기 ↓  ")
 		if own.is_empty():
-			txt += "(공통 골격만)"
+			txt += UiText.t("loadout.m17", "(공통 골격만)")
 		else:
 			txt += "%s · %s" % [own[0]["name"], own[0]["text"]]
 		var il := UiKit.label(roster_root, Vector2(RIGHT_X + 16, iy), Vector2(640, 18),
@@ -395,7 +395,7 @@ func _build_hand() -> void:
 		elif RunState.is_special(id):
 			card.enabled = Specials.usable_by(id, tid)
 			if not card.enabled:
-				card.note = "직업 불일치"
+				card.note = UiText.t("loadout.m18", "직업 불일치")
 		else:
 			card.enabled = (run.unit_cards[sel_member] as Array).size() < RunState.SLOTS_PER_UNIT
 

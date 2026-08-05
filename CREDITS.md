@@ -7,17 +7,24 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 
 ## 폰트
 
-| 이름 | 출처 | 라이선스 | 용도 |
+배정은 `data/fonts.json` 한 곳에서 관리한다. 역할별 우선순위 목록이라
+앞엣것이 없으면 뒤로 내려간다 — 파일을 지워도 게임이 안 깨진다.
+
+| 역할 | 이름 | 출처 | 라이선스 |
 |---|---|---|---|
-| 던파 비트비트체 (DNFBitBitTTF) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 | 14px 이상 — 제목·유닛 이름 |
-| 던파 비트비트체 v2 (DNFBitBitv2) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 | 13px 이하 — 카드 설명·전투 로그 |
-| Pretendard 1.3.9 (Regular) | https://github.com/orioncactus/pretendard | SIL Open Font License 1.1 | 폴백 (번들 폰트를 못 읽을 때) |
+| **title** (게임 이름) | 빛의 계승자 Bold (HeirofLightBold) | 넥슨 히트 | SIL Open Font License 1.1 |
+| **large** (14px+) | 던파 비트비트체 (DNFBitBitTTF) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 |
+| **small** (13px 이하) | 둥근모꼴 (DungGeunMo) | 개인 제작 (둥근모꼴 프로젝트) | SIL Open Font License 1.1 |
+| 폴백 | 던파 비트비트체 v2 / Pretendard 1.3.9 | 넥슨 / orioncactus | SIL Open Font License 1.1 |
 
 - 라이선스 전문: `assets/fonts/*-LICENSE.txt`
 - OFL 1.1은 임베딩·재배포를 허용한다. 표기 의무만 지키면 된다.
-- **두 가지를 쓰는 이유**: 비트비트체는 큰 글씨에서 성격이 살지만 9~13px 로
-  들어가면 획이 뭉쳐 못 읽는다. v2 가 작은 크기를 훨씬 잘 버틴다.
-  크기별 선택은 `UiKit.font(size)` 가 자동으로 한다.
+- **세 가지를 쓰는 이유**: 하나로 통일하면 반드시 어딘가가 깨진다. 장식적인
+  제목용 서체는 9~13px 로 들어가면 획이 뭉쳐 못 읽고, 반대로 가독성 위주 서체로
+  제목을 뽑으면 밋밋하다. 역할별 선택은 `UiKit.font(size)` / `UiKit.title_font()` 가
+  자동으로 한다.
+- 둥근모꼴에는 `▲ ▼ ▶` 글리프가 없어서 `^ v >` 로 바꿨다. 이건 눈으로 찾은 게
+  아니라 `test/glyph_check.gd` 가 폰트 교체 직후 바로 잡아냈다.
 - **맑은 고딕(malgun.ttf)은 절대 빌드에 포함하지 말 것** — 재배포 불가.
   개발 중 시스템 폰트를 빌려 쓰던 경로는 폴백으로만 남겨 두었다.
 

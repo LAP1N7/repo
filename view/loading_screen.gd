@@ -49,6 +49,7 @@ func setup(rng_seed: int = 0) -> void:
 
 	_lbl_title = UiKit.label(self, Vector2(0, 250), Vector2(1280, 46),
 		UiText.t("loading.head", "PROJECT RECLAIM"), 34, UiKit.ACCENT)
+	_lbl_title.add_theme_font_override("font", UiKit.title_font())
 	_lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 	# 진행 막대. 실제 진행률이 아니라 시간에 비례한 연출이다.

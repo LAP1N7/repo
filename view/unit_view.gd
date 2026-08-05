@@ -314,7 +314,7 @@ func show_rule(text: String, innate: bool = false) -> void:
 	var lp := brief.find(" (")
 	if lp > 0:
 		brief = brief.substr(0, lp)
-	var shown := ("기본 ·  " + brief) if innate else brief
+	var shown := (UiText.t("unit.m01", "기본 ·  ") + brief) if innate else brief
 	chip.text = shown
 	var w: float = 16.0
 	if font != null:
