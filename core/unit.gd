@@ -154,18 +154,14 @@ static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i
 		if not Cards.TABLE.has(cid):
 			continue
 		u.cards.append(cid)
-		u.card_rules.append(Cards.leveled(cid, int(p_levels.get(cid, 1))))
+		# id 를 같이 넣는다. 교리는 "어떤 모듈들을 함께 꽂았는가" 로 판정되므로
+		# 규칙 사전만 봐서는 알 수가 없다. (data/doctrines.gd 참조)
+		var rule: Dictionary = Cards.leveled(cid, int(p_levels.get(cid, 1))).duplicate()
+		rule["id"] = cid
+		u.card_rules.append(rule)
 	# 교리는 편성이 확정되는 이 순간 한 번만 계산한다. 전투 중에는 모듈을
 	# 못 바꾸므로 매 틱 다시 셀 이유가 없다.
-	var by_axis: Dictionary = {}
-	for r in u.card_rules:
-		var ax := String(r.get("axis", ""))
-		if ax == "":
-			continue
-		if not by_axis.has(ax):
-			by_axis[ax] = []
-		by_axis[ax].append(r)
-	u.doctrines = Doctrines.active(by_axis)
+	u.doctrines = Doctrines.active(u.card_rules)
 
 	# 기본 AI 는 이제 규칙 목록이 아니라 직업별 표다. 파이프라인이 직접 읽으므로
 	# 유닛이 들고 다닐 이유가 없다. (data/innates.gd 참조)

@@ -189,6 +189,11 @@ func _build_shop() -> void:
 	var span := total * w + (total - 1) * gap
 	var x0 := (1280.0 - span) * 0.5
 
+	# 보유 모듈로 한 장만 더 채우면 켜지는 교리들. { 모듈 id: 교리 이름 }
+	var near: Dictionary = {}
+	for n in Doctrines.near_complete(run.hand):
+		near[String(n["need"])] = String((n["doctrine"] as Dictionary)["name"])
+
 	for i in total:
 		var cid: String = run.offers[i]
 		var card := CardNode.new()
@@ -197,6 +202,11 @@ func _build_shop() -> void:
 		card.enabled = run.can_buy(i)
 		if cid != "" and not run.can_buy(i):
 			card.note = UiText.t("shop.note_poor", "예산 부족 (%d)") % run.price_of(cid)
+		elif cid != "" and near.has(cid):
+			# ── 교리 완성 안내 ────────────────────────────────────────────
+			# 이 게임은 모듈을 모으는 게 아니라 교리를 완성하는 게임이다.
+			# 완성까지 한 장 남았다는 사실이 안 보이면 그 재미가 통째로 사라진다.
+			card.note = UiText.t("shop.note_doctrine", "%s 완성") % near[cid]
 		card.place(Vector2(x0 + i * (w + gap), SHOP_Y))
 		card.clicked.connect(_on_buy)
 		card.banned.connect(_on_ban)

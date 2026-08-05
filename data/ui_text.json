@@ -199,5 +199,6 @@
 	"title.audio_fail": "음악 재생 실패 · %s",
 	"loadout.base_hint": "대원은 모듈이 없어도 자기 직업의 일을 합니다. 모듈은 그 판단을 수정합니다.",
 	"battle.axis_hint": "네 축을 순서대로 통과해 이번 틱의 행동 하나가 정해집니다.",
-	"battle.trace_base": "기본 AI"
+	"battle.trace_base": "기본 AI",
+	"shop.note_doctrine": "%s 완성"
 }

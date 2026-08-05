@@ -10,8 +10,17 @@ extends Control
 signal clicked(node: CardNode)
 signal banned(node: CardNode)
 
-const W: float = 128.0
-const H: float = 168.0
+## 카드 한 장의 기준 크기.
+##
+## ── 왜 키웠는가 ──────────────────────────────────────────────────────────
+## 128x168 은 손패에 여러 장 늘어놓기에는 알맞았지만 상점에서는 너무 작았다.
+## 상점은 한 번에 예닐곱 장만 뜨고, 그 중 무엇을 사느냐가 이 게임에서 가장 큰
+## 결정이다. 결정이 큰 화면일수록 물건이 커야 한다.
+##
+## 축 라벨과 이름이 한눈에 들어와야 "이번 상점에 표적이 둘 나왔다" 가 훑기만
+## 해도 읽힌다. 손패는 mini 로 0.72배 줄여 쓰므로 거기 밀도는 그대로다.
+const W: float = 168.0
+const H: float = 218.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
 const BANNER_RATIO: float = 0.38
@@ -287,8 +296,8 @@ func _draw() -> void:
 	var pad := 9.0
 	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
 	# 미니 폭은 92px 다. 11 로 두면 "불굴의 의지" 가 "불굴의 의" 로 잘린다.
-	var name_size := 14 if not _is_mini() else 10
-	var text_size := 11 if not _is_mini() else 10
+	var name_size := 17 if not _is_mini() else 10
+	var text_size := 12 if not _is_mini() else 10
 	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
 
 	# 코스트 배지
@@ -307,10 +316,11 @@ func _draw() -> void:
 	# 영문 축 라벨. 전부 영문이면 한국어 톤과 충돌하고 전부 한글이면 축이
 	# 안 보인다. 축만 영문으로 두면 계기판처럼 읽히면서 본문은 그대로다.
 	if axis != "":
-		draw_string(fs, Vector2(pad, pad + 10.0), Axes.label(axis),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(ccol.r, ccol.g, ccol.b, 0.85))
+		draw_string(fs, Vector2(pad, pad + 12.0), Axes.label(axis),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11 if not _is_mini() else 8,
+			Color(ccol.r, ccol.g, ccol.b, 0.95))
 
-	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 24.0), String(c["name"]),
+	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 30.0), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2 - (badge_r * 2.0 + 2.0),
 		name_size, UiKit.TEXT * dim)
 

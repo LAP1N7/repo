@@ -246,24 +246,34 @@ func test_position_axis() -> void:
 # ── 9. 교리 ──────────────────────────────────────────────────────────────
 
 func test_doctrines() -> void:
-	print("\n[9] 교리 보너스")
+	print("
+[9] 교리 보너스")
 
-	var rear := { Axes.TARGET: [Cards.TABLE["backline"], Cards.TABLE["snipe"]] }
-	ok(Doctrines.active(rear).has("rear"), "같은 태그 두 장이면 활성")
+	# 핵심 둘을 함께 꽂으면 교리가 켜진다.
+	var d1 := Doctrines.active_ids(["backline", "forced_march"])
+	ok(d1.has("assassin"), "핵심 둘이면 암살 교리 활성")
 
-	var one := { Axes.TARGET: [Cards.TABLE["backline"]] }
-	ok(Doctrines.active(one).is_empty(), "한 장이면 활성 안 됨")
+	# 하나만 있으면 안 켜진다. 조합이 곧 정체성이다.
+	ok(Doctrines.active_ids(["backline"]).is_empty(), "한 장이면 활성 안 됨")
 
-	var mixed := { Axes.TARGET: [Cards.TABLE["backline"], Cards.TABLE["execute"]] }
-	ok(Doctrines.active(mixed).is_empty(), "태그가 섞이면 무효")
+	# 셋째 칸은 자유다. 같은 교리라도 세 번째로 대원이 갈린다.
+	var d2 := Doctrines.active_ids(["backline", "forced_march", "solo"])
+	ok(d2.has("assassin"), "셋째 칸이 무엇이든 교리는 유지")
 
-	var three := { Axes.TARGET: [
-		Cards.TABLE["backline"], Cards.TABLE["snipe"], Cards.TABLE["cut_support"]] }
-	ok(Doctrines.active(three).has("rear"), "세 장 전부 같으면 활성")
+	# 다른 조합은 다른 교리다.
+	var d3 := Doctrines.active_ids(["behind_guard", "coop_fire"])
+	ok(d3.has("phalanx") and not d3.has("assassin"), "조합이 다르면 교리도 다르다")
 
-	var some := Doctrines.active(rear)
-	ok(Doctrines.amount(some, "crit_pct") == 10, "후방 교리는 치명타 +10")
-	ok(Doctrines.amount(some, "attack_pct") == 0, "없는 효과는 0")
+	ok(Doctrines.amount(d1, "crit_pct") == 15, "암살 교리는 치명타 +15")
+	ok(Doctrines.amount(d1, "attack_pct") == 0, "없는 효과는 0")
+
+	# 한 장만 더 채우면 되는 교리를 알려 준다. 상점 안내가 이걸 쓴다.
+	var near := Doctrines.near_complete(["backline"])
+	var found := false
+	for n in near:
+		if String(n["key"]) == "assassin" and String(n["need"]) == "forced_march":
+			found = true
+	ok(found, "한 장 남은 교리를 짚어 준다")
 
 
 # ── 10. 종료 분기 ────────────────────────────────────────────────────────
@@ -340,31 +350,28 @@ func test_tutorial_battle() -> void:
 # ── 15. 교리가 전투에 실제로 붙는가 ──────────────────────────────────────
 
 func test_doctrine_in_battle() -> void:
-	print("\n[15] 교리 적용")
+	print("
+[15] 교리 적용")
 
 	var b := Battle.new()
 	b.setup(1, [
-		member("warrior", 0, ["berserk", "pursue"]),
-		member("archer", 2, ["backline", "snipe"]),
+		member("warrior", 0, ["front_line", "pursue"]),
+		member("archer", 2, ["cut_support", "flank"]),
 		member("bard", 4)])
 
-	ok(b.units[0].doctrines.has("charge"), "맹진 교리가 켜졌다")
-	ok(b.units[1].doctrines.has("rear"), "후방 교리가 켜졌다")
+	ok(b.units[0].doctrines.has("breakthrough"), "돌파 교리가 켜졌다")
+	ok(b.units[1].doctrines.has("interdict"), "저지 교리가 켜졌다")
 	ok(b.units[2].doctrines.is_empty(), "모듈 없는 대원은 교리도 없다")
 
-	# 맹진(+15%)이 실제 피해에 반영돼야 한다.
 	var plain := Battle.new()
-	plain.setup(1, [member("warrior", 0), member("archer", 2), member("bard", 4)])
-	ok(b.units[0].power_damage(100) > plain.units[0].power_damage(100),
-		"맹진 교리가 공격력을 올린다",
-		"%d vs %d" % [b.units[0].power_damage(100), plain.units[0].power_damage(100)])
+	plain.setup(1, [member("archer", 0), member("warrior", 2), member("bard", 4)])
 
-	# 인내(-15%)는 받는 피해를 줄인다.
-	var tough := Battle.new()
-	tough.setup(1, [
-		member("shieldman", 0, ["hold_fire", "fall_back"]),
-		member("archer", 2), member("bard", 4)])
-	ok(tough.units[0].doctrines.has("patience"), "인내 교리가 켜졌다")
-	var a := tough.units[0].take_damage(100, null)
-	var c := plain.units[0].take_damage(100, null)
-	ok(a < c, "인내 교리가 받는 피해를 줄인다", "%d vs %d" % [a, c])
+	# 저지 교리(+12%)가 실제 피해에 반영돼야 한다.
+	ok(b.units[1].power_damage(100) > plain.units[0].power_damage(100),
+		"저지 교리가 공격력을 올린다",
+		"%d vs %d" % [b.units[1].power_damage(100), plain.units[0].power_damage(100)])
+
+	# 돌파 교리(-18%)는 받는 피해를 줄인다.
+	var a := b.units[0].take_damage(100, null)
+	var c := plain.units[1].take_damage(100, null)
+	ok(a < c, "돌파 교리가 받는 피해를 줄인다", "%d vs %d" % [a, c])
