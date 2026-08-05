@@ -166,7 +166,6 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 	var panel := _RewardCard.new()
 	panel.position = at
 	panel.size = Vector2(w, PANEL_H)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(panel)
 
 	var title := ""
@@ -271,6 +270,32 @@ func _pick(r: Dictionary) -> void:
 class _RewardCard extends Control:
 	var accent: Color = Color(0.7, 0.7, 0.7)
 
+	var _hover: bool = false
+	var _k: float = 0.0
+
+	## 상점 모듈과 같은 손맛을 준다. 여기도 "여러 장을 훑고 하나를 고르는" 화면이라
+	## 만져지는 반응이 같아야 한다. 다만 카드 안 글자는 이미 다 보이므로 확대는
+	## 상점만큼 크게 줄 필요가 없다 - 들어 올리는 정도면 충분하다.
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		pivot_offset = size * 0.5
+		mouse_entered.connect(func(): _hover = true)
+		mouse_exited.connect(func(): _hover = false)
+
+	func _process(delta: float) -> void:
+		var t: float = clampf(delta * 12.0, 0.0, 1.0)
+		_k = lerp(_k, 1.0 if _hover else 0.0, t)
+		scale = Vector2.ONE * (1.0 + 0.05 * _k)
+		position.y = _base_y() - 10.0 * _k
+		z_index = 20 if _hover else 0
+		queue_redraw()
+
+	var _by: float = -99999.0
+	func _base_y() -> float:
+		if _by < -9999.0:
+			_by = position.y
+		return _by
+
 	func _draw() -> void:
 		var s := size
 		var cut := 16.0
@@ -285,7 +310,7 @@ class _RewardCard extends Control:
 			clampf(accent.v * 1.25 + 0.18, 0.0, 1.0), 1.0)
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
-		draw_polyline(line, neon, 1.6, true)
+		draw_polyline(line, Color(neon.r, neon.g, neon.b, 0.55 + 0.45 * _k), 1.8, true)
 		draw_polyline(line, Color(neon.r, neon.g, neon.b, 0.18), 4.0, true)
 
 		# 상단 색 띠. 멀리서도 무슨 종류인지 갈린다.

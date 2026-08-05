@@ -111,7 +111,7 @@ func card_size() -> Vector2:
 
 ## 원래 크기 카드를 펼칠 배율. 폭이 늘어나면 한 줄에 더 들어가고,
 ## 높이가 늘어나면 줄 수가 늘어난다. 둘 다 필요하다.
-const EXPAND: float = 1.42
+const EXPAND: float = 1.62
 
 
 ## 지금 미니 레이아웃으로 그려야 하는가. 펼쳐졌으면 아니다.
@@ -165,14 +165,14 @@ func _process(delta: float) -> void:
 	_scale = lerp(_scale, target_scale, k)
 	_tilt = lerp(_tilt, target_tilt, k)
 
-	var sway := 0.0 if want_hover else sin(_t * 1.6) * 1.5
+	var sway := 0.0
 	# 펼쳐지면 커진 만큼 좌우로 밀어 원래 자리에 중심이 남게 한다.
 	# 안 그러면 카드가 오른쪽 아래로 자라나 이웃을 덮는다.
 	var grow := Vector2.ZERO
 	if _expanded:
 		grow = (Vector2(W, H) - Vector2(W, H) * 0.72) * -0.5
 	position = base_pos + grow + Vector2(0.0, _lift + sway)
-	rotation = base_rot + _tilt + (0.0 if want_hover else sin(_t * 1.1) * 0.006)
+	rotation = base_rot + _tilt
 	scale = Vector2(_scale, _scale)
 	z_index = 50 if want_hover else index
 
@@ -297,8 +297,8 @@ func _draw() -> void:
 	var pad := 9.0
 	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
 	# 미니 폭은 92px 다. 11 로 두면 "불굴의 의지" 가 "불굴의 의" 로 잘린다.
-	var name_size := 17 if not _is_mini() else 10
-	var text_size := 12 if not _is_mini() else 10
+	var name_size := (20 if _expanded else 17) if not _is_mini() else 10
+	var text_size := (14 if _expanded else 12) if not _is_mini() else 10
 	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
 
 	# 코스트 배지

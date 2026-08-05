@@ -178,7 +178,7 @@ func _build_ui() -> void:
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
 	var cy := 566.0
 	var bx := 860.0
-	btn_start = UiKit.button(ui, Vector2(bx, cy), Vector2(370, 40), UiText.t("battle.start", "▶  전투 시작"), 15)
+	btn_start = UiKit.button(ui, Vector2(bx, cy + 58), Vector2(370, 40), UiText.t("battle.start", "▶  전투 시작"), 15)
 	btn_start.pressed.connect(_on_start_pressed)
 	if tut != null:
 		tut.register_anchor("start_button", btn_start)
@@ -210,7 +210,7 @@ func _build_ui() -> void:
 	b2.pressed.connect(func(): to_shop.emit())
 
 	# 이기면 보상 화면으로. 아직 못 이겼으면 숨긴다.
-	btn_next = UiKit.button(ui, Vector2(bx, cy + 46), Vector2(370, 34), UiText.t("battle.to_reward", "보상 받기  →"), 15)
+	btn_next = UiKit.button(ui, Vector2(bx, cy), Vector2(370, 52), UiText.t("battle.to_reward", "보급 수령  ▶"), 19)
 	btn_next.visible = false
 	btn_next.pressed.connect(func(): won.emit())
 
@@ -269,21 +269,23 @@ func _build_ui() -> void:
 
 func _build_result_panel() -> void:
 	result_panel = Control.new()
-	result_panel.position = Vector2(48, 300)
-	result_panel.size = Vector2(512, 180)
+	# 판(x48~637 · y104~546)의 한가운데. 예전 (48,300)은 왼쪽 위에 걸쳐서
+	# 유닛을 반쯤 덮고 판 밖으로도 삐져나갔다.
+	result_panel.position = Vector2(48, 236)
+	result_panel.size = Vector2(590, 180)
 	result_panel.visible = false
 	result_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(result_panel)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.04, 0.045, 0.07, 0.9)
-	bg.size = Vector2(512, 180)
+	bg.size = Vector2(590, 180)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	result_panel.add_child(bg)
 
-	lbl_result = UiKit.label(result_panel, Vector2(0, 34), Vector2(512, 60), "", 46)
+	lbl_result = UiKit.label(result_panel, Vector2(0, 34), Vector2(590, 60), "", 46)
 	lbl_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_result_sub = UiKit.label(result_panel, Vector2(0, 104), Vector2(512, 30), "", 15, UiKit.MUTED)
+	lbl_result_sub = UiKit.label(result_panel, Vector2(0, 104), Vector2(590, 30), "", 15, UiKit.MUTED)
 	lbl_result_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 

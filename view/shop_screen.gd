@@ -106,7 +106,7 @@ func setup(p_run: RunState) -> void:
 	UiKit.label(self, Vector2(40, 404), Vector2(1200, 22),
 		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 는 이번 런 전체에서 배제 - 다음 스테이지에도 안 나온다."), 12, UiKit.MUTED)
 
-	var b_help := UiKit.button(self, Vector2(880, 655), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)
+	var b_help := UiKit.button(self, Vector2(880, 630), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)
 	b_help.pressed.connect(func(): help.emit())
 
 	btn_next = UiKit.button(self, Vector2(1040, 650), Vector2(200, 44), UiText.t("shop.next", "편성하러 가기  →"), 16)
