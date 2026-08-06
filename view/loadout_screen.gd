@@ -349,10 +349,14 @@ func _build_roster() -> void:
 			if slot_buttons_row.has(k2):
 				var row: Button = slot_buttons_row[k2]
 				row.modulate = Color(1.0, 0.45, 0.42)
+		var note := ""
 		if not dead.is_empty():
-			var warn := Shadow.warnings(slots, int(s["range"]))
+			note = Shadow.warnings(slots, int(s["range"]))[0]
+		else:
+			note = _stationary_note(tid, slots)
+		if note != "":
 			var wl := UiKit.label(roster_root, Vector2(RIGHT_X + 12, y + INNATE_DY - 8),
-				Vector2(640, 18), "[!] " + warn[0], 10, UiKit.BAD)
+				Vector2(660, 18), "[!] " + note, 10, UiKit.BAD)
 			wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 		# 직업 고유 기본기를 슬롯 바로 아래에 회색으로 붙인다.
@@ -590,3 +594,26 @@ class _TileFace extends Control:
 		# 고른 것은 왼쪽에 굵은 막대를 세운다. 테두리만으로는 호버와 구별이 안 된다.
 		if tile.selected:
 			draw_rect(Rect2(0, tile.CUT, 4, s.y - tile.CUT), t)
+
+
+## ── 표적만 있고 다리가 없는 편성 ─────────────────────────────────────────
+## 원거리 대원(궁수·악사)의 기본 판단은 "제자리 유지" 다. 그래서 표적 모듈만
+## 꽂으면 **노릴 대상은 정했는데 거기까지 갈 방법이 없다.** 적이 알아서 와 주면
+## 되지만, 카이팅하는 적 앞에서는 판이 끝날 때까지 한 걸음도 안 움직인다.
+##
+## 실제로 악사에게 [근접 추적] 을 꽂고 "왜 안 움직이냐" 는 보고가 왔다. 규칙은
+## 옳게 돌고 있었고 화면이 말을 안 한 것이다. 가려진 슬롯 경고와 같은 자리에서
+## 같은 어법으로 알려 준다 - 전투를 돌려 보고 나서 깨닫게 하면 안 된다.
+func _stationary_note(tid: String, slots: Array) -> String:
+	if String(Innates.base_ai(tid)["stand"]) != "hold":
+		return ""
+	var has_target := false
+	var has_position := false
+	for cid in slots:
+		match String(Cards.TABLE.get(cid, {}).get("axis", "")):
+			Axes.TARGET: has_target = true
+			Axes.POSITION: has_position = true
+	if has_target and not has_position:
+		return UiText.t("loadout.no_legs",
+			"표적은 정했지만 이 대원은 스스로 접근하지 않는다 - 위치 모듈이 필요하다")
+	return ""

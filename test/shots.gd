@@ -68,11 +68,30 @@ func _init() -> void:
 	mid.setup(run)
 	mid.speed = 4.0
 	mid._start_battle()
-	for _i in 220:
+	for _i in 150:
 		await process_frame
+	var n_t := 0
+	for u in mid.battle.units:
+		if u.alive and u.last_target != null:
+			n_t += 1
+	print("      표적 보유 유닛 %d / 생존 %d" % [n_t,
+		mid.battle.living_count(0) + mid.battle.living_count(1)])
 	var img2 := root.get_texture().get_image()
 	img2.save_png("%s/11_midbattle.png" % OUT)
 	print("  찍음: 11_midbattle")
+
+	# 호버 정보가 유닛보다 위에 그려지는지. 마우스를 못 쓰니 값을 직접 넣는다.
+	# _process 가 매 프레임 마우스로 다시 계산하므로 잠시 끈다.
+	mid.set_process(false)
+	for u in mid.battle.units:
+		if u.alive and u.team == Unit.TEAM_ENEMY:
+			mid.hover_unit = u
+			break
+	mid.top_layer.queue_redraw()
+	for _i in 4:
+		await process_frame
+	root.get_texture().get_image().save_png("%s/12_hover.png" % OUT)
+	print("  찍음: 12_hover")
 	mid.queue_free()
 	await process_frame
 

@@ -244,5 +244,6 @@
   "hover.trait": "특성",
   "hover.ai": "기본 판단",
   "hover.foe": "적",
-  "hover.ally": "아군"
+  "hover.ally": "아군",
+  "loadout.no_legs": "표적은 정했지만 이 대원은 스스로 접근하지 않는다 - 위치 모듈이 필요하다"
 }

@@ -48,6 +48,7 @@ func _init() -> void:
 	test_threat_stance()
 	test_ambush_spec()
 	test_bomber()
+	test_healer_target()
 	test_passives()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
@@ -833,3 +834,48 @@ func test_bomber() -> void:
 	var t := Rules.resolve_target(st, "lowest_max_hp_enemy", b5, "attack")
 	ok(t != null and t.type_id == "archer",
 		"최대 HP 가 가장 낮은 대원을 고른다", "" if t == null else t.type_id)
+
+
+# ── 24. 회복형에게 꽂은 표적 모듈 ────────────────────────────────────────
+
+func test_healer_target() -> void:
+	print("\n[24] 회복형 + 표적 모듈")
+
+	# 표적 모듈이 없으면 예전 그대로 - 회복이 기본이고 제자리를 지킨다.
+	var plain := decide(Stages.TEST_ID, [
+		member("bard", 0), member("warrior", 2), member("warrior", 4)])
+	ok(String(plain["card"]["act"]) in ["heal", "hold"],
+		"모듈이 없으면 악사는 회복형 그대로", String(plain["card"]["act"]))
+
+	# [근접 추적] 을 꽂으면 그 적을 향해 움직인다.
+	#
+	# 예전에는 표적 축이 적을 골라 와도 갈 곳이 없어 그냥 제자리였다. 산 모듈이
+	# 아무 일도 안 하는 것이고, 화면에도 이유가 안 적혔다.
+	var d := decide(Stages.TEST_ID, [
+		member("bard", 0, ["near_first"]), member("warrior", 2), member("warrior", 4)])
+	var t: Unit = d["target"]
+	ok(t != null and t.team == Unit.TEAM_ENEMY, "표적이 적으로 잡힌다")
+
+	# 사거리 안이면 실제로 친다. 예전에는 여기서도 "대기" 였다 - 표적을 골라
+	# 놓고 아무것도 안 하는, 산 모듈이 죽는 자리였다.
+	var b := Battle.new()
+	b.setup(Stages.TEST_ID, [
+		member("bard", 0, ["near_first"]), member("warrior", 2), member("warrior", 4)])
+	# 사거리 2 안이되 후퇴 문턱(1칸) 밖에 세운다. 붙이면 악사는 물러난다 -
+	# 그건 기본기(flee_within 1)가 옳게 도는 것이다.
+	b.units[3].pos = b.units[0].pos + Vector2i(2, 0)
+	var d2 := Rules.select(b.units[0], b)
+	ok(String(d2["card"]["act"]) == "attack",
+		"사거리 안이면 악사도 그 적을 친다", String(d2["card"]["act"]))
+
+	# 사거리 밖에서는 여전히 제자리다. 원거리를 앞으로 보내려면 위치 모듈이
+	# 필요하다는 규칙(Innates 주석)은 악사에게도 똑같이 적용된다.
+	ok(String(d["card"]["act"]) == "hold",
+		"사거리 밖에서는 제자리 - 위치 모듈이 있어야 간다", String(d["card"]["act"]))
+
+	# 위치 모듈을 같이 꽂으면 간다.
+	var d3 := decide(Stages.TEST_ID, [
+		member("bard", 0, ["near_first", "front_line"]),
+		member("warrior", 2), member("warrior", 4)])
+	ok(String(d3["card"]["act"]) == "move_toward",
+		"위치 모듈을 꽂으면 접근한다", String(d3["card"]["act"]))

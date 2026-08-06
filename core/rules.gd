@@ -282,6 +282,18 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		return _rule(unit, "대상 없음", "hold", unit, 0, 0)
 
 	# ── 사거리 안이면 일한다 ─────────────────────────────────────────────
+	# ── 회복형에게 표적 모듈을 꽂으면 그 적을 친다 ───────────────────────
+	# 악사의 기본 행동은 회복이라, 표적 축이 **적**을 골라 오면 예전에는 갈 곳이
+	# 없어서 그냥 제자리였다. [근접 추적] 을 꽂아도 판이 끝날 때까지 한 걸음도
+	# 안 움직였다 - 산 모듈이 아무 일도 안 하는 것이고, 그건 버그다.
+	#
+	# 표적 모듈을 꽂는 것은 "이 대원에게 노릴 대상을 지정한다" 는 명시적인
+	# 선택이다. 그 선택이 회복형에게만 무시될 이유가 없다. 악사도 사거리 2에
+	# 공격력이 있다 - 약하지만 없는 것이 아니다.
+	if act_kind == "heal" and target.team != unit.team:
+		act_kind = "attack"
+		power = 100
+
 	var dist: int = Grid.manhattan(unit.pos, target.pos)
 	if dist <= unit.atk_range:
 		if act_kind == "heal":

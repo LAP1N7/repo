@@ -66,6 +66,9 @@ const LOG_LINES: int = 200
 const COL_ALLY := Color(0.45, 0.80, 1.0)
 const COL_FOE := Color(1.0, 0.45, 0.42)
 
+## 판 위 동그라미의 반지름. 화살표가 몸통을 피해 가려면 이 값을 알아야 한다.
+const UNIT_R: float = 34.0
+
 const ROSTER_X: float = 900.0
 const COL_W: float = 340.0
 ## 전황판 높이. 대원 셋 x 66 + 머리말.
@@ -99,10 +102,6 @@ const COL_TILE_B := Color(0.13, 0.14, 0.19)
 ## 무늬의 진폭이 다시 3분의 1로 줄어 도로도 자재 더미도 안 보였다. 사진 쪽을
 ## 더 어둡게 굽고(가장 밝은 곳 72/255) 얹는 비율을 올리는 편이 맞다 -
 ## 판은 여전히 어둡고 무늬만 살아난다.
-const BG_ALPHA: float = 0.55
-
-## 판 경계에서 사진을 얼마나 안으로 들일지.
-const BG_INSET: float = 10.0
 const COL_PLAYER_ZONE := Color(0.25, 0.5, 0.8, 0.15)
 const COL_ENEMY_ZONE := Color(0.8, 0.3, 0.28, 0.15)
 
@@ -125,8 +124,9 @@ var fx: Node2D
 var ui: Control
 var unit_views: Array[UnitView] = []
 ## 판 뒤에 까는 지형 사진과, 그 위에 그리는 층.
-var terrain: TextureRect
 var overlay: Control
+## 유닛보다 위에 그리는 층. 호버 정보가 여기 산다.
+var top_layer: Control
 
 var lbl_stage: Label
 var lbl_tick: Label
@@ -177,30 +177,16 @@ func setup(p_run: RunState) -> void:
 	font = UiKit.font(UnitView.CHIP_SIZE)
 
 	# ── 판은 네 겹이다 ───────────────────────────────────────────────────
-	#   _draw()      바탕 + 칸(불투명)
-	#   terrain      지형 사진 (TextureRect)
-	#   overlay      진영·어그로선·포격 예고·격자선
+	#   _draw()      바탕 + 칸
+	#   overlay      진영 · 표적선 · 포격 예고 · 격자선
 	#   board        유닛
+	#   top_layer    호버 정보 (유닛보다 위)
 	#
-	# 지형을 왜 노드로 붙이는가: _draw() 안의 draw_texture_rect 가 이 프로젝트
-	# 에서 텍스처를 흰색으로 칠한다. SD 얼굴이 흰 네모로 나왔을 때와 같은
-	# 증상이고, 그때도 TextureRect 자식 노드로 바꿔 해결했다. 좌표만 보고는
-	# 절대 못 찾는 종류라 화면을 찍어 확인해야 한다(test/shots.gd).
-	#
-	# 그리고 지형이 노드가 되면 격자선이 그 아래로 깔린다. 그래서 진영 표시부터
-	# 격자선까지를 overlay 로 옮겨 지형 **위에** 다시 그린다.
-	# ── 판보다 한 겹 안쪽에 깐다 ─────────────────────────────────────────
-	# 판 경계에 딱 맞추면 사진의 잘린 변이 격자 테두리와 겹쳐 지저분해진다.
-	# 사방 10px 을 비우면 배경이 판 **안에 놓인 것**처럼 읽히고, 바깥 한 줄이
-	# 어두운 채로 남아 판의 윤곽도 또렷해진다.
-	terrain = TextureRect.new()
-	terrain.position = BOARD_ORIGIN + Vector2(BG_INSET, BG_INSET)
-	terrain.size = Vector2(Grid.W * TILE_W - BG_INSET * 2,
-		Grid.H * TILE_H - BG_INSET * 2)
-	terrain.stretch_mode = TextureRect.STRETCH_SCALE
-	terrain.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	terrain.modulate = Color(1, 1, 1, BG_ALPHA)
-	add_child(terrain)
+	# ── 지형 사진은 뺐다 ─────────────────────────────────────────────────
+	# 항공 사진을 깔면 판이 "어떤 땅 위" 로 읽혀서 좋았지만, 그 위에 표적선과
+	# 이동 경로와 포격 예고가 겹치자 어느 선이 무엇인지 구별이 안 됐다.
+	# 판에서 읽어야 하는 것은 지형이 아니라 **누가 누구에게 가는가** 다.
+	# 배경이 그걸 이기면 배경이 틀린 것이다. (assets/art/bg 는 남겨 둔다)
 
 	overlay = _Overlay.new()
 	overlay.view = self
@@ -218,7 +204,6 @@ func setup(p_run: RunState) -> void:
 	fx = Node2D.new()
 	fx.position = BOARD_ORIGIN
 	add_child(fx)
-
 	_build_ui()
 	_reset()
 
@@ -255,13 +240,28 @@ func _process(_delta: float) -> void:
 		overlay.queue_redraw()
 
 
-## 지형 위에 그리는 층. _draw_overlay 를 그대로 부른다.
+## 판 위에 그리는 층. _draw_overlay 를 그대로 부른다.
 class _Overlay extends Control:
 	var view
 
 	func _draw() -> void:
 		if view != null:
 			view._draw_overlay(self)
+
+
+## 유닛보다 **위**에 그리는 층. 호버 정보 전용이다.
+##
+## 개체 위에 마우스를 올려 여는 창이 그 개체에 가리면 앞뒤가 안 맞는다.
+class _TopLayer extends Control:
+	var view
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if view != null:
+			view._draw_arrows(self)
+			view._draw_hover(self)
 
 
 func _draw() -> void:
@@ -274,16 +274,7 @@ func _draw() -> void:
 				COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
 
 
-## 지형 사진을 지금 스테이지 것으로 맞춘다. 없으면 노드를 비워 둔다 -
-## 사진이 없어도 게임은 그대로 돈다. 예전처럼 빈 격자가 될 뿐이다.
-func _refresh_terrain() -> void:
-	if terrain == null:
-		return
-	terrain.texture = UiKit.art(["bg"],
-		"stage%d" % (run.stage_id if run != null else 1))
-
-
-## 지형 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
+## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
 ##
 ## 예전에는 전부 _draw 안에 있었다. 지형이 노드가 되면서 자식이 부모보다 나중에
 ## 그려지므로, 여기 있던 것들을 그대로 두면 사진이 격자선을 덮어 버린다.
@@ -324,46 +315,7 @@ func _draw_overlay(c: CanvasItem) -> void:
 						Color(1.0, 0.40, 0.28, 0.22), 2.0)
 				d += step
 
-	# ── 표적 선 ──────────────────────────────────────────────────────────
-	# 누가 누구를 보고 있는지를 선으로 잇는다. 이게 없으면 "내 궁수가 왜
-	# 죽었지" 를 답할 수가 없다. 위협도를 넣어도 화면에 안 보이면 플레이어에게는
-	# 없는 것과 같다.
-	#
-	# ── 양쪽 다 긋는다 ───────────────────────────────────────────────────
-	# 예전에는 적 것만 그었다. 그런데 어그로 관리는 **주고받는** 것이다.
-	# 내 대원이 무엇을 보고 있는지가 안 보이면, 표적 모듈을 바꿨을 때 무엇이
-	# 달라졌는지 확인할 방법이 없다.
-	#
-	# 지금 때리는 중(사거리 안)은 진하게, 쫓아가는 중은 옅게 긋는다. 예전에는
-	# 쫓는 중인 것을 아예 안 그렸는데, 그러면 판이 조용한 동안 화면에 아무
-	# 정보도 안 남는다 - 정작 그때가 "누가 누구에게 가고 있나" 를 가장 알고
-	# 싶은 순간이다.
 	if battle != null:
-		for e in battle.units:
-			if not e.alive or e.last_target == null:
-				continue
-			var t: Unit = e.last_target
-			if not t.alive:
-				continue
-			# ── 선 색은 **쏘는 쪽 유닛의 고유색**이다 ────────────────────
-			# 진영 색 둘로만 그으면 적이 셋일 때 누가 그은 선인지 알 수 없다.
-			# 유닛 색을 쓰면 판 위의 동그라미와 선이 같은 색이라 눈이 바로 잇는다.
-			#
-			# 옅게 그었더니 배경 사진 위에서 거의 안 보였다. 진하게, 굵게.
-			var firing := Grid.manhattan(e.pos, t.pos) <= e.atk_range
-			var col := e.color
-			col = Color(minf(1.0, col.r * 1.15 + 0.10), minf(1.0, col.g * 1.15 + 0.10),
-				minf(1.0, col.b * 1.15 + 0.10), 0.85 if firing else 0.42)
-			var pa := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
-				e.pos.y * TILE_H + TILE_H * 0.5)
-			var pb := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
-				t.pos.y * TILE_H + TILE_H * 0.5)
-			c.draw_line(pa, pb, col, 4.0 if firing else 2.0)
-			# 표적 쪽 끝에 표시를 남긴다. 선만으로는 어느 쪽이 노려지는
-			# 쪽인지 안 읽힌다.
-			if firing:
-				c.draw_circle(pb, 7.0, Color(col.r, col.g, col.b, 0.9), false, 2.5)
-
 		# 지금 적이 가장 많이 노리는 아군에게 고리를 씌운다.
 		# 막대(위협)와 판(고리)이 같은 것을 가리켜야 "내가 어그로를 관리하고
 		# 있다" 가 성립한다.
@@ -393,7 +345,42 @@ func _draw_overlay(c: CanvasItem) -> void:
 		c.draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
 			BOARD_ORIGIN + Vector2(Grid.W * TILE_W, y * TILE_H), UiKit.LINE, 1.0)
 
-	_draw_hover(c)
+
+
+## 휜 화살표 하나. bend 는 휘는 정도이자 방향이다(부호).
+##
+## 베지에를 정수 좌표로 풀 필요는 없다 - 이건 그림일 뿐이고 전투 판정에는
+## 아무 영향이 없다. 결정론이 걸리는 곳은 core 뿐이다.
+func _arc_arrow(c: CanvasItem, a: Vector2, b: Vector2, col: Color,
+		width: float, bend: float) -> void:
+	var mid := (a + b) * 0.5
+	var d := b - a
+	# 수직 방향으로 밀어 활을 만든다. 거리가 멀수록 더 휜다.
+	# ── 최소 부풀림이 있어야 한다 ────────────────────────────────────────
+	# 휘는 정도를 거리에만 비례시켰더니, 붙어서 싸우는 두 유닛 사이에서는
+	# 활이 거의 안 휘어 동그라미(반지름 34) 안에 통째로 파묻혔다. 정작 가장
+	# 알고 싶은 순간이 그때다. 옆으로 최소 34px 는 밀어낸다.
+	var off: float = maxf(UNIT_R + 14.0, d.length() * absf(bend))
+	if bend < 0.0:
+		off = -off
+	var ctrl := mid + Vector2(-d.y, d.x).normalized() * off
+	var pts := PackedVector2Array()
+	var steps := 14
+	for i in steps + 1:
+		var u := float(i) / float(steps)
+		var v := 1.0 - u
+		pts.append(a * (v * v) + ctrl * (2.0 * v * u) + b * (u * u))
+	c.draw_polyline(pts, col, width, true)
+
+	# 화살촉. 끝 두 점이 만드는 방향을 그대로 쓴다.
+	var tip := pts[pts.size() - 1]
+	var head_dir := (tip - pts[pts.size() - 2]).normalized()
+	var side := Vector2(-head_dir.y, head_dir.x)
+	var h := 11.0
+	c.draw_colored_polygon(PackedVector2Array([
+		tip, tip - head_dir * h + side * h * 0.5,
+		tip - head_dir * h - side * h * 0.5,
+	]), col)
 
 
 ## ── 판 위 개체 정보 ──────────────────────────────────────────────────────
@@ -403,6 +390,46 @@ func _draw_overlay(c: CanvasItem) -> void:
 ## 적에게는 **역할과 특성**을 적는다. 내 대원은 능력치를 알면 되지만, 적은
 ## "저게 뭘 하는 물건인가" 가 먼저다. 자동 포탑이 안 움직인다는 사실을 모르면
 ## 그 판은 시행착오가 된다 - 숨기면 시행착오, 공개하면 추리다. (DESIGN 2.4)
+## ── 표적 화살표는 유닛보다 **위**에 그린다 ──────────────────────────────
+## 아래에 그렸더니 붙어서 싸우는 두 유닛 사이에서는 화살표가 통째로 동그라미
+## 뒤에 숨었다. 정작 가장 알고 싶은 순간이 그때인데 그때만 안 보였다.
+##
+## 곧은 선으로도 그어 봤는데 판 한가운데에서 여섯 개가 완전히 포개졌다.
+## 활처럼 휘면 겹쳐도 갈라지고, 휜 방향과 화살촉이 합쳐 "이 틱에 누가 누구를
+## 향하는가" 가 한눈에 들어온다.
+##
+## 휘는 쪽과 정도는 index 로 고정한다. 같은 배치면 같은 그림이어야 한다.
+func _draw_arrows(c: CanvasItem) -> void:
+	if battle == null:
+		return
+	for e in battle.units:
+		if not e.alive or e.last_target == null:
+			continue
+		var t: Unit = e.last_target
+		if not t.alive:
+			continue
+		var firing := Grid.manhattan(e.pos, t.pos) <= e.atk_range
+		var col := e.color
+		col = Color(minf(1.0, col.r * 1.15 + 0.10), minf(1.0, col.g * 1.15 + 0.10),
+			minf(1.0, col.b * 1.15 + 0.10), 0.95 if firing else 0.5)
+		var pa := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
+			e.pos.y * TILE_H + TILE_H * 0.5)
+		var pb := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
+			t.pos.y * TILE_H + TILE_H * 0.5)
+		# ── 동그라미 가장자리에서 시작해 가장자리에서 끝난다 ────────────
+		# 가운데에서 그으면 활의 대부분이 몸통 뒤에 파묻히고 화살촉만 삐죽
+		# 나온다. 실제로 그렇게 나왔다 - 무엇을 가리키는지 알 수가 없었다.
+		#
+		# 붙어 있으면 잘라 낸 뒤 남는 길이가 거의 0 이다. 그래서 짧을수록
+		# 옆으로 더 크게 부풀려, 활이 두 몸통 **바깥으로** 돌아가게 한다.
+		var span := pa.distance_to(pb)
+		var dir := (pb - pa).normalized()
+		pa += dir * minf(UNIT_R, span * 0.42)
+		pb -= dir * minf(UNIT_R, span * 0.42)
+		_arc_arrow(c, pa, pb, col, 5.0 if firing else 3.0,
+			(1 if e.index % 2 == 0 else -1) * 0.34)
+
+
 func _draw_hover(c: CanvasItem) -> void:
 	var u := hover_unit
 	if u == null:
@@ -556,6 +583,15 @@ func _build_ui() -> void:
 	# 예전에는 기록이 맨 위에 있고 판단이 그 아래 붙어서, 화면 아래쪽 절반이
 	# 통째로 비어 있었다. 정작 가장 알고 싶은 것(누가 맞고 있나)은 아래 대원
 	# 바를 봐야 했고, 시선이 위아래로 계속 튀었다.
+	# ── 맨 위 층 ─────────────────────────────────────────────────────────
+	# 유닛(board)·효과(fx)보다 **나중에** 붙어야 위에 그려진다. 개체 위에
+	# 마우스를 올려 여는 창이 그 개체에 가리면 앞뒤가 안 맞는다.
+	top_layer = _TopLayer.new()
+	top_layer.view = self
+	top_layer.size = Vector2(1280, 720)
+	top_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(top_layer)
+
 	roster_root = _RosterPanel.new()
 	roster_root.view = self
 	roster_root.position = Vector2(ROSTER_X, 100)
@@ -1013,7 +1049,6 @@ func _reset() -> void:
 
 	battle = Battle.new()
 	battle.setup(run.stage_id, run.to_party())
-	_refresh_terrain()
 	_build_unit_views()
 	_build_squad_bar()
 	_clear_log()
@@ -2251,10 +2286,13 @@ class _RosterPanel extends Control:
 	const ROW_H: float = 78.0
 	const FACE: float = 60.0
 	## 적 네모. 겹쳐 놓으면 몇인지 안 세어지므로 오른쪽부터 나란히 깐다.
-	const FOE_BOX: float = 34.0
+	const FOE_BOX: float = 30.0
 	const FOE_GAP: float = 6.0
 	## 한 줄에 나란히 놓을 수 있는 적 수. 넘치면 "+N" 으로 접는다.
-	const FOE_MAX: int = 3
+	##
+	## 셋이면 가장 왼쪽 네모가 HP 막대 끝(x 220)을 파고들어 글자와 겹쳤다.
+	## 둘로 줄이고 막대도 짧게 잡아 둘이 절대 안 만나게 한다.
+	const FOE_MAX: int = 2
 
 	func _process(_d: float) -> void:
 		queue_redraw()
@@ -2329,7 +2367,7 @@ class _RosterPanel extends Control:
 			Color(UiKit.TEXT.r, UiKit.TEXT.g, UiKit.TEXT.b, dim))
 
 		# HP. 막대는 비율을, 숫자는 남은 양을 말한다.
-		var bw := 150.0
+		var bw := 132.0
 		draw_string(fs, Vector2(x + 80, y + 13), "%d / %d" % [u.hp, u.max_hp],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
 			Color(UiKit.MUTED.r, UiKit.MUTED.g, UiKit.MUTED.b, dim))
