@@ -17,6 +17,17 @@ signal battle_event(e: Dictionary)
 
 const MAX_TICKS: int = 60
 
+## 페이즈 하나가 늘 때마다 늘려 주는 틱 예산.
+##
+## 60 은 한 덩어리 판을 재던 값이다. 페이즈를 셋으로 쪼개 놓고 예산을 그대로
+## 두면 3페이즈는 시작하자마자 시간이 끊긴다. 이건 난이도가 아니라 계량 실수다.
+const TICKS_PER_WAVE: int = 22
+
+
+## 이 전투의 틱 상한. 페이즈 수에 따라 늘어난다.
+func max_ticks() -> int:
+	return MAX_TICKS + TICKS_PER_WAVE * maxi(0, waves.size() - 1)
+
 ## 아무도 피해를 입지 않은 채 이만큼 지나면 정체로 보고 끝낸다.
 ##
 ## ── 왜 필요한가 ──────────────────────────────────────────────────────────
@@ -65,6 +76,9 @@ func setup(p_stage_id: int, party: Array) -> void:
 	tick = 0
 	result = RESULT_ONGOING
 	stage_id = p_stage_id
+	wave = 0
+	barrage_count = 0
+	hazard_cells.clear()
 
 	var idx: int = 0
 
@@ -84,15 +98,96 @@ func setup(p_stage_id: int, party: Array) -> void:
 		idx += 1
 
 	var stage: Dictionary = Stages.get_stage(p_stage_id)
-	for e in stage["enemies"]:
-		units.append(Unit.create(
-			idx, String(e["type"]), Unit.TEAM_ENEMY,
-			e["pos"], e["cards"], String(e.get("special", "")), 0,
-			bool(e.get("special_first", false))
-		))
-		idx += 1
+	waves = Stages.waves(stage)
+	hazard = stage.get("hazard", {})
+	_spawn_wave(0)
 
 	_assert_no_overlap()
+
+
+## ── 페이즈 ───────────────────────────────────────────────────────────────
+## 한 판이 한 덩어리로 끝나면 "이 판은 어떤 판인가" 가 첫 3초에 다 드러나고,
+## 남은 시간은 이미 정해진 결과를 보는 시간이 된다.
+##
+## 페이즈로 쪼개면 같은 판 안에서 문제가 바뀐다. 1페이즈를 푼 편성이 2페이즈에서
+## 통하지 않을 수 있고, 그게 "우선순위를 어떻게 짤 것인가" 를 한 판 안에서 두
+## 번 묻는다. 알고리즘은 전투 중에 못 바꾸므로, 두 문제를 **한 알고리즘으로**
+## 풀어야 한다 - 그게 이 게임이 물어야 할 질문이다.
+##
+## 다음 페이즈는 앞 페이즈가 전멸한 **그 틱에** 등장한다. 딜레이를 두면 그
+## 사이에 아군이 전진해 진형이 무너진 채로 다음 파가 온다.
+var waves: Array = []
+var wave: int = 0
+
+
+func _spawn_wave(n: int) -> void:
+	wave = n
+	var spawned: Array[int] = []
+	for e in waves[n]:
+		var idx: int = units.size()
+		var u := Unit.create(
+			idx, String(e["type"]), Unit.TEAM_ENEMY,
+			_free_enemy_cell(e["pos"]), e["cards"],
+			String(e.get("special", "")), 0,
+			bool(e.get("special_first", false))
+		)
+		u.apply_traits(e.get("traits", []))
+		units.append(u)
+		spawned.append(idx)
+	if n > 0:
+		# 새 파가 오면 정체 시계를 되감는다. 안 그러면 1페이즈에서 카이팅으로
+		# 시간을 끈 판이 2페이즈가 뜨자마자 정체 패배로 끝난다.
+		last_damage_tick = tick
+		_repair()
+		_emit({ "type": "wave", "wave": n, "units": spawned, "total": waves.size() })
+
+
+## 페이즈 사이 응급 처치. 살아남은 대원이 최대 HP 의 이만큼을 회복한다.
+##
+## ── 왜 필요한가 ──────────────────────────────────────────────────────────
+## 이게 없으면 페이즈는 "판이 바뀐다" 가 아니라 그냥 "적이 두 배" 다. 앞 파에서
+## 깎인 HP 를 그대로 들고 다음 파를 맞으니, 페이즈를 쪼갠 순간 난이도가 배로
+## 뛴다. 실측으로 모듈 없이 1단계 승률이 50% 에서 0~25% 로 떨어졌다 - 첫 판은
+## 기본기만으로 이겨야 하는 판인데 그게 무너졌다.
+##
+## 회복은 **플레이어만** 받는다. 새로 오는 쪽은 어차피 만피로 등장한다.
+## 정수 연산만 쓴다. 결정론은 여기서도 예외가 없다.
+const REPAIR_PCT: int = 60
+
+
+func _repair() -> void:
+	var healed: Array = []
+	for u in units:
+		if not u.alive or u.team != Unit.TEAM_PLAYER:
+			continue
+		var amount: int = u.heal(u.max_hp * REPAIR_PCT / 100)
+		if amount > 0:
+			healed.append({ "target": u.index, "amount": amount, "target_hp": u.hp })
+	if not healed.is_empty():
+		_emit({ "type": "repair", "heals": healed })
+
+
+## 지정된 칸이 이미 찼으면 적 진영 칸을 순서대로 훑어 빈 칸을 찾는다.
+##
+## 암살자가 적 진영까지 파고든 상태에서 다음 파가 뜨면 겹친다. 난수를 쓰지
+## 않고 ENEMY_SLOTS 의 고정 순서로 밀어내야 같은 배치에서 같은 결과가 나온다.
+func _free_enemy_cell(want: Vector2i) -> Vector2i:
+	var taken: Dictionary = {}
+	for u in units:
+		if u.alive:
+			taken[u.pos] = true
+	if not taken.has(want):
+		return want
+	for c in Grid.ENEMY_SLOTS:
+		if not taken.has(c):
+			return c
+	# 진영이 통째로 찼다. 격자를 오른쪽 위부터 훑는다.
+	for x in range(Grid.W - 1, -1, -1):
+		for y in Grid.H:
+			var p := Vector2i(x, y)
+			if not taken.has(p):
+				return p
+	return want
 
 
 func _assert_no_overlap() -> void:
@@ -201,6 +296,11 @@ func plan_move(mover: Unit, target: Unit, toward: bool, bonus: int = 0,
 ## 실제로 그렇게 보였다. 그래서 경로 전체를 넘긴다.
 func plan_move_path(mover: Unit, target: Unit, toward: bool, bonus: int = 0,
 		stop_range: int = -1) -> Array[Vector2i]:
+	# 고정 개체는 어떤 모듈이 붙어도 안 움직인다. 이동력 0 만으로는 부족하다 -
+	# 강행군 같은 이동 보너스가 붙으면 한 칸씩 기어간다.
+	if mover.immobile:
+		return [mover.pos] as Array[Vector2i]
+
 	var blocked: Dictionary = occupancy(mover)
 	var path: Array[Vector2i] = [mover.pos]
 	var p: Vector2i = mover.pos
@@ -279,6 +379,13 @@ func step() -> bool:
 		return false
 
 	tick += 1
+
+	# 착탄이 먼저다. 예고를 보고 나서 한 틱을 살아남았는지가 여기서 갈린다.
+	_resolve_barrage()
+	if result != RESULT_ONGOING:
+		return false
+	_warn_barrage()
+
 	# ── 상시 효과를 이번 틱 값으로 채운다 ────────────────────────────────
 	# 진형이 바뀌면 값이 바뀐다. 전투 시작에 한 번 계산하면 대원이 흩어져도
 	# 값이 그대로 남아 화면과 실제가 어긋난다.
@@ -292,6 +399,8 @@ func step() -> bool:
 		# 궁수가 판 절반을 덮어서 다른 축이 전부 무의미해진다.
 		u.range_bonus = 1 if (Passives.has(u, "scope") and not u.moved_last_tick) else 0
 		u.atk_range = u.atk_range_base + u.range_bonus
+		# 개체 특성이 만드는 보정. 감독기가 죽으면 그 틱부터 사라진다.
+		u.trait_atk_pct = Traits.attack_pct(u, self)
 
 	_emit({ "type": "tick_begin", "tick": tick })
 
@@ -358,12 +467,24 @@ func step() -> bool:
 
 		_execute(u, choice)
 
+	# 자폭은 틱의 모든 행동이 끝난 뒤에 한꺼번에 처리한다.
+	#
+	# 죽는 자리마다 터뜨리면 사망 처리 지점이 다섯 군데(평타·범위·반격·불굴·포격)
+	# 라 한 곳만 빠뜨려도 조용히 안 터진다. 한 곳에 모으면 빠질 데가 없고,
+	# "죽고 나서 터진다" 는 순서도 눈으로 읽힌다.
+	_resolve_explosions()
+
 	# 피격·처치 플래그를 다음 틱으로 넘긴다. "직전 틱에" 는 여기서 확정된다.
 	for u in units:
 		u.was_hit = u.hit_pending
 		u.hit_pending = false
 		u.moved_last_tick = u.moved_this_tick
 		u.moved_this_tick = false
+		# "적이 다가오는 중인가" 를 다음 틱에 판정할 수 있게 거리를 남긴다.
+		var nd: int = Grid.UNREACHABLE
+		for e in living_enemies_of(u):
+			nd = mini(nd, Grid.manhattan(u.pos, e.pos))
+		u.prev_near_dist = nd
 		u.killed_last_tick = u.kill_pending
 		u.kill_pending = false
 	for t in 2:
@@ -375,6 +496,136 @@ func step() -> bool:
 	_emit({ "type": "tick_end", "tick": tick })
 	_check_result()
 	return result == RESULT_ONGOING
+
+
+# ── 궤도 포격 ────────────────────────────────────────────────────────────
+#
+# ── 왜 넣었나 ────────────────────────────────────────────────────────────
+# 판을 바꾸는 가장 강한 손잡이는 적 구성이 아니라 **판 자체**다. 적을 아무리
+# 바꿔도 격자가 늘 안전하면 플레이어가 푸는 문제는 "누구를 먼저 치나" 하나로
+# 고정된다. 바닥이 위험해지는 순간 "언제 어디에 서 있나" 가 같이 문제가 된다.
+#
+# ── 왜 한 틱 미리 예고하는가 ─────────────────────────────────────────────
+# 예고 없이 떨어지면 그건 난수와 구별되지 않는다. 플레이어는 알고리즘을 짜
+# 두고 결과를 보는 입장이라, 예고가 없으면 자기 편성이 나빴는지 운이 나빴는지
+# 영영 구분하지 못한다. 한 틱 먼저 칸을 밝히면 화면을 보는 사람이 "저기 서
+# 있으면 맞겠다" 를 알 수 있고, 그때부터 이건 규칙이 된다.
+#
+# ── 왜 양쪽 다 맞는가 ────────────────────────────────────────────────────
+# 플레이어만 맞으면 벌칙이고 적만 맞으면 선물이다. 둘 다 맞아야 "적을 저기로
+# 끌고 간다" 가 전술이 된다.
+#
+# 난수는 없다. 패턴은 정해진 순서로 돌고 몇 번째인지는 barrage_count 가 센다.
+var hazard: Dictionary = {}
+var hazard_cells: Array[Vector2i] = []
+var barrage_count: int = 0
+
+
+## 이번 틱이 예고 틱인가.
+func _is_warn_tick() -> bool:
+	if hazard.is_empty() or String(hazard.get("kind", "")) != "barrage":
+		return false
+	var first := int(hazard.get("first", 6))
+	var period := maxi(1, int(hazard.get("period", 5)))
+	return tick >= first and (tick - first) % period == 0
+
+
+func _warn_barrage() -> void:
+	if not _is_warn_tick():
+		return
+	var patterns: Array = hazard.get("patterns", [])
+	if patterns.is_empty():
+		return
+	var pat: Dictionary = patterns[barrage_count % patterns.size()]
+	barrage_count += 1
+	hazard_cells = _pattern_cells(pat)
+	_emit({ "type": "barrage_warn", "cells": hazard_cells.duplicate(),
+		"name": String(hazard.get("name", "포격")) })
+
+
+## 열·행 지정을 실제 칸으로 편다. x 오름차순 · y 오름차순 고정이다.
+func _pattern_cells(pat: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var seen: Dictionary = {}
+	for x in pat.get("cols", []):
+		for y in Grid.H:
+			var p := Vector2i(int(x), y)
+			if Grid.in_bounds(p) and not seen.has(p):
+				seen[p] = true
+				out.append(p)
+	for y in pat.get("rows", []):
+		for x in Grid.W:
+			var p2 := Vector2i(x, int(y))
+			if Grid.in_bounds(p2) and not seen.has(p2):
+				seen[p2] = true
+				out.append(p2)
+	return out
+
+
+func _resolve_barrage() -> void:
+	if hazard_cells.is_empty():
+		return
+	var cells := hazard_cells
+	hazard_cells = [] as Array[Vector2i]
+
+	var hit_set: Dictionary = {}
+	for c in cells:
+		hit_set[c] = true
+	var dmg := int(hazard.get("damage", 20))
+	var hits: Array = []
+	# index 순으로 돈다. 같은 배치면 같은 순서로 맞아야 한다.
+	for u in units:
+		if not u.alive or not hit_set.has(u.pos):
+			continue
+		# 포격은 유닛이 아니다. take_damage 의 from 을 null 로 둬서 어그로가
+		# 엉뚱한 데로 튀지 않게 한다.
+		var d: int = u.take_damage(dmg, null)
+		last_damage_tick = tick
+		hits.append({ "target": u.index, "damage": d, "target_hp": u.hp })
+	_emit({ "type": "barrage", "cells": cells, "hits": hits,
+		"name": String(hazard.get("name", "포격")) })
+	for h in hits:
+		var v: Unit = units[int(h["target"])]
+		if not v.alive:
+			_emit({ "type": "death", "unit": v.index })
+			_recharge_on_death()
+	_check_result()
+
+
+## ── 자폭 ─────────────────────────────────────────────────────────────────
+## 죽은 자폭 개체를 터뜨린다. 폭발이 또 자폭 개체를 죽이면 연쇄한다.
+##
+## 연쇄에 상한을 둔다. 자폭체 여럿을 붙여 놓으면 이론상 끝없이 돌 수 있는데,
+## 격자가 8x6 이라 실제로는 서너 번이면 끝난다. 상한은 안전장치일 뿐이다.
+func _resolve_explosions() -> void:
+	for _round in 8:
+		var blew := false
+		for u in units:
+			if u.alive or u.exploded or not Traits.has(u, Traits.VOLATILE):
+				continue
+			u.exploded = true
+			blew = true
+			_explode(u)
+		if not blew:
+			return
+
+
+func _explode(src: Unit) -> void:
+	var hits: Array = []
+	# Grid.DIRS 순서로 돈다. 인접 4칸이고, 적아를 가리지 않는다.
+	for d in Grid.DIRS:
+		var v := unit_at(src.pos + d)
+		if v == null:
+			continue
+		var dealt: int = v.take_damage(Traits.VOLATILE_DAMAGE, null)
+		last_damage_tick = tick
+		hits.append({ "target": v.index, "damage": dealt, "target_hp": v.hp })
+	_emit({ "type": "explode", "unit": src.index, "at": src.pos, "hits": hits })
+	for h in hits:
+		var t: Unit = units[int(h["target"])]
+		if not t.alive:
+			_emit({ "type": "death", "unit": t.index })
+			_recharge_on_death()
 
 
 func _execute(u: Unit, choice: Dictionary) -> void:
@@ -802,6 +1053,10 @@ func _check_result() -> void:
 	if players == 0:
 		result = RESULT_DEFEAT
 	elif enemies == 0:
+		# 다음 페이즈가 남아 있으면 승리가 아니다. 그 자리에서 바로 다음 파가 온다.
+		if wave + 1 < waves.size():
+			_spawn_wave(wave + 1)
+			return
 		result = RESULT_VICTORY
 	elif tick - last_damage_tick >= STALL_LIMIT:
 		# 정체. 아무도 피를 못 깎은 채 STALL_LIMIT 틱이 지났다.
@@ -811,7 +1066,7 @@ func _check_result() -> void:
 		# 물러나며 버티는 것 자체가 전략이 되면 "규칙을 짜서 이긴다" 가 아니라
 		# "규칙을 짜서 안 진다" 가 되고, 그건 이 게임이 하려는 것이 아니다.
 		result = RESULT_DEFEAT
-	elif tick >= MAX_TICKS:
+	elif tick >= max_ticks():
 		# 최후의 안전장치. 정체 판정이 먼저 걸리므로 여기까지 오는 일은 드물다.
 		result = RESULT_TIMEOUT
 

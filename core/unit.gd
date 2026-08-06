@@ -158,6 +158,45 @@ var upgrade: int = 0
 var last_card_id: String = ""
 var last_rule_text: String = ""
 
+## ── 개체 특성 ────────────────────────────────────────────────────────────
+## 스테이지 표가 적에게 붙이는 성질. 플레이어 대원은 항상 비어 있다.
+## (data/traits.gd 참조)
+var traits: Array[String] = []
+
+## 절대 움직이지 않는가. 이동력이 0 이어도 이동 보너스를 주는 모듈이 붙으면
+## 한 칸씩 기어가므로, "고정" 은 별도 플래그로 못 박아야 한다.
+var immobile: bool = false
+
+## 특성이 상시로 얹는 위협도. 태세가 채우는 threat_mod 와 별개다.
+##
+## 나누지 않으면 안 된다. threat_mod 는 매 틱 교전 수칙이 덮어쓰는 값이라,
+## 거기에 유인 장치의 값을 넣으면 첫 틱에 지워진다.
+var threat_base: int = 0
+
+## 특성이 이번 틱에 만든 공격력 보정(%p). Battle 이 틱마다 다시 채운다.
+var trait_atk_pct: int = 0
+
+## 자폭 특성이 이미 터졌는가. 두 번 터지는 것을 막는다.
+var exploded: bool = false
+
+## 직전 틱에 가장 가까운 적까지의 거리. -1 이면 아직 모른다.
+##
+## "적이 다가오는 중인가" 를 판정하려면 과거가 필요한데 규칙 엔진은 현재
+## 상태밖에 못 본다. 그래서 Battle 이 틱 끝에 여기 적어 둔다.
+var prev_near_dist: int = -1
+
+
+## 스테이지가 준 특성을 얹는다. 적에게만 붙는다.
+func apply_traits(list: Array) -> void:
+	for t in list:
+		var name := String(t)
+		if not traits.has(name):
+			traits.append(name)
+	if traits.has(Traits.IMMOBILE):
+		immobile = true
+	if traits.has(Traits.BEACON):
+		threat_base += Traits.BEACON_THREAT
+
 
 ## p_upgrade 는 강화 단계. HP·공격력만 오른다. 전투는 이 값이 이미 반영된
 ## 스탯만 보고, 강화 체계 자체는 전혀 모른다.
@@ -268,7 +307,8 @@ func power_damage(percent: int) -> int:
 	var doc := Doctrines.amount(doctrines, "attack_pct")
 	# 잠복이 풀린 뒤 첫 공격. 멈춰 있던 값을 여기서 받는다.
 	var amb := 60 if ambush_ready else 0
-	return maxi(1, atk * (percent + focus_bonus + doc + passive_atk_pct + amb) / 100)
+	return maxi(1, atk * (percent + focus_bonus + doc + passive_atk_pct
+		+ trait_atk_pct + amb) / 100)
 
 
 func is_enemy_of(other: Unit) -> bool:

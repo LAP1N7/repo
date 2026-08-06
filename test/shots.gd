@@ -48,6 +48,19 @@ func _init() -> void:
 	await _shot("04_battle", load("res://scenes/battle_view.tscn").instantiate(),
 		func(s): s.setup(run), 6)
 
+	# 포격 예고가 실제로 칸에 칠해지는지. 좌표만 보고는 절대 알 수 없다.
+	run.stage_id = 4
+	await _shot("10_barrage", load("res://scenes/battle_view.tscn").instantiate(),
+		func(s):
+			s.setup(run)
+			# 예고가 뜰 때까지 코어만 돌린다. 뷰 재생은 건너뛴다.
+			for _i in 40:
+				if not s.battle.hazard_cells.is_empty():
+					break
+				s.battle.step()
+			s.queue_redraw(), 6)
+	run.stage_id = 1
+
 	run.on_stage_cleared(10)
 	await _shot("05_reward", load("res://scenes/reward_screen.tscn").instantiate(),
 		func(s): s.setup(run, ["musketeer", "assassin", "bard"]))

@@ -220,5 +220,12 @@
   "cmd.swap_head": "실험용 장치",
   "cmd.swap_sub": "보유 모듈 하나를 같은 축의 다른 모듈로 바꿉니다. 축은 넘어가지 않습니다.",
   "cmd.swap_none": "보유 모듈이 없습니다.",
-  "cmd.swap_more": "다음 %d/%d"
+  "cmd.swap_more": "다음 %d/%d",
+  "battle.bar_warn": "        [경고] %s 조준 - %d칸",
+  "battle.bar_hit": "        [착탄] %s - %d명 피격",
+  "battle.explode": "        [자폭] 인접 %d명에게 피해",
+  "battle.wave": "%d 페이즈 / %d",
+  "battle.wave_log": "[틱 %d]  %d 페이즈 진입",
+  "battle.wave_tag": "     %d 페이즈",
+  "battle.hazard_tag": "     %s 있음"
 }

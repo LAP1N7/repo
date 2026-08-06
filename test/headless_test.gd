@@ -42,6 +42,10 @@ func _init() -> void:
 	test_axis_doctrine()
 	test_squad_movement()
 	test_story_wiring()
+	test_waves()
+	test_traits()
+	test_barrage()
+	test_threat_stance()
 	test_passives()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
@@ -142,8 +146,11 @@ func test_axis_fallthrough() -> void:
 
 	# 조건 없는 표적 모듈을 위에 두면 아래는 절대 안 걸린다.
 	# 이게 "위에 있는 게 먼저다" 라는 이 게임의 코어다.
-	var d := decide(5, [
-		member("archer", 0, ["cut_support", "execute"]),
+	# 검사 전용 판을 쓴다. 스테이지 표를 고칠 때마다 여기가 터지면 안 된다.
+	# [처형] 은 안 쓴다. 절대 HP 로 고르므로 검사장에서는 [지원 차단] 과 같은
+	# 악사를 집어 순서를 바꿔도 결과가 안 변한다 - 검사가 아무것도 안 재게 된다.
+	var d := decide(Stages.TEST_ID, [
+		member("archer", 0, ["cut_support", "near_first"]),
 		member("warrior", 2), member("warrior", 4)])
 	var rows: Array = d["trace"].get(Axes.TARGET, [])
 	ok(rows.size() >= 2, "표적 축 두 줄이 기록된다")
@@ -152,8 +159,8 @@ func test_axis_fallthrough() -> void:
 		ok(not bool(rows[1]["hit"]), "2번은 안 걸린다")
 
 	# 순서를 뒤집으면 결과가 바뀐다. 같은 모듈로 다른 대원이 되는 근거다.
-	var d2 := decide(5, [
-		member("archer", 0, ["execute", "cut_support"]),
+	var d2 := decide(Stages.TEST_ID, [
+		member("archer", 0, ["near_first", "cut_support"]),
 		member("warrior", 2), member("warrior", 4)])
 	var t1: Unit = d["target"]
 	var t2: Unit = d2["target"]
@@ -196,13 +203,13 @@ func test_target_axis() -> void:
 	print("\n[6] 표적 축")
 
 	var party := [member("archer", 0, ["backline"]), member("warrior", 2), member("warrior", 4)]
-	var d := decide(3, party)
+	var d := decide(Stages.TEST_ID, party)
 	var t: Unit = d["target"]
-	# 3단계는 방패병 둘이 앞(x=5), 악사가 뒤(x=6)다.
+	# 검사장은 방패병 둘이 앞(x=5), 악사가 뒤(x=6)다.
 	ok(t != null and t.pos.x == 6, "[후열 침투] 는 뒤를 고른다",
 		"x=%d" % (t.pos.x if t != null else -1))
 
-	var d2 := decide(3, [member("archer", 0, ["cut_support"]), member("warrior", 2), member("warrior", 4)])
+	var d2 := decide(Stages.TEST_ID, [member("archer", 0, ["cut_support"]), member("warrior", 2), member("warrior", 4)])
 	var t2: Unit = d2["target"]
 	ok(t2 != null and t2.type_id == "bard", "[지원 차단] 은 회복형을 고른다",
 		t2.type_id if t2 != null else "null")
@@ -306,7 +313,8 @@ func test_stall_rule() -> void:
 	# 악사만 셋이면 아무도 적을 못 줄인다. 반드시 정체로 끝나야 한다.
 	var b := run_battle(1, [member("bard", 0), member("bard", 2), member("bard", 4)])
 	ok(b.result != Battle.RESULT_ONGOING, "회복만 하는 편성도 반드시 끝난다")
-	ok(b.tick <= Battle.MAX_TICKS, "MAX_TICKS 를 넘지 않는다")
+	# 상한은 페이즈 수에 따라 늘어난다. 상수와 직접 비교하면 안 된다.
+	ok(b.tick <= b.max_ticks(), "틱 상한을 넘지 않는다", "%d/%d" % [b.tick, b.max_ticks()])
 
 
 # ── 12. 차폐 ─────────────────────────────────────────────────────────────
@@ -515,3 +523,184 @@ func test_passives() -> void:
 		{ "axis": "doctrine", "id": "hold_fire" },
 	])
 	ok(bal.has("balanced"), "세 축을 하나씩 채우면 균형 편제")
+
+
+# ── 18. 페이즈 ───────────────────────────────────────────────────────────
+
+func test_waves() -> void:
+	print("
+[18] 페이즈")
+
+	var st := Stages.get_stage(1)
+	ok(Stages.waves(st).size() == 2, "1단계는 2페이즈", str(Stages.waves(st).size()))
+	# 페이즈가 없는 판도 같은 모양으로 나와야 한다. 호출부가 갈리면 안 된다.
+	ok(Stages.waves(Stages.TUTORIAL).size() == 1, "한 덩어리 판은 1페이즈로 감싼다")
+
+	var b := Battle.new()
+	b.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	var first: int = (Stages.waves(st)[0] as Array).size()
+	ok(b.units.size() == 3 + first, "처음에는 1페이즈만 선다", str(b.units.size()))
+
+	# 1페이즈를 지워도 승리가 아니라 2페이즈가 와야 한다.
+	for u in b.units:
+		if u.team == Unit.TEAM_ENEMY:
+			u.hp = 0
+			u.alive = false
+	b.step()
+	ok(b.result == Battle.RESULT_ONGOING, "1페이즈가 비어도 아직 안 끝난다", b.result)
+	ok(b.wave == 1, "2페이즈로 넘어간다", str(b.wave))
+	ok(b.units.size() > 3 + first, "새 개체가 실제로 늘었다", str(b.units.size()))
+
+	# 정체 시계가 되감겨야 한다. 안 그러면 1페이즈에서 시간을 끈 판이
+	# 2페이즈가 뜨자마자 정체 패배로 끝난다.
+	ok(b.last_damage_tick == b.tick, "새 파가 오면 정체 시계가 초기화된다")
+
+	# 틱 예산도 늘어야 한다.
+	ok(b.max_ticks() > Battle.MAX_TICKS, "페이즈가 늘면 틱 상한도 는다",
+		str(b.max_ticks()))
+
+	# 자리가 겹치면 밀어낸다. 암살자가 적 진영까지 파고든 상태를 흉내낸다.
+	var occupied := b._free_enemy_cell(b.units[b.units.size() - 1].pos)
+	ok(occupied != b.units[b.units.size() - 1].pos, "찬 칸에는 안 세운다", str(occupied))
+
+
+# ── 19. 개체 특성 ────────────────────────────────────────────────────────
+
+func test_traits() -> void:
+	print("
+[19] 개체 특성")
+
+	var b := Battle.new()
+	b.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+
+	# 고정 개체는 어떤 이동 보너스를 줘도 안 움직인다.
+	var fixed := Unit.create(99, "turret", Unit.TEAM_ENEMY, Vector2i(6, 2), [])
+	fixed.apply_traits([Traits.IMMOBILE])
+	b.units.append(fixed)
+	ok(fixed.immobile, "고정 특성이 붙는다")
+	ok(b.plan_move(fixed, b.units[0], true, 3) == fixed.pos,
+		"이동 보너스를 줘도 제자리", str(b.plan_move(fixed, b.units[0], true, 3)))
+
+	# 유인 장치는 위협도를 스스로 올린다.
+	var lure := Unit.create(98, "beacon", Unit.TEAM_ENEMY, Vector2i(5, 2), [])
+	lure.apply_traits([Traits.BEACON])
+	var plain := Unit.create(97, "shieldman", Unit.TEAM_ENEMY, Vector2i(5, 2), [])
+	ok(Threat.score(b.units[0], lure) > Threat.score(b.units[0], plain),
+		"유인 장치가 더 위협적으로 계산된다")
+	# 태세가 threat_mod 를 덮어써도 유인 값은 남아야 한다.
+	lure.threat_mod = 0
+	ok(Threat.score(b.units[0], lure) > Threat.score(b.units[0], plain),
+		"태세가 초기화돼도 유인 값은 유지된다")
+
+	# 감독기: 살아 있는 동안만 같은 편이 세진다.
+	var b2 := Battle.new()
+	b2.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	var boss := Unit.create(b2.units.size(), "overseer", Unit.TEAM_ENEMY,
+		Vector2i(6, 0), [])
+	boss.apply_traits([Traits.OVERSEER])
+	b2.units.append(boss)
+	var minion: Unit = b2.units[3]
+	ok(Traits.attack_pct(minion, b2) == Traits.OVERSEER_ATK_PCT,
+		"감독기가 살아 있으면 공격이 오른다", str(Traits.attack_pct(minion, b2)))
+	boss.alive = false
+	ok(Traits.attack_pct(minion, b2) == 0, "감독기가 죽으면 사라진다",
+		str(Traits.attack_pct(minion, b2)))
+
+	# 광신: 같은 편이 죽을수록 세진다. 상한이 있다.
+	minion.apply_traits([Traits.ZEALOT])
+	var one := Traits.attack_pct(minion, b2)
+	ok(one > 0, "아군이 죽으면 광신이 오른다", str(one))
+	for u in b2.units:
+		if u.team == Unit.TEAM_ENEMY and u.index != minion.index:
+			u.alive = false
+	ok(Traits.attack_pct(minion, b2)
+		<= Traits.ZEALOT_ATK_PCT * Traits.ZEALOT_MAX_STACK,
+		"광신에는 상한이 있다", str(Traits.attack_pct(minion, b2)))
+
+	# 자폭: 죽은 뒤 인접 4칸이 맞는다. 적아를 안 가린다.
+	var b3 := Battle.new()
+	b3.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	var mine := Unit.create(b3.units.size(), "bomber", Unit.TEAM_ENEMY,
+		Vector2i(1, 2), [])
+	mine.apply_traits([Traits.VOLATILE])
+	b3.units.append(mine)
+	# (1,1)·(1,3) 에 아군이, (1,2) 에 자폭체가 있다.
+	var victim: Unit = b3.units[0]
+	var before := victim.hp
+	mine.alive = false
+	b3._resolve_explosions()
+	ok(mine.exploded, "자폭이 처리됐다")
+	ok(victim.hp < before, "인접 아군이 폭발에 맞는다", "%d -> %d" % [before, victim.hp])
+	var again := victim.hp
+	b3._resolve_explosions()
+	ok(victim.hp == again, "두 번 터지지 않는다")
+
+
+# ── 20. 궤도 포격 ────────────────────────────────────────────────────────
+
+func test_barrage() -> void:
+	print("
+[20] 궤도 포격")
+
+	var b := Battle.new()
+	b.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	b.hazard = {
+		"kind": "barrage", "name": "검사 포격", "first": 2, "period": 3,
+		"damage": 10, "patterns": [{ "cols": [1] }, { "rows": [2] }],
+	}
+
+	b.step()
+	ok(b.hazard_cells.is_empty(), "1틱에는 예고가 없다")
+	b.step()
+	ok(not b.hazard_cells.is_empty(), "2틱에 예고가 뜬다", str(b.hazard_cells.size()))
+	ok(b.hazard_cells.size() == Grid.H, "열 하나는 %d칸" % Grid.H)
+
+	# 아군이 x=1 열에 서 있다. 다음 틱에 반드시 맞아야 한다.
+	var hp_before: int = b.units[0].hp
+	b.step()
+	ok(b.hazard_cells.is_empty(), "착탄 후 예고가 지워진다")
+	ok(b.units[0].hp < hp_before, "예고된 칸에 서 있으면 맞는다",
+		"%d -> %d" % [hp_before, b.units[0].hp])
+
+	# 패턴은 순서대로 돈다. 난수가 아니다.
+	var a := Battle.new()
+	a.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	a.hazard = b.hazard
+	var c := Battle.new()
+	c.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	c.hazard = b.hazard
+	for _i in 9:
+		a.step()
+		c.step()
+	ok(a.snapshot() == c.snapshot(), "포격이 걸려도 결정론이 유지된다")
+
+
+# ── 21. 위협 수칙은 아래를 안 가린다 ─────────────────────────────────────
+
+func test_threat_stance() -> void:
+	print("
+[21] 위협 수칙과 행동 수칙")
+
+	# 실제로 보고된 문제: 방패병에게 [1 전투태세, 2 방어 태세] 를 꽂으면
+	# 방어 태세가 영영 안 걸렸다. 둘은 다투는 판단이 아니다.
+	var b := Battle.new()
+	b.setup(Stages.TEST_ID, [
+		member("shieldman", 3, ["battle_stance", "guard_stance"]),
+		member("warrior", 4), member("warrior", 5)])
+	var me: Unit = b.units[0]
+	# 인접에 적 둘을 붙여 방어 태세 조건을 만든다.
+	b.units[3].pos = me.pos + Vector2i(1, 0)
+	b.units[4].pos = me.pos + Vector2i(0, 1)
+
+	var d := Rules.select(me, b)
+	ok(String(d["card"]["act"]) == "defend",
+		"전투태세 아래의 방어 태세가 발동한다", String(d["card"]["act"]))
+	ok(me.threat_mod == Threat.AGGRESSIVE,
+		"전투태세의 위협도도 같이 걸린다", str(me.threat_mod))
+
+	# 화면 경고도 같은 규칙이어야 한다.
+	ok(not Shadow.shadowed_slots(["battle_stance", "guard_stance"], 1).has(1),
+		"가림 경고도 안 뜬다")
+	# 위협 수칙끼리는 여전히 위가 이긴다.
+	ok(Shadow.shadowed_slots(["battle_stance", "taunt"], 1).has(1),
+		"위협 수칙끼리는 위가 아래를 가린다")

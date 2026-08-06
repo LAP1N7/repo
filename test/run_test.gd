@@ -589,7 +589,8 @@ func test_full_flow() -> void:
 	var b := Battle.new()
 	b.setup(r.stage_id, party)
 	# 스테이지마다 적 수가 다르다. 상수로 박으면 밸런스를 고칠 때마다 깨진다.
-	var want: int = 3 + (Stages.get_stage(1)["enemies"] as Array).size()
+	# 1페이즈 인원만 센다. 뒷 페이즈는 아직 등장 전이다.
+	var want: int = 3 + (Stages.waves(Stages.get_stage(1))[0] as Array).size()
 	ok(b.units.size() == want, "전투에 %d명 등장 (아군3 + 적%d)" % [want, want - 3],
 		str(b.units.size()))
 	var result := b.run()

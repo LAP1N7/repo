@@ -56,6 +56,19 @@ const BASE_AI: Dictionary = {
 	# 이지 전술이 아니다. 전술은 "누구를 먼저 살릴까" 쪽이다.
 	"bard":      { "act": "heal", "power": 100, "stand": "hold", "flee_within": 1 },
 
+	# ── 기계 개체 ────────────────────────────────────────────────────────────
+	# 자동 포탑은 이동력이 0 이라 stand 가 뭐든 안 움직인다. 그래도 hold 를
+	# 적어 둔다 - 표를 읽는 사람에게 "이건 안 움직이는 물건" 이 보여야 한다.
+	"turret":    { "act": "attack", "power": 100, "stand": "hold", "flee_within": 0 },
+	# 신호기는 공격력이 0 이라 위력을 얼마로 두든 피해가 1 로 깔린다.
+	# power 를 0 으로 박아 "아무 일도 안 한다" 를 표에서도 못 박는다.
+	# 신호기는 걸어온다. 공격력이 0 이라 붙어도 아무 일이 없지만, 안 움직이면
+	# **아무와도 상호작용하지 않는 개체**가 되어 판이 정체로 끝난다.
+	"beacon":    { "act": "attack", "power": 0, "stand": "advance", "flee_within": 0 },
+	"bomber":    { "act": "attack", "power": 100, "stand": "advance", "flee_within": 0 },
+	# 감독기는 뒤에 머문다. 붙으면 죽고, 죽으면 나머지가 약해진다.
+	"overseer":  { "act": "attack", "power": 100, "stand": "hold", "flee_within": 2 },
+
 	# 훈련용 표적. 아무것도 안 한다.
 	"dummy":     { "act": "attack", "power": 0, "stand": "hold", "flee_within": 0 },
 }

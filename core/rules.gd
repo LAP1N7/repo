@@ -42,6 +42,12 @@ extends RefCounted
 ## 검사와 화면 양쪽에서 불리는데, 시그니처를 바꾸면 그 호출부가 전부 깨진다.
 static var _ctx_target: Unit = null
 
+## 위협도만 바꾸는 수칙. 행동을 정하지 않으므로 **아래 칸을 가리지 않는다.**
+##
+## core/shadow.gd 의 같은 목록과 짝이다. 한쪽만 고치면 화면 경고와 실제 동작이
+## 어긋난다.
+const THREAT_ONLY: Array[String] = ["taunt", "aggressive", "stealth"]
+
 
 ## 발동할 규칙을 고른다.
 ##
@@ -70,11 +76,11 @@ static func select(unit: Unit, state) -> Dictionary:
 	# 표적을 먼저 계산하는 것은 순서가 아니라 의존성 때문이다. [추격 기동] 같은
 	# 조건이 표적을 알아야 판정된다. 우선순위는 조립 단계에서 지켜진다.
 	_ctx_target = target
-	var doc := _axis(unit, Axes.DOCTRINE, state, trace)
+	var doc := _pick_doctrine(unit, state, trace)
 	_ctx_target = null
 	var stance := String(doc.get("value", ""))
 	# 위협도 보정은 매 틱 다시 계산한다. 조건이 풀리면 꺼져야 하기 때문이다.
-	unit.threat_mod = _threat_mod(stance)
+	unit.threat_mod = _threat_mod(String(doc.get("threat", "")))
 
 	# 궁극기가 "전술 뒤" 면 축을 다 읽은 다음, 기본 판단보다는 먼저 본다.
 	if not unit.special_first:
@@ -123,6 +129,56 @@ static func _axis(unit: Unit, axis: String, state, trace: Dictionary) -> Diction
 		out = { "value": String(rule.get(key, "")), "rule": rule, "slot": slot }
 
 	trace[axis] = rows
+	return out
+
+
+## 교전 수칙을 읽는다. 다른 축과 달리 결과가 **둘**이다 - 행동과 위협도.
+##
+## ── 왜 이 축만 다른가 ────────────────────────────────────────────────────
+## [전투태세]·[도발]·[은신] 은 행동을 정하지 않는다. 위협도만 바꾼다. 그런데
+## 다른 축과 똑같이 "처음 성립한 것이 이긴다" 로 처리하면, 조건이 `항상` 인
+## [전투태세] 하나가 아래 칸을 전부 죽인다.
+##
+## 실제로 방패병에게 [1 전투태세, 2 방어 태세] 를 꽂으면 방어 태세가 영영
+## 발동하지 않았고, 화면은 "가려서 발동하지 않는다" 고 경고까지 띄웠다. 둘은
+## 애초에 다투는 판단이 아니다 - 하나는 "누가 나를 치게 할까" 고 다른 하나는
+## "맞을 때 어떻게 버틸까" 다.
+##
+## 그래서 위협 수칙은 행동 자리를 차지하지 않는다. 값만 챙기고 아래를 계속
+## 읽는다. 위협 수칙끼리는 여전히 위가 이긴다 - 그건 진짜로 다투는 판단이다.
+static func _pick_doctrine(unit: Unit, state, trace: Dictionary) -> Dictionary:
+	var rows: Array = []
+	var out: Dictionary = {}
+	var threat: String = ""
+
+	for slot in unit.card_rules.size():
+		var rule: Dictionary = unit.card_rules[slot]
+		if rule.is_empty() or String(rule.get("axis", "")) != Axes.DOCTRINE:
+			continue
+		var name := String(rule.get("name", ""))
+		var value := String(rule.get("stance", ""))
+
+		if not eval_condition(unit, String(rule["cond"]), int(rule["cond_arg"]), state):
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "조건 불성립" })
+			continue
+
+		if THREAT_ONLY.has(value):
+			if threat == "":
+				threat = value
+				rows.append({ "slot": slot, "name": name, "hit": true, "why": "위협도" })
+			else:
+				rows.append({ "slot": slot, "name": name, "hit": false,
+					"why": "위 위협 수칙이 성립" })
+			continue
+
+		if not out.is_empty():
+			rows.append({ "slot": slot, "name": name, "hit": false, "why": "위가 성립" })
+			continue
+		rows.append({ "slot": slot, "name": name, "hit": true, "why": "" })
+		out = { "value": value, "rule": rule, "slot": slot }
+
+	trace[Axes.DOCTRINE] = rows
+	out["threat"] = threat
 	return out
 
 
@@ -277,11 +333,20 @@ static func _move_by_stand(unit: Unit, state, target: Unit,
 				if _is_ahead_of(unit, guard):
 					if state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
 						return _rule(unit, "방패 뒤", "move_to_ally", guard, 0, bonus)
-				# 이미 뒤에 있으면 **그 자리를 지킨다.**
+				# ── 뒤에 있다. 이제는 붙박이가 아니라 따라간다 ────────────────
+				# 예전에는 여기서 무조건 제자리였다. 그러면 방패병이 전진하는 동안
+				# 원거리 대원이 뒤에 남아 사거리 밖에서 아무것도 안 하고, 판이
+				# 끝날 때까지 한 발도 못 쏘는 일이 실제로 났다. "뒤에 선다" 가
+				# "일을 안 한다" 가 되면 그건 모듈이 아니라 벌칙이다.
 				#
-				# 예전에는 여기서 전진했다. 그러면 원거리 대원이 방패병을 지나쳐
-				# 앞으로 나가고, [방패 뒤] 를 넣은 목적이 정확히 뒤집힌다.
-				# "방패 뒤에 선다" 는 앞으로 안 나간다는 뜻이기도 하다.
+				# 그래서 **앞지르지 않는 선에서** 표적 쪽으로 붙는다. 한 칸 갔을 때
+				# 방패병보다 앞이 되면 안 간다 - 그 한 줄이 이 모듈의 전부다.
+				var step: Vector2i = state.plan_move(unit, target, true, bonus)
+				if step != unit.pos and not _cell_ahead_of(unit, step, guard):
+					return _rule(unit, "방패 뒤 전진", "move_toward", target, 0, bonus)
+				# 앞지르게 된다. 대신 방패병 옆으로 붙어 간격이 벌어지는 걸 막는다.
+				if Grid.manhattan(unit.pos, guard.pos) > 1 						and state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
+					return _rule(unit, "방패 뒤 따라감", "move_to_ally", guard, 0, bonus)
 				return _rule(unit, "방패 뒤 유지", "hold", unit, 0, 0)
 			return _approach(unit, state, target, bonus, "전진")
 
@@ -405,6 +470,13 @@ static func _nearest_ally(unit: Unit, state) -> Unit:
 
 
 ## 적진 쪽으로 더 나가 있는가. 진영마다 "앞" 의 방향이 반대다.
+## 그 **칸**이 other 보다 앞인가. 실제로 밟기 전에 물어보려고 좌표를 받는다.
+static func _cell_ahead_of(unit: Unit, cell: Vector2i, other: Unit) -> bool:
+	if unit.team == Unit.TEAM_PLAYER:
+		return cell.x > other.pos.x
+	return cell.x < other.pos.x
+
+
 static func _is_ahead_of(unit: Unit, other: Unit) -> bool:
 	if unit.team == Unit.TEAM_PLAYER:
 		return unit.pos.x > other.pos.x
@@ -437,6 +509,20 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 		"enemy_out_of_range":
 			var d: int = _nearest_distance(unit, state)
 			return d != Grid.UNREACHABLE and d > unit.atk_range
+
+		# ── 적이 사거리 밖이고, 다가오는 중 ──────────────────────────────
+		# [사거리 대기] 가 쓴다. 그냥 "사거리 밖" 으로 두면 **영원히 기다린다.**
+		# 상대가 고정 포탑이거나 같이 거리를 두는 편성이면 양쪽 다 안 움직이고,
+		# 정체 판정이 걸려 기다린 쪽이 진다. 기다림은 상대가 오고 있을 때만
+		# 뜻이 있으므로, 안 오면 놓아 준다.
+		#
+		# 첫 틱은 이전 거리를 모른다. 그때는 기다리는 쪽으로 둔다 - 개전 직후
+		# 진형을 갖추는 것이 이 모듈의 본래 용도다.
+		"enemy_out_of_range_closing":
+			var od: int = _nearest_distance(unit, state)
+			if od == Grid.UNREACHABLE or od <= unit.atk_range:
+				return false
+			return unit.prev_near_dist < 0 or od < unit.prev_near_dist
 
 		"enemy_within":
 			return _nearest_distance(unit, state) <= arg

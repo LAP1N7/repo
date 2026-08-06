@@ -20,6 +20,7 @@ func _init() -> void:
 	_check_tags()
 	_check_doctrine_reachable()
 	_check_stage_modules()
+	_check_wave_reachable()
 	print("=== 지적 사항 %d건 ===" % fails)
 	quit(1 if fails > 0 else 0)
 
@@ -63,6 +64,7 @@ func _check_axis_and_payload() -> void:
 ## 묻히고, 플레이어에게는 "산 모듈이 안 먹는다" 로만 보인다.
 const CONDS := [
 	"always", "never", "enemy_in_range", "enemy_out_of_range", "enemy_within",
+	"enemy_out_of_range_closing",
 	"self_hp_below", "was_hit_last_tick", "enemies_adjacent_at_least",
 	"ally_hp_below", "other_ally_hp_below", "ally_engaged", "killed_last_tick",
 	"team_killed_last_tick", "kept_distance_for", "tick_above", "tick_below",
@@ -161,20 +163,27 @@ func _check_stage_modules() -> void:
 	stages.append(Stages.TUTORIAL)
 
 	for st in stages:
-		for e in st["enemies"]:
-			for cid in e.get("cards", []):
-				if not Cards.TABLE.has(String(cid)):
-					_fail("%s단계 %s: 없는 모듈 '%s'" % [st["id"], e["type"], cid])
-			var sp := String(e.get("special", ""))
-			if sp == "":
-				continue
-			if not Specials.TABLE.has(sp):
-				_fail("%s단계 %s: 없는 궁극기 '%s'" % [st["id"], e["type"], sp])
-				continue
-			# 궁극기는 직업 전용이다. 남의 것을 붙이면 조용히 안 나간다.
-			if String(Specials.TABLE[sp].get("unit", "")) != String(e["type"]):
-				_fail("%s단계: 궁극기 '%s' 는 %s 전용인데 %s 에게 붙었다"
-					% [st["id"], sp, Specials.TABLE[sp].get("unit", "?"), e["type"]])
+		for w in Stages.waves(st):
+			for e in w:
+				if not UnitData.TABLE.has(String(e["type"])):
+					_fail("%s단계: 없는 개체 '%s'" % [st["id"], e["type"]])
+					continue
+				for t in e.get("traits", []):
+					if not Traits.TEXT.has(String(t)):
+						_fail("%s단계 %s: 없는 특성 '%s'" % [st["id"], e["type"], t])
+				for cid in e.get("cards", []):
+					if not Cards.TABLE.has(String(cid)):
+						_fail("%s단계 %s: 없는 모듈 '%s'" % [st["id"], e["type"], cid])
+				var sp := String(e.get("special", ""))
+				if sp == "":
+					continue
+				if not Specials.TABLE.has(sp):
+					_fail("%s단계 %s: 없는 궁극기 '%s'" % [st["id"], e["type"], sp])
+					continue
+				# 궁극기는 직업 전용이다. 남의 것을 붙이면 조용히 안 나간다.
+				if String(Specials.TABLE[sp].get("unit", "")) != String(e["type"]):
+					_fail("%s단계: 궁극기 '%s' 는 %s 전용인데 %s 에게 붙었다"
+						% [st["id"], sp, Specials.TABLE[sp].get("unit", "?"), e["type"]])
 
 	# 모듈 id 와 궁극기 id 가 겹치면 안 된다. card_node 가 Specials 를 먼저
 	# 보므로, 겹치면 전술 모듈이 궁극기 모양으로 그려진다.
@@ -182,3 +191,46 @@ func _check_stage_modules() -> void:
 	for cid in Cards.TABLE:
 		if Specials.TABLE.has(cid):
 			_fail("id 충돌: '%s' 가 모듈과 궁극기 양쪽에 있다" % cid)
+
+
+## ── 모든 페이즈에 "다가오는 개체" 가 있는가 ──────────────────────────────
+##
+## 한 페이즈의 적이 전부 고정이거나 전부 거리를 지키면, 플레이어가 물러났을 때
+## **양쪽 다 피해를 못 낸다.** 그러면 정체 판정(STALL_LIMIT)이 걸려 플레이어가
+## 진다. 알고리즘이 나빠서가 아니라 판이 굴러갈 수 없어서 지는 것이다.
+##
+## 실제로 그렇게 만들었다가 2단계 승률이 61% -> 2% 로 무너졌다. 전투는 멀쩡히
+## 돌아가므로 승률을 재기 전까지 아무도 모른다. 그래서 표 단계에서 막는다.
+##
+## 공격력 0 짜리 개체(유인 신호기)는 특히 위험하다. 고정까지 붙으면 그 개체는
+## 아무와도 상호작용하지 않는다.
+func _check_wave_reachable() -> void:
+	var stages: Array = []
+	for st in Stages.TABLE:
+		stages.append(st)
+	stages.append(Stages.TUTORIAL)
+
+	for st in stages:
+		var waves := Stages.waves(st)
+		for i in waves.size():
+			var closes := false
+			for e in waves[i]:
+				var tid := String(e["type"])
+				if (e.get("traits", []) as Array).has(Traits.IMMOBILE):
+					continue
+				if int(UnitData.TABLE[tid]["move"]) <= 0:
+					continue
+				# 기본기가 접근이거나, 접근을 시키는 위치 모듈이 붙어 있으면 다가온다.
+				if String(Innates.base_ai(tid)["stand"]) == "advance":
+					closes = true
+					break
+				for cid in e.get("cards", []):
+					var stand := String(Cards.TABLE.get(cid, {}).get("stand", ""))
+					if stand in ["frontline", "march", "chase", "flank"]:
+						closes = true
+						break
+				if closes:
+					break
+			if not closes:
+				_fail("%s단계 %d페이즈: 다가오는 개체가 하나도 없다 (정체 패배가 확정된다)"
+					% [st["id"], i + 1])

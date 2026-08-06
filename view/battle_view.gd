@@ -151,6 +151,15 @@ func setup(p_run: RunState) -> void:
 
 # ── 그리기 ───────────────────────────────────────────────────────────────
 
+## 포격 예고가 떠 있는 동안만 매 프레임 다시 그린다.
+##
+## 판 전체를 상시 재도색하면 전투 화면이 통째로 매 프레임 갱신된다. 깜빡이는
+## 것은 예고뿐이므로 예고가 있을 때만 켠다.
+func _process(_delta: float) -> void:
+	if battle != null and not battle.hazard_cells.is_empty():
+		queue_redraw()
+
+
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), UiKit.BG)
 
@@ -171,6 +180,33 @@ func _draw() -> void:
 	for p in Grid.ENEMY_SLOTS:
 		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_ENEMY_ZONE)
+
+	# ── 포격 예고 ────────────────────────────────────────────────────────
+	# 한 틱 뒤에 떨어질 칸을 미리 밝힌다. 예고가 없으면 그건 난수와 구별되지
+	# 않는다 - 플레이어는 알고리즘을 짜 두고 결과를 보는 입장이라, 화면이
+	# 먼저 말해 주지 않으면 편성이 나빴는지 운이 나빴는지 영영 모른다.
+	#
+	# 격자 위에 얹되 유닛보다는 아래다. 누가 그 칸에 서 있는지가 안 가려야 한다.
+	if battle != null and not battle.hazard_cells.is_empty():
+		var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 90.0)
+		for c in battle.hazard_cells:
+			var r := Rect2(BOARD_ORIGIN + Vector2(c.x * TILE_W, c.y * TILE_H),
+				Vector2(TILE_W, TILE_H))
+			draw_rect(r, Color(1.0, 0.26, 0.20, 0.12 + 0.20 * pulse))
+			draw_rect(r, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), false, 2.0)
+			# 빗금. 깜빡임만으로는 정지 화면에서 안 읽히고, 화면을 찍어 확인할
+			# 수도 없다. 무늬가 있어야 "여기는 위험한 칸" 이 한눈에 들어온다.
+			var step := 14.0
+			var d := -r.size.y
+			while d < r.size.x:
+				var x0: float = r.position.x + maxf(d, 0.0)
+				var y0: float = r.position.y + maxf(-d, 0.0)
+				var run: float = minf(r.size.x - maxf(d, 0.0),
+					r.size.y - maxf(-d, 0.0))
+				if run > 0.0:
+					draw_line(Vector2(x0, y0), Vector2(x0 + run, y0 + run),
+						Color(1.0, 0.40, 0.28, 0.22), 2.0)
+				d += step
 
 	# ── 어그로 선 ────────────────────────────────────────────────────────
 	# 적이 지금 누구를 보고 있는지를 선으로 잇는다.
@@ -615,8 +651,19 @@ func _clear_log() -> void:
 
 func _refresh_ui() -> void:
 	var st := Stages.get_stage(run.stage_id)
+	# 페이즈 수와 지형 기믹을 제목 줄에 같이 적는다.
+	#
+	# 숨기면 시행착오 게임이 되고 공개하면 추리 게임이 된다(DESIGN 2.4). 다음
+	# 파가 온다는 걸 모르면 1페이즈를 이긴 편성이 왜 졌는지 설명이 안 되고,
+	# 그러면 플레이어가 고칠 것은 알고리즘이 아니라 운이 된다.
+	var waves: int = Stages.waves(st).size()
+	var extra := ""
+	if waves > 1:
+		extra += UiText.t("battle.wave_tag", "     %d 페이즈") % waves
+	if not Stages.hazard(run.stage_id).is_empty():
+		extra += UiText.t("battle.hazard_tag", "     %s 있음") % 			String(Stages.hazard(run.stage_id).get("name", "지형 기믹"))
 	lbl_stage.text = UiText.t("battle.m06", "스테이지 %d/%d - %s     적 전략: %s") % [
-		run.stage_id, Stages.count(), st["name"], st["strategy_text"]]
+		run.stage_id, Stages.count(), st["name"], st["strategy_text"]] + extra
 
 	# 마지막 스테이지에서도 보상은 받는다. 그 뒤에 런 클리어 화면으로 간다.
 	btn_next.visible = phase == Phase.RESULT and battle.result == Battle.RESULT_VICTORY
@@ -657,7 +704,7 @@ func _reset() -> void:
 	_build_unit_views()
 	_build_squad_bar()
 	_clear_log()
-	lbl_tick.text = UiText.t("battle.m09", "틱 0 / %d") % Battle.MAX_TICKS
+	lbl_tick.text = UiText.t("battle.m09", "틱 0 / %d") % battle.max_ticks()
 	_refresh_ui()
 	queue_redraw()
 
@@ -672,6 +719,51 @@ func _build_unit_views() -> void:
 		v.setup(u, font)
 		v.position = tile_center(u.pos)
 		unit_views.append(v)
+
+
+## 새 페이즈로 등장한 개체의 노드를 붙인다.
+##
+## unit_views 는 battle.units 와 index 가 1:1 이어야 한다. 이벤트가 전부
+## index 로 오기 때문이다. 그래서 뒤에 이어 붙이기만 하고 순서를 안 건드린다.
+func _spawn_wave_views(indices: Array) -> void:
+	for i in indices:
+		var u: Unit = battle.units[int(i)]
+		var v := UnitView.new()
+		board.add_child(v)
+		v.setup(u, font)
+		v.position = tile_center(u.pos)
+		# 등장하는 순간이 보여야 한다. 조용히 나타나면 "언제 늘었지" 가 된다.
+		v.scale = Vector2(0.2, 0.2)
+		v.modulate = Color(1, 1, 1, 0)
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(v, "scale", Vector2.ONE, 0.28 / speed)			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(v, "modulate", Color(1, 1, 1, 1), 0.22 / speed)
+		while unit_views.size() <= int(i):
+			unit_views.append(null)
+		unit_views[int(i)] = v
+	_build_squad_bar()
+
+
+## 페이즈 전환 배너. 판이 바뀌었다는 걸 한 번은 크게 말해야 한다.
+func _wave_banner(n: int, total: int) -> void:
+	var lbl := Label.new()
+	lbl.text = UiText.t("battle.wave", "%d 페이즈 / %d") % [n, total]
+	lbl.add_theme_font_override("font", UiKit.font_role("large"))
+	lbl.add_theme_font_size_override("font_size", 46)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.55, 0.35))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.size = Vector2(1280, 60)
+	lbl.position = Vector2(0, 300)
+	lbl.modulate = Color(1, 1, 1, 0)
+	add_child(lbl)
+	_log(UiText.t("battle.wave_log", "[틱 %d]  %d 페이즈 진입") % [battle.tick, n])
+	var tw := create_tween()
+	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), 0.22 / speed)
+	tw.tween_interval(0.55 / speed)
+	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 0), 0.30 / speed)
+	await tw.finished
+	lbl.queue_free()
+	queue_redraw()
 
 
 func _refresh_sound_button() -> void:
@@ -757,7 +849,8 @@ func _play_events(evs: Array, my_id: int) -> void:
 			return
 		match e["type"]:
 			"tick_begin":
-				lbl_tick.text = UiText.t("battle.m10", "틱 %d / %d") % [e["tick"], Battle.MAX_TICKS]
+				lbl_tick.text = UiText.t("battle.m10", "틱 %d / %d") % [
+					e["tick"], battle.max_ticks()]
 				_refresh_contrib()
 				_refresh_squad()
 
@@ -837,6 +930,44 @@ func _play_events(evs: Array, my_id: int) -> void:
 					tw3.tween_property(d, "scale", Vector2(1.0, 1.0), 0.14 / speed)
 					_shake(7.0)
 					await tw3.finished
+
+			"barrage_warn":
+				sfx.play("defend", 1.35)
+				_log(UiText.t("battle.bar_warn", "        [경고] %s 조준 - %d칸") % [
+					e.get("name", "포격"), (e.get("cells", []) as Array).size()])
+				await _wait(ACT_TIME * 0.5)
+
+			"barrage":
+				sfx.play("special", 0.8)
+				_shake(14.0)
+				for c in e.get("cells", []):
+					_burst(tile_center(c), Color(1.0, 0.45, 0.28))
+				for h in e.get("hits", []):
+					unit_views[h["target"]].hit()
+					_pop_number(unit_views[h["target"]].position,
+						"-%d" % h["damage"], Color(1.0, 0.45, 0.28))
+				_log(UiText.t("battle.bar_hit", "        [착탄] %s - %d명 피격") % [
+					e.get("name", "포격"), (e.get("hits", []) as Array).size()])
+				await _wait(ACT_TIME * 0.8)
+
+			"explode":
+				sfx.play("death", 0.7)
+				_shake(11.0)
+				_burst(tile_center(e["at"]), Color(1.0, 0.62, 0.25))
+				for h in e.get("hits", []):
+					unit_views[h["target"]].hit()
+					_pop_number(unit_views[h["target"]].position,
+						"-%d" % h["damage"], Color(1.0, 0.62, 0.25))
+				_log(UiText.t("battle.explode", "        [자폭] 인접 %d명에게 피해") % [
+					(e.get("hits", []) as Array).size()])
+				await _wait(ACT_TIME * 0.7)
+
+			"wave":
+				# 다음 페이즈. 새로 등장한 개체의 노드를 여기서 만든다.
+				# 전투 시작에 다 만들어 두면 아직 안 온 적이 판 위에 서 있게 된다.
+				_spawn_wave_views(e.get("units", []))
+				sfx.play("special", 1.1)
+				await _wave_banner(int(e["wave"]) + 1, int(e["total"]))
 
 			"result":
 				await _wait(ACT_TIME)

@@ -309,10 +309,10 @@ const TABLE: Dictionary = {
 		"tier": 1,
 		"cost": 2,
 		"name": "사거리 대기",
-		"cond": "enemy_out_of_range",
+		"cond": "enemy_out_of_range_closing",
 		"cond_arg": 0,
 		"stance": "wait",
-		"text": "적이 사거리 밖 → 제자리를 지킨다",
+		"text": "적이 다가오는 중 → 사거리 밖이면 제자리를 지킨다",
 	},
 	"fall_back": {
 		"axis": "doctrine",

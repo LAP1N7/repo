@@ -59,6 +59,8 @@ static func score(chooser: Unit, candidate: Unit) -> int:
 	if candidate.hp_percent_below(30):
 		n += WOUNDED
 	n += candidate.threat_mod
+	# 개체 특성이 상시로 얹는 값. 유인 신호기가 여기로 들어온다.
+	n += candidate.threat_base
 	# 한 일이 쌓인 만큼. 딜을 많이 넣은 대원이 결국 맞게 된다.
 	n += (candidate.damage_dealt + candidate.healing_done) / PER_WORK
 	return n

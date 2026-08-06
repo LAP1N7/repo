@@ -72,6 +72,15 @@ static func same_axis(a: Dictionary, b: Dictionary) -> bool:
 	return String(a.get("axis", "")) == String(b.get("axis", ""))
 
 
+## 위협도만 바꾸는 수칙인가.
+##
+## 이 부류는 행동 자리를 차지하지 않으므로 아래를 가리지도, 위에 가려지지도
+## 않는다. 규칙 엔진이 실제로 그렇게 돈다(core/rules.gd THREAT_ONLY).
+## 한쪽만 고치면 화면 경고와 실제 동작이 어긋난다.
+static func threat_only(card: Dictionary) -> bool:
+	return String(card.get("stance", "")) in Rules.THREAT_ONLY
+
+
 ## 가려진 슬롯 번호들. cards 는 우선순위 순서의 카드 id 배열.
 static func shadowed_slots(cards: Array, atk_range: int) -> Array[int]:
 	var out: Array[int] = []
@@ -91,6 +100,9 @@ static func _shadowed_by(cards: Array, i: int, atk_range: int) -> String:
 			continue
 		var upper: Dictionary = Cards.TABLE[cards[j]]
 		if not same_axis(Cards.TABLE[cards[i]], upper):
+			continue
+		# 위협 수칙과 행동 수칙은 같은 축에 있어도 서로 안 가린다.
+		if threat_only(Cards.TABLE[cards[i]]) != threat_only(upper):
 			continue
 		var ue := effective(upper, atk_range)
 		if implies(String(le[0]), int(le[1]), String(ue[0]), int(ue[1])):
