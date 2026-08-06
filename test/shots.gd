@@ -26,8 +26,9 @@ func _init() -> void:
 	run.fixed_seed = 7
 	run.start_run(1)
 
+	# 오프닝 영상이 첫 프레임을 그릴 시간을 준다.
 	await _shot("01_title", load("res://scenes/title_screen.tscn").instantiate(),
-		func(s): s.setup())
+		func(s): s.setup(), 30)
 
 	await _shot("02_shop", load("res://scenes/shop_screen.tscn").instantiate(),
 		func(s): s.setup(run))

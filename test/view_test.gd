@@ -29,6 +29,7 @@ func _init() -> void:
 	await test_death_lag()
 	test_music_files()
 	await test_unit_scale()
+	await test_opening_video()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [pass_n + fail_n, fail_n])
 	quit(1 if fail_n > 0 else 0)
 
@@ -444,3 +445,37 @@ func test_unit_scale() -> void:
 		# 칸(81px) 안에 서면서도 충분히 커야 한다.
 		ok(hi <= 81.0 and lo >= 60.0, "칸 안에 들어가되 작지 않다",
 			"%.0f ~ %.0f" % [lo, hi])
+
+
+## ── 오프닝 영상 ──────────────────────────────────────────────────────────
+## Godot 은 Ogg Theora(.ogv) 만 재생한다. mp4 를 그대로 넣으면 임포트조차 안
+## 되는데, 화면은 "영상이 없으면 격자만" 으로 조용히 넘어가므로 아무도 모른다.
+## 파일이 실제로 VideoStream 으로 읽히는지 못 박는다.
+func test_opening_video() -> void:
+	print("\n[10] 오프닝 영상")
+	var path := "res://assets/video/opening_scene.ogv"
+	var found := ResourceLoader.exists(path)
+	ok(found, "opening_scene.ogv 가 있다")
+	if not found:
+		return
+	var res = load(path)
+	ok(res is VideoStream, "VideoStream 으로 읽힌다",
+		"null" if res == null else res.get_class())
+
+	# 제목 화면이 실제로 붙이는지. 붙였다면 인물(오른쪽)을 안 가리는 자리에
+	# 글이 있어야 한다 - 영상만 깔고 배치를 안 바꾸면 얼굴 위에 제목이 얹힌다.
+	var t = load("res://scenes/title_screen.tscn").instantiate()
+	get_root().add_child(t)
+	t.setup()
+	await process_frame
+	ok(t._video != null, "제목 화면이 영상을 붙인다")
+	if t._video != null:
+		ok(t._video.position.x + t._video.size.x >= 1280.0,
+			"영상이 오른쪽 끝까지 닿는다", str(t._video.position))
+		# 인물은 영상 한가운데에 서 있다. 글 기둥의 오른쪽 끝이 거기서
+		# 넉넉히 떨어져 있어야 얼굴 위에 글자가 안 얹힌다.
+		var face_x: float = t._video.position.x + t._video.size.x * 0.5
+		ok(t.TEXT_X + 300.0 < face_x - 100.0,
+			"글 기둥이 인물에서 떨어져 있다",
+			"글 끝 %d / 인물 %d" % [int(t.TEXT_X + 300.0), int(face_x)])
+	t.queue_free()
