@@ -135,7 +135,12 @@ const TABLE: Array[Dictionary] = [
 				  "cards": ["behind_guard"], "special": "cantabile" },
 				{ "type": "musketeer", "pos": Vector2i(6, 1),
 				  "cards": ["execute", "front_line"] },
-				{ "type": "warrior", "pos": Vector2i(5, 3), "cards": [] },
+				# ── 잠복을 처음 만난다 ───────────────────────────────────
+				# 3틱간 사라졌다가 후열로 튀어나온다. 그동안 표적으로 잡히지도
+				# 않으므로, 앞의 넷을 정리하고 나면 판 위에 아무도 없는데
+				# 전투가 안 끝나는 순간이 생긴다. [잠복 사냥] 이 그 답이다.
+				{ "type": "assassin", "pos": Vector2i(5, 3),
+				  "cards": ["ambush", "backline", "forced_march"] },
 			],
 		],
 	},
@@ -176,8 +181,10 @@ const TABLE: Array[Dictionary] = [
 				{ "type": "assassin", "pos": Vector2i(5, 1),
 				  "cards": ["backline", "forced_march", "berserk"],
 				  "special": "shadow_rend" },
+				# 하나는 숨어서 들어온다. 앞에서 배운 것을 여기서는 감독기와
+				# 같이 처리해야 한다 - 끊을 것이 둘이고 하나는 안 보인다.
 				{ "type": "assassin", "pos": Vector2i(5, 3),
-				  "cards": ["backline", "forced_march"] },
+				  "cards": ["ambush", "backline", "forced_march"] },
 			],
 			# 2페이즈는 같은 문제에 신호기가 얹힌다. 감독기를 끊어야 하는데
 			# 표적 판단은 신호기로 끌린다.

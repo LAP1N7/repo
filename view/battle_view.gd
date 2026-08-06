@@ -288,6 +288,9 @@ class _TopLayer extends Control:
 	func _draw() -> void:
 		if view != null:
 			view._draw_arrows(self)
+			# 범위의 경계는 화살표보다 **위**다. 아래에 그렸더니 굵은 화살표가
+			# 지나가며 경계를 끊어 놓아서, 어디까지가 위험한지 안 읽혔다.
+			view._draw_zones(self, true)
 			view._draw_hover(self)
 
 
@@ -386,7 +389,7 @@ func _draw_overlay(c: CanvasItem) -> void:
 ## 위에서 한눈에 읽힌다.
 ##
 ## 격자 위·유닛 아래에 그린다. 누가 그 칸에 서 있는지가 안 가려야 한다.
-func _draw_zones(c: CanvasItem) -> void:
+func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 	if battle == null:
 		return
 	for u in battle.units:
@@ -395,17 +398,69 @@ func _draw_zones(c: CanvasItem) -> void:
 		var cells := _danger_cells(u)
 		if cells.is_empty():
 			continue
-		var ally := u.team == Unit.TEAM_PLAYER
-		var edge: Color = COL_ALLY if ally else COL_FOE
+		var edge: Color = COL_ALLY if u.team == Unit.TEAM_PLAYER else COL_FOE
 		# 도화선에 불이 붙었으면 진하게. 곧 터진다는 것이 가장 급한 정보다.
 		var hot: bool = u.fuse_ticks >= 0
-		var fill := Color(u.color.r, u.color.g, u.color.b, 0.20 if hot else 0.10)
+		var pulse: float = 0.72 + 0.28 * sin(Time.get_ticks_msec() / (110.0 if hot else 260.0))
+
+		if not outline_only:
+			# ── 채움 + 빗금 ──────────────────────────────────────────────
+			# 반투명 채움만으로는 진영 표시(파랑·빨강 0.15)와 섞여 아무것도
+			# 안 보였다. 같은 자리에 색 두 겹을 얹으면 둘 다 죽는다.
+			# 빗금은 **무늬**라 색이 겹쳐도 살아남는다.
+			var fill := Color(u.color.r, u.color.g, u.color.b,
+				(0.22 if hot else 0.12) * pulse)
+			for p in cells:
+				var r := Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
+					Vector2(TILE_W, TILE_H))
+				c.draw_rect(r, fill)
+				_hatch(c, r, Color(u.color.r, u.color.g, u.color.b,
+					(0.42 if hot else 0.22) * pulse), 13.0)
+			continue
+
+		# ── 바깥 테두리만 ────────────────────────────────────────────────
+		# 칸마다 네모를 그리면 안쪽에 격자 무늬가 한 겹 더 생겨 지저분하다.
+		# 구역의 **경계**만 굵게 두른다. 이 층은 화살표보다 위라 절대 안 가린다.
+		var set: Dictionary = {}
 		for p in cells:
-			var r := Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
-				Vector2(TILE_W, TILE_H))
-			c.draw_rect(r, fill)
-			c.draw_rect(r, Color(edge.r, edge.g, edge.b, 0.55 if hot else 0.30),
-				false, 2.0 if hot else 1.0)
+			set[p] = true
+		# ── 도화선 카운트다운 ────────────────────────────────────────────
+		# 범위가 보이는 것과 "언제" 터지는지를 아는 것은 다른 문제다. 칸만 밝혀
+		# 두면 플레이어는 계속 위험한 줄 알고, 실제로 급한 한 틱을 놓친다.
+		if u.fuse_ticks >= 0:
+			var at := _live_pos(u) + Vector2(0, -UNIT_R - 14.0)
+			var fs := UiKit.font(16)
+			var txt := str(maxi(0, u.fuse_ticks))
+			var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+			c.draw_circle(at, 13.0, Color(0.06, 0.07, 0.10, 0.9))
+			c.draw_arc(at, 13.0, 0.0, TAU, 20, Color(edge.r, edge.g, edge.b, 0.95), 2.0)
+			c.draw_string(fs, at + Vector2(-tw * 0.5, 6), txt,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UiKit.BAD)
+
+		var w := 3.5 if hot else 2.0
+		var col := Color(edge.r, edge.g, edge.b, (0.95 if hot else 0.6) * pulse)
+		for p in cells:
+			var o := BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H)
+			if not set.has(p + Vector2i(0, -1)):
+				c.draw_line(o, o + Vector2(TILE_W, 0), col, w)
+			if not set.has(p + Vector2i(0, 1)):
+				c.draw_line(o + Vector2(0, TILE_H), o + Vector2(TILE_W, TILE_H), col, w)
+			if not set.has(p + Vector2i(-1, 0)):
+				c.draw_line(o, o + Vector2(0, TILE_H), col, w)
+			if not set.has(p + Vector2i(1, 0)):
+				c.draw_line(o + Vector2(TILE_W, 0), o + Vector2(TILE_W, TILE_H), col, w)
+
+
+## 사각형 안에 사선 빗금. 색이 겹쳐도 무늬는 살아남는다.
+func _hatch(c: CanvasItem, r: Rect2, col: Color, step: float) -> void:
+	var d := -r.size.y
+	while d < r.size.x:
+		var x0: float = r.position.x + maxf(d, 0.0)
+		var y0: float = r.position.y + maxf(-d, 0.0)
+		var run_len: float = minf(r.size.x - maxf(d, 0.0), r.size.y - maxf(-d, 0.0))
+		if run_len > 0.0:
+			c.draw_line(Vector2(x0, y0), Vector2(x0 + run_len, y0 + run_len), col, 1.5)
+		d += step
 
 
 ## 그 개체가 지금 범위로 때릴 수 있는 칸. 없으면 빈 배열.
