@@ -25,6 +25,7 @@ var run: RunState
 
 var lbl_budget: Label
 var lbl_note: Label
+var lbl_hint: Label
 var lbl_strategy: Label
 var btn_reroll: Button
 var btn_refine: Button
@@ -111,8 +112,8 @@ func setup(p_run: RunState) -> void:
 	btn_command.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func(): command.emit())
 
-	UiKit.label(bar, Vector2(40, BAR_Y + 46), Vector2(1200, 22),
-		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 한 모듈은 전체 작전에서 등장하지 않습니다."), 12, UiKit.MUTED)
+	lbl_hint = UiKit.label(bar, Vector2(40, BAR_Y + 46), Vector2(1200, 22),
+		"", 12, UiKit.MUTED)
 
 	var b_help := UiKit.button(self, Vector2(880, 630), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)
 	b_help.pressed.connect(func(): help.emit())
@@ -139,6 +140,10 @@ func refresh() -> void:
 		# 자리 표시 개수와 인자 개수가 반드시 같아야 한다. 하나라도 어긋나면
 		# 치환이 통째로 실패해 "%d" 가 화면에 그대로 뜬다.
 		lbl_budget.text += UiText.t("shop.budget_surcharge", "  (+%d)") % sur
+	# 제외권이 몇 장 남았는지 안내문에 적는다. 카드마다 숫자가 붙지만,
+	# 지금 몇 장인지를 한 곳에서도 말해 줘야 "쓸까 말까" 를 결정할 수 있다.
+	lbl_hint.text = UiText.t("shop.hint",
+		"카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 제외권 %d장 남음") 		% run.ban_tokens
 	btn_reroll.text = UiText.t("shop.reroll", "리롤  (-%d)") % run.reroll_cost()
 	btn_reroll.disabled = not run.can_reroll()
 
@@ -220,7 +225,7 @@ func _build_shop() -> void:
 		var cid: String = run.offers[i]
 		var card := CardNode.new()
 		shop_root.add_child(card)
-		card.setup(cid, i, false, cid != "")
+		card.setup(cid, i, false, cid != "", run.ban_tokens)
 		card.enabled = run.can_buy(i)
 		if cid != "" and not run.can_buy(i):
 			card.note = UiText.t("shop.note_poor", "예산 부족 (%d)") % run.price_of(cid)

@@ -166,6 +166,22 @@ var card_levels: Dictionary = {}
 ## 자원으로 묶어야 "지금 정제할까, 강화 받을까" 라는 진짜 선택이 생긴다.
 var refine_tokens: int = 0
 
+## ── 제외권 ───────────────────────────────────────────────────────────────
+## [제외] 는 그 모듈을 **런 전체에서** 없앤다. 다음 스테이지에도, 리롤을 몇 번
+## 하든 다시는 안 나온다.
+##
+## 그게 공짜였다. 그래서 마음에 안 드는 것을 계속 지우면 주머니가 내가 원하는
+## 카드로만 남는다 - 상점이 "무엇이 나왔는가" 가 아니라 "무엇을 남길 것인가"
+## 가 되고, 그러면 매 런이 같은 덱으로 수렴한다. 덱 정제를 정제권으로 묶어 둔
+## 것과 정확히 같은 이유다(refine 주석 참조).
+##
+## 시작 3장, 스테이지를 깰 때마다 1장. 다섯 판이면 총 7장이라 "정말 싫은 것"
+## 만 지울 수 있다.
+var ban_tokens: int = 0
+
+const BAN_TOKENS_START: int = 3
+const BAN_TOKENS_PER_STAGE: int = 1
+
 ## 보상으로 받은 누적 예산.
 ##
 ## 스테이지 예산은 start() 에서 stage_budget(stage) 로 **다시 계산**된다. 그래서 보상 화면에서 budget 에 직접 더해 봐야 다음 스테이지에
@@ -222,6 +238,7 @@ func start_run(p_stage_id: int = 1) -> void:
 	card_levels.clear()
 	fixed_offers.clear()
 	refine_tokens = 0
+	ban_tokens = BAN_TOKENS_START
 	bonus_budget = 0
 	cleared = 0
 	pending_rewards.clear()
@@ -437,9 +454,12 @@ func buy(index: int) -> bool:
 func ban(index: int) -> bool:
 	if index < 0 or index >= offers.size():
 		return false
+	if ban_tokens <= 0:
+		return false
 	var cid: String = offers[index]
 	if cid == "":
 		return false
+	ban_tokens -= 1
 	banned[cid] = true
 	# 같은 카드가 다른 자리에도 깔려 있으면 함께 치운다.
 	for i in offers.size():
@@ -751,6 +771,7 @@ func refine(card_id: String) -> bool:
 ## 0 이면 보너스 없음 - 테스트나 개발용 경로에서 그냥 부를 수 있게 둔다.
 func on_stage_cleared(ticks: int = 0) -> void:
 	cleared += 1
+	ban_tokens += BAN_TOKENS_PER_STAGE
 	# 보급 확충 - 단계를 깰 때마다 붙는다.
 	bonus_budget += command_amount("income")
 	# 예산 운용 - 남긴 예산에 이자가 붙는다. 안 쓰고 모으는 선택에 값을 준다.

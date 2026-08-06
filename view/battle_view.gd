@@ -413,6 +413,15 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 		var hot: bool = u.fuse_ticks >= 0
 		var pulse: float = 0.72 + 0.28 * sin(Time.get_ticks_msec() / (110.0 if hot else 260.0))
 
+		# ── 구역은 **화면에 그려진 자리**를 따라간다 ─────────────────────
+		# 전투 코어는 틱이 끝나는 순간 pos 를 목적지로 바꾸는데 화면은 그 이동을
+		# 시간에 걸쳐 보여 준다. 칸 좌표로 구역을 그리면, 아직 걸어가는 중인
+		# 자폭체의 폭발 범위가 **이미 도착지에 가 있다.**
+		#
+		# 표적 화살표에서 같은 문제를 이미 겪었다(_live_pos 주석). 규칙은 pos 로,
+		# 화면은 화면으로 - 판 위에 그리는 것은 전부 같은 규칙을 따라야 한다.
+		var shift := _live_pos(u) - (BOARD_ORIGIN + tile_center(u.pos))
+
 		if not outline_only:
 			# ── 채움 + 빗금 ──────────────────────────────────────────────
 			# 반투명 채움만으로는 진영 표시(파랑·빨강 0.15)와 섞여 아무것도
@@ -421,8 +430,8 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 			var fill := Color(u.color.r, u.color.g, u.color.b,
 				(0.22 if hot else 0.12) * pulse)
 			for p in cells:
-				var r := Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
-					Vector2(TILE_W, TILE_H))
+				var r := Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H)
+					+ shift, Vector2(TILE_W, TILE_H))
 				c.draw_rect(r, fill)
 				_hatch(c, r, Color(u.color.r, u.color.g, u.color.b,
 					(0.42 if hot else 0.22) * pulse), 13.0)
@@ -450,7 +459,7 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 		var w := 3.5 if hot else 2.0
 		var col := Color(edge.r, edge.g, edge.b, (0.95 if hot else 0.6) * pulse)
 		for p in cells:
-			var o := BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H)
+			var o := BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H) + shift
 			if not set.has(p + Vector2i(0, -1)):
 				c.draw_line(o, o + Vector2(TILE_W, 0), col, w)
 			if not set.has(p + Vector2i(0, 1)):

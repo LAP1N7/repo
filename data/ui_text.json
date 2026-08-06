@@ -29,7 +29,7 @@
   "shop.sub": "예산 범위 내에서 전술 모듈을 확보하십시오. 확보한 모듈만 대원에게 장착할 수 있습니다.",
   "shop.empty_hand": "보유 모듈이 없습니다. 모듈이 없는 대원은 기본기만으로 교전합니다.",
   "shop.hand_summary": "보유 모듈 %d개 (궁극기 %d) · 사용 예산 %d",
-  "shop.hint": "카드를 누르면 구매.  [제외] 한 모듈은 전체 작전에서 등장하지 않습니다.",
+  "shop.hint": "카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 제외권 %d장 남음",
   "shop.budget": "예산  %d",
   "shop.budget_surcharge": "  (+%d)",
   "shop.reroll": "재검색  (-%d)",
@@ -248,5 +248,6 @@
   "loadout.no_legs": "표적은 정했지만 이 대원은 스스로 접근하지 않는다 - 위치 모듈이 필요하다",
   "hover.now": "지금",
   "hover.firing": "%s 을(를) 때리는 중",
-  "hover.closing": "%s 에게 접근 중"
+  "hover.closing": "%s 에게 접근 중",
+  "card.ban_n": "제외 %d"
 }

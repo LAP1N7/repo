@@ -75,18 +75,19 @@ func refresh() -> void:
 		c.queue_free()
 	lbl_budget.text = UiText.t("shop.budget", "예산  %d") % run.budget
 
-	# 10줄 + 분류 머리 4개 + 실험용 장치를 720 안에 다 넣어야 한다. 한 줄이라도
-	# 아래로 밀리면 실험용 장치가 화면 밖으로 나간다 - 간격은 여유가 없다.
+	# 11줄 + 분류 머리 4개 + 실험용 장치를 720 안에 다 넣어야 한다.
+	# [야전 정비] 를 넣으면서 한 줄이 늘었고, 그만큼 실험용 장치가 아래로 밀려
+	# [상점으로] 버튼과 겹쳤다. 간격에는 여유가 없다 - 줄이 늘면 간격을 줄인다.
 	var x := ART_W + 40.0
 	var y := 92.0
 	for group in Command.GROUPS:
 		UiKit.label(root, Vector2(x, y), Vector2(300, 18), group, 13,
 			Color(0.55, 0.88, 1.0))
-		y += 20.0
+		y += 18.0
 		for id in Command.ids_in(group):
 			_row(id, Vector2(x, y))
-			y += 38.0
-		y += 4.0
+			y += 34.0
+		y += 3.0
 
 	_swap_section(Vector2(x, y + 4))
 
@@ -99,30 +100,30 @@ func _row(id: String, at: Vector2) -> void:
 
 	var panel := _Holo.new()
 	panel.position = at
-	panel.size = Vector2(700, 34)
+	panel.size = Vector2(700, 31)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(panel)
 
-	UiKit.label(panel, Vector2(12, 2), Vector2(150, 17), String(d["name"]), 13)
-	UiKit.label(panel, Vector2(12, 18), Vector2(430, 15), String(d["text"]), 10, UiKit.MUTED)
+	UiKit.label(panel, Vector2(12, 1), Vector2(150, 16), String(d["name"]), 13)
+	UiKit.label(panel, Vector2(12, 16), Vector2(430, 15), String(d["text"]), 10, UiKit.MUTED)
 
 	# 단계 칸. 산 만큼 채워진다 - 숫자보다 눈에 빨리 들어온다.
 	for i in Command.MAX_LEVEL:
 		var pip := ColorRect.new()
 		pip.color = Color(0.45, 0.85, 1.0) if i < lv else Color(0.14, 0.18, 0.24)
-		pip.position = Vector2(452 + i * 16, 13)
+		pip.position = Vector2(452 + i * 16, 12)
 		pip.size = Vector2(11, 9)
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(pip)
 
 	# 지금 값이 얼마인지. 0단계면 안 적는다 - 아직 아무것도 아니기 때문이다.
 	if lv > 0:
-		UiKit.label(panel, Vector2(508, 10), Vector2(80, 16),
+		UiKit.label(panel, Vector2(508, 8), Vector2(80, 16),
 			"+%d" % Command.amount(id, lv), 12, UiKit.GOOD)
 
 	var txt := UiText.t("cmd.maxed_short", "최대") if price < 0 \
 		else UiText.t("cmd.buy", "강화  -%d") % price
-	var btn := UiKit.button(panel, Vector2(578, 3), Vector2(110, 28), txt, 12)
+	var btn := UiKit.button(panel, Vector2(578, 2), Vector2(110, 27), txt, 12)
 	btn.disabled = price < 0 or run.budget < price
 	btn.pressed.connect(func():
 		var err := run.command_buy(id)
@@ -158,7 +159,7 @@ func _swap_section(at: Vector2) -> void:
 	swap_page = 0 if pages == 0 else posmod(swap_page, pages)
 	if pages > 1:
 		var nx := UiKit.button(root, Vector2(at.x + 4 * 152, at.y + 44),
-			Vector2(92, 28), UiText.t("cmd.swap_more", "다음 %d/%d") % [
+			Vector2(86, 28), UiText.t("cmd.swap_more", "다음 %d/%d") % [
 				swap_page + 1, pages], 11)
 		nx.pressed.connect(func():
 			swap_page += 1

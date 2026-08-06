@@ -26,6 +26,7 @@ func _init() -> void:
 	test_shadowing()
 	test_tutorial()
 	test_command()
+	test_ban_tokens()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
 
@@ -885,3 +886,40 @@ func test_command() -> void:
 	b.hand = ["near_first"] as Array[String]
 	b.command_swap("near_first")
 	ok(a.hand[0] == b.hand[0], "같은 시드면 같은 모듈이 나온다", str(a.hand))
+
+
+## ── 제외권 ───────────────────────────────────────────────────────────────
+## [제외] 는 그 모듈을 런 전체에서 없앤다. 그게 공짜였다 - 마음에 안 드는 것을
+## 계속 지우면 주머니가 내가 원하는 카드로만 남고, 상점이 "무엇이 나왔는가" 가
+## 아니라 "무엇을 남길 것인가" 가 된다. 매 런이 같은 덱으로 수렴한다.
+func test_ban_tokens() -> void:
+	print("\n[10] 제외권")
+	var r := fresh()
+	ok(r.ban_tokens == RunState.BAN_TOKENS_START,
+		"시작 제외권 %d장" % RunState.BAN_TOKENS_START, str(r.ban_tokens))
+
+	var before := r.ban_tokens
+	ok(r.ban(0), "제외권이 있으면 제외된다")
+	ok(r.ban_tokens == before - 1, "제외권을 1장 쓴다", str(r.ban_tokens))
+
+	# 다 쓰면 못 지운다. 예전에는 0장이어도 눌리는 대로 지워졌다.
+	r.ban_tokens = 0
+	var pool_before := r.pool().size()
+	var idx := -1
+	for i in r.offers.size():
+		if r.offers[i] != "":
+			idx = i
+			break
+	ok(idx >= 0, "제외할 자리가 있다")
+	ok(not r.ban(idx), "제외권이 없으면 제외되지 않는다")
+	ok(r.offers[idx] != "", "자리가 그대로 남는다")
+	ok(r.pool().size() == pool_before, "주머니도 그대로다")
+
+	# 단계를 깨면 보충된다.
+	r.on_stage_cleared()
+	ok(r.ban_tokens == RunState.BAN_TOKENS_PER_STAGE,
+		"단계를 깨면 %d장 보충" % RunState.BAN_TOKENS_PER_STAGE, str(r.ban_tokens))
+
+	# 새 런에서는 처음 값으로 돌아간다.
+	r.start_run(1)
+	ok(r.ban_tokens == RunState.BAN_TOKENS_START, "새 런에서 초기화된다")
