@@ -28,6 +28,7 @@ func _init() -> void:
 	await test_sfx()
 	await test_death_lag()
 	test_music_files()
+	await test_unit_scale()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [pass_n + fail_n, fail_n])
 	quit(1 if fail_n > 0 else 0)
 
@@ -409,3 +410,37 @@ func test_music_files() -> void:
 		if m != "" and not ResourceLoader.exists("res://assets/music/%s.wav" % m):
 			missing += m + " "
 	ok(missing == "", "대본이 부르는 곡이 전부 있다", missing)
+
+
+## ── 대원 크기가 직업마다 다르면 안 된다 ──────────────────────────────────
+## 예전에는 가로 폭으로 맞춰서, 활을 당겨 세로로 긴 궁수는 81px 이고 도끼를
+## 옆으로 벌린 전사는 49px 이었다. 같은 부대인데 한 명이 다른 한 명의 1.65배로
+## 보였다.
+##
+## 스크린샷으로는 안 잡힌다. 한 장만 보면 그냥 "궁수가 좀 크네" 이고, 그게
+## 틀렸다는 것은 여섯을 나란히 재 봐야 안다. 그래서 숫자로 못 박는다.
+func test_unit_scale() -> void:
+	print("\n[9] 대원 크기가 직업마다 같은가")
+	var lo := 99999.0
+	var hi := 0.0
+	var worst := ""
+	for tid in UnitData.playable():
+		var u := Unit.create(0, tid, Unit.TEAM_PLAYER, Vector2i(1, 1), [])
+		var v := UnitView.new()
+		get_root().add_child(v)
+		v.setup(u, UiKit.font(11))
+		await process_frame
+		if v.rig != null:
+			if v.rig_height < lo:
+				lo = v.rig_height
+			if v.rig_height > hi:
+				hi = v.rig_height
+				worst = tid
+		v.queue_free()
+	ok(hi > 0.0, "리그가 하나라도 붙는다")
+	if hi > 0.0:
+		ok(hi / lo <= 1.05, "가장 큰 대원이 가장 작은 대원의 1.05배 이내",
+			"%.0f ~ %.0f (%s)" % [lo, hi, worst])
+		# 칸(81px) 안에 서면서도 충분히 커야 한다.
+		ok(hi <= 81.0 and lo >= 60.0, "칸 안에 들어가되 작지 않다",
+			"%.0f ~ %.0f" % [lo, hi])

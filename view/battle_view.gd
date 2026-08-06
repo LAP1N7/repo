@@ -46,7 +46,17 @@ const TILE_H: float = 81.0
 
 const BOARD_ORIGIN := Vector2(36, 100)
 const TILE: int = Grid.TILE
-const ACT_TIME: float = 0.22
+## ── 한 동작에 주는 시간 ──────────────────────────────────────────────────
+## 0.22초였다. 걷기 한 사이클을 그 안에 욱여넣으니 다리가 두 번 깜빡이고 끝나서,
+## 애니메이션을 넣어도 움직임이 안 보였다. 리그를 여섯 개 만든 값이 화면에
+## 하나도 안 나타나는 상태였다.
+##
+## 1초가 기준이다. 걷기도 공격도 한 동작이 온전히 보인다.
+##
+## 대신 기본 배속을 2배로 둔다. 1초 x 여섯 대원이면 한 틱이 6초라 처음 보는
+## 사람에게는 느리다. 2배(0.5초)가 "보이면서 답답하지 않은" 지점이고, 자세히
+## 보고 싶으면 1x 를, 결과만 보고 싶으면 4x 를 누르면 된다.
+const ACT_TIME: float = 1.0
 const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
 
 ## 규칙 패널 한 유닛이 차지하는 높이와 한 줄 높이.
@@ -112,7 +122,7 @@ enum Phase { READY, PLAYING, RESULT }
 
 var run: RunState
 var battle: Battle
-var speed: float = 1.0
+var speed: float = 2.0
 var phase: int = Phase.READY
 var run_id: int = 0
 
