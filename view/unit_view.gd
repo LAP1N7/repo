@@ -52,6 +52,18 @@ const OVERLAY_Z: int = 60
 const ANIM_WALK: StringName = &"walk"
 const ANIM_ATTACK: StringName = &"attack"
 
+## ── 애니메이션 이름은 사람마다 다르게 짓는다 ─────────────────────────────
+## 리그를 만드는 쪽에서 "walk" 라고 할지 "walking" 이라고 할지 "run" 이라고 할지
+## 우리가 정할 수 없다. 실제로 twinning 에서 받은 악사 리그는 "walking" 이었고,
+## 이름 하나가 안 맞아서 아무 동작도 안 나왔다 - 그림은 붙었는데 서 있기만 했다.
+##
+## 에셋을 고치라고 하는 대신 여기서 받아 준다. 이름을 맞추는 일은 사람이 할
+## 일이 아니다.
+const ANIM_ALIAS: Dictionary = {
+	&"walk": ["walk", "walking", "run", "move"],
+	&"attack": ["attack", "attacking", "atk", "hit"],
+}
+
 ## 규칙 라벨이 사라지는 속도(1/초). 낮추면 여러 유닛의 라벨이 겹쳐서 못 읽는다.
 const CHIP_FADE: float = 1.7
 
@@ -182,8 +194,9 @@ func _set_rig(packed: PackedScene) -> void:
 	_holder = holder
 
 	anim = _find_anim(inst)
-	if anim != null and anim.has_animation(ANIM_WALK):
-		anim.play(ANIM_WALK)
+	var w := resolve_anim(ANIM_WALK)
+	if w != "":
+		anim.play(w)
 		anim.seek(0.0, true)
 		anim.speed_scale = 0.0
 
@@ -288,13 +301,14 @@ static func _effective_length(a: Animation) -> float:
 ## "애니메이션이 안 도는" 것처럼 보였다. 속도를 맞추면 어떤 배속에서도 한 걸음에
 ## 한 걸음짜리 동작이 온전히 보인다.
 func play_motion(which: StringName, duration: float) -> bool:
-	if anim == null or not anim.has_animation(which) or duration <= 0.0:
+	var name := resolve_anim(which)
+	if name == "" or duration <= 0.0:
 		return false
-	var a := anim.get_animation(which)
+	var a := anim.get_animation(name)
 	var eff := _effective_length(a)
 	if eff <= 0.0:
 		return false
-	anim.play(which)
+	anim.play(name)
 	anim.seek(0.0, true)
 	anim.speed_scale = eff / duration
 	return true
@@ -302,15 +316,16 @@ func play_motion(which: StringName, duration: float) -> bool:
 
 ## 기본 자세로 되돌린다. 걷다 만 자세로 굳어 있으면 어색하다.
 func rest_motion() -> void:
-	if anim == null or not anim.has_animation(ANIM_WALK):
+	var name := resolve_anim(ANIM_WALK)
+	if name == "":
 		return
-	anim.play(ANIM_WALK)
+	anim.play(name)
 	anim.seek(0.0, true)
 	anim.speed_scale = 0.0
 
 
 func has_motion(which: StringName) -> bool:
-	return anim != null and anim.has_animation(which)
+	return resolve_anim(which) != ""
 
 
 func set_art(tex: Texture2D) -> void:
@@ -540,3 +555,13 @@ func face_to(dx: float) -> void:
 		_holder.position.x = -_rig_center_x * _holder.scale.x
 	elif art != null and art.texture != null:
 		art.scale.x = _scale_k * facing
+
+
+## 이 리그에서 그 동작에 해당하는 실제 애니메이션 이름. 없으면 "".
+func resolve_anim(which: StringName) -> String:
+	if anim == null:
+		return ""
+	for name in ANIM_ALIAS.get(which, [String(which)]):
+		if anim.has_animation(String(name)):
+			return String(name)
+	return ""

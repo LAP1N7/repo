@@ -27,6 +27,7 @@ func _init() -> void:
 	await test_card_fit()
 	await test_sfx()
 	await test_death_lag()
+	test_music_files()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [pass_n + fail_n, fail_n])
 	quit(1 if fail_n > 0 else 0)
 
@@ -381,3 +382,30 @@ func test_death_lag() -> void:
 	await process_frame
 	ok(not v.shown_alive(), "사망 이벤트를 재생하면 사라진다")
 	v.queue_free()
+
+
+## ── 음원이 실제로 로드되는가 ─────────────────────────────────────────────
+## 파일을 넣고 이름만 적어 두면 "있는 줄 알았는데 없는" 상태가 조용히 생긴다.
+## 배경음악은 안 나와도 게임이 안 죽으므로 아무도 모른 채 넘어간다 - 실제로
+## 그렇게 한참을 갔다.
+##
+## wav 를 쓰는 이유는 웹이 모든 소리를 Sample 로 재생하기 때문이다. 스트리밍
+## 음원(mp3·ogg)은 그 경로에서 소리 없이 죽는다. (core/sfx.gd 주석)
+func test_music_files() -> void:
+	print("\n[8] 배경음악 음원")
+	for name in ["opening_theme", "boss_theme", "story_stage4"]:
+		var path := "res://assets/music/%s.wav" % name
+		var found := ResourceLoader.exists(path)
+		ok(found, "%s.wav 가 있다" % name)
+		if not found:
+			continue
+		var res = load(path)
+		ok(res is AudioStream, "%s 가 음원으로 읽힌다" % name)
+
+	# 대본이 부르는 곡이 전부 실재하는가. 이름 오타는 조용히 무음이 된다.
+	var missing := ""
+	for b in Story.all_beats():
+		var m := String((b as Dictionary).get("music", ""))
+		if m != "" and not ResourceLoader.exists("res://assets/music/%s.wav" % m):
+			missing += m + " "
+	ok(missing == "", "대본이 부르는 곡이 전부 있다", missing)

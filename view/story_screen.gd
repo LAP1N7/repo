@@ -41,6 +41,9 @@ func setup(p_beats: Array) -> void:
 	size = Vector2(1280, 720)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
+	_sfx = Sfx.new()
+	add_child(_sfx)
+
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.035, 0.05)
 	bg.size = Vector2(1280, 720)
@@ -128,6 +131,10 @@ const MIRA_NAME := "MIRA"
 const COL_MIRA := Color(0.96, 0.97, 1.0)
 const COL_HUMAN := Color(1.0, 0.78, 0.35)
 
+## 지금 깔려 있는 배경. 대사가 배경을 안 적으면 이 값이 이어진다.
+var _bg_id: String = ""
+var _sfx: Sfx
+
 var _opened_ms: int = 0
 
 ## 이 시간 안에 들어온 입력은 앞 화면에서 새어 나온 것으로 본다.
@@ -180,10 +187,27 @@ func _show(i: int) -> void:
 		(_portrait as _Portrait).art_id = portrait
 		_portrait.queue_redraw()
 
-	var art := String(b.get("art", ""))
+	# ── 배경 ─────────────────────────────────────────────────────────────
+	# 대사마다 따로 지정한다. 안 적으면 **앞 장면의 배경이 그대로 이어진다** -
+	# 한 장소에서 대사가 다섯 줄 오갈 때마다 같은 파일 이름을 다섯 번 적는 것은
+	# 대본이 할 일이 아니다. 장소를 바꾸고 싶을 때만 적는다.
+	#
+	# 배경을 걷어내고 싶으면 "none" 이라고 적는다. 빈 문자열은 "그대로" 라서
+	# 끄는 뜻으로 못 쓴다.
+	var art := String(b.get("art", _bg_id))
+	if art == "none":
+		art = ""
+	_bg_id = art
 	(_art as _ArtSlot).art_id = art
 	_art.visible = art != ""
 	_art.queue_redraw()
+
+	# ── 음악 ─────────────────────────────────────────────────────────────
+	# 같은 어법이다. 적은 대사에서 곡이 바뀌고, 안 적으면 그대로 이어진다.
+	# (Sfx.play_music 은 같은 곡이면 아무것도 안 한다 - 다시 시작하지 않는다)
+	var bgm := String(b.get("music", ""))
+	if bgm != "" and _sfx != null:
+		_sfx.play_music(bgm)
 
 	var fx := String(b.get("fx", ""))
 	_log_box.visible = fx == "log"

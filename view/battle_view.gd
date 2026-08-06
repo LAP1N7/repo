@@ -170,6 +170,8 @@ var log_label: RichTextLabel
 var roster_root: Control
 ## 지금 마우스가 올라간 판 위의 대원. 없으면 null.
 var hover_unit: Unit = null
+## 마지막 판인가. 곡을 가른다.
+var _boss_music: bool = false
 
 ## 전황판의 회색 네모 위에 마우스가 올라갔을 때 그 적. 판에서 아무것도 안
 ## 잡혔을 때만 쓴다 - 전황판에서 짚어도 **판 위에서** 정체가 뜨게 하려는 것이다.
@@ -178,6 +180,7 @@ var roster_hover: Unit = null
 
 func setup(p_run: RunState) -> void:
 	sfx = Sfx.new()
+	_boss_music = p_run != null and Stages.is_last(p_run.stage_id)
 	add_child(sfx)
 	run = p_run
 	# UnitView 가 이 폰트로 머리 위 규칙 칩(12px)과 이름을 그린다. 둘 다 작은 글씨다.
@@ -213,6 +216,14 @@ func setup(p_run: RunState) -> void:
 	add_child(fx)
 	_build_ui()
 	_reset()
+
+	# ── 마지막 판만 곡이 다르다 ──────────────────────────────────────────
+	# 다섯 판이 전부 같은 곡이면 마지막 판도 그냥 여섯 번째 교전으로 들린다.
+	# 곡이 바뀌는 순간 "여기가 끝" 이 규칙보다 먼저 전해진다.
+	#
+	# 편성으로 돌아갔다 와도 다시 시작하지 않는다 - play_music 이 같은 곡이면
+	# 아무것도 안 한다.
+	sfx.play_music("boss_theme" if _boss_music else "opening_theme")
 
 	# 개발용 훅. 무인 재생으로 프레임을 뽑아 백업 영상을 찍을 때 쓴다. (DESIGN D4)
 	#   GG_SPEED=2      배속
