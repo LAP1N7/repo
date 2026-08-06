@@ -97,6 +97,19 @@ func _init() -> void:
 	mid.queue_free()
 	await process_frame
 
+	# 궁극기 컷인. 실제로 재생시켜 잘리는 쪽을 눈으로 본다.
+	var cut: BattleScreen = load("res://scenes/battle_view.tscn").instantiate()
+	root.add_child(cut)
+	cut.setup(run)
+	cut.speed = 1.0
+	cut._cutin("칸타빌레", Color(0.95, 0.85, 0.45), "bard", "cantabile")
+	for _i in 380:
+		await process_frame
+	root.get_texture().get_image().save_png("%s/13_cutin.png" % OUT)
+	print("  찍음: 13_cutin")
+	cut.queue_free()
+	await process_frame
+
 	run.on_stage_cleared(10)
 	await _shot("05_reward", load("res://scenes/reward_screen.tscn").instantiate(),
 		func(s): s.setup(run, ["musketeer", "assassin", "bard"]))

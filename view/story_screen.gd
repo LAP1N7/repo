@@ -87,8 +87,12 @@ func setup(p_beats: Array) -> void:
 	# 적으면 그 그림이 뜨고, 안 적으면 안 뜬다. 연출을 코드가 아니라 대본에서
 	# 만지도록 두는 편이 훨씬 빠르다.
 	_portrait = _Portrait.new()
-	_portrait.position = Vector2(PAD + 6, 150)
-	_portrait.size = Vector2(360, 420)
+	# ── 궁극기 컷인과 같은 어법 ──────────────────────────────────────────
+	# 얼굴만 크게 잡으면 누가 말하는지는 알아도 **어떤 인물인지**가 안 남는다.
+	# 컷인이 반신을 세로로 길게 보여 주는 것과 같은 이유로, 여기서도 인물을
+	# 통째로 세운다. 아래는 대사판이 가리므로 잘려도 좋다.
+	_portrait.position = Vector2(PAD + 4, 74)
+	_portrait.size = Vector2(430, 560)
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait.visible = false
 	add_child(_portrait)
@@ -160,6 +164,18 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func _advance() -> void:
+	# ── 로그가 흐르는 중이면 먼저 끝까지 뿌린다 ──────────────────────────
+	# 예전에는 아무 때나 누르면 다음 대사로 넘어갔다. 그래서 서른 줄짜리
+	# 기록이 두 줄쯤 나왔을 때 실수로 눌러 통째로 날아갔고, 그게 이 이야기의
+	# 정체가 밝혀지는 유일한 장면이다.
+	#
+	# 한 번은 "다 보여 줘", 두 번째가 "넘어가" 다. 건너뛸 수는 있되 모르고
+	# 지나칠 수는 없게 한다.
+	if _log_box != null and _log_box.visible and _log_n < Story.LOG_LINES.size():
+		_log_n = Story.LOG_LINES.size()
+		_log.text = "
+".join(Story.LOG_LINES)
+		return
 	index += 1
 	if index >= beats.size():
 		done.emit()
@@ -362,18 +378,30 @@ class _Glitch extends Control:
 ##
 ## 앞부분(평범한 시설 기록)은 한 줄씩 천천히 올라가고, 뒤로 갈수록 가속한다.
 ## 그 가속이 "무언가 일어났다" 를 말한다 - 글로 설명하지 않는다.
+## ── 로그는 한 줄씩, 천천히 ───────────────────────────────────────────────
+## 예전에는 뒤로 갈수록 빨라져 마지막 열 줄이 한 프레임에 쏟아졌다. "가속" 은
+## 의도였지만 결과는 그냥 안 읽히는 화면이었다.
+##
+## 아날로그 호러의 무서움은 속도가 아니라 **속도가 일정하다는 것**에서 온다.
+## 기계가 사람 사정과 무관하게 제 박자로 계속 뱉는다. 그래서 한 줄에 0.34초로
+## 고정하고, 종이가 밀려 올라가듯 화면도 그만큼씩만 흐르게 한다.
+const LOG_LINE_SEC: float = 0.34
+const LOG_LINE_H: float = 17.0
+
 func _tick_log(delta: float) -> void:
-	_log_t += delta
-	# 처음 열 줄은 0.28초에 한 줄. 그 뒤로는 줄마다 빨라진다.
-	var speed: float = 0.28 if _log_n < 10 else maxf(0.02, 0.28 - float(_log_n - 10) * 0.018)
-	while _log_n < Story.LOG_LINES.size() and _log_t > speed:
-		_log_t -= speed
-		_log_n += 1
-		_log.text = "
+	if _log_n < Story.LOG_LINES.size():
+		_log_t += delta
+		while _log_n < Story.LOG_LINES.size() and _log_t > LOG_LINE_SEC:
+			_log_t -= LOG_LINE_SEC
+			_log_n += 1
+			_log.text = "
 ".join(Story.LOG_LINES.slice(0, _log_n))
-	# 넘치면 위로 밀어 마지막 줄이 항상 보이게 한다.
-	var over: float = maxf(0.0, float(_log_n) * 17.0 - 356.0)
-	_log.position.y = 8.0 - over
+
+	# ── 스크롤은 따로, 부드럽게 ──────────────────────────────────────────
+	# 줄이 늘 때마다 위치를 툭 바꾸면 글이 한 칸씩 튄다. 목표 지점을 정해 두고
+	# 매 프레임 그쪽으로 조금씩 다가가면 종이가 밀려 올라가는 것처럼 흐른다.
+	var want: float = 8.0 - maxf(0.0, float(_log_n) * LOG_LINE_H - 348.0)
+	_log.position.y = lerpf(_log.position.y, want, clampf(delta * 6.0, 0.0, 1.0))
 
 
 ## 파란 홀로그램 판. 스캔라인과 노이즈.
@@ -421,6 +449,11 @@ class _Portrait extends Control:
 	func _ready() -> void:
 		clip_contents = true
 		_tr = TextureRect.new()
+		# 이 한 줄이 빠지면 TextureRect 의 최소 크기가 텍스처 크기라, size 를
+		# 아무리 작게 줘도 원본 크기로 되돌아간다. 896x1182 짜리 그림이
+		# 360x420 칸 안에서 원본 배율로 그려져 **얼굴만 꽉 차** 있었다.
+		# 편성 얼굴 타일에서 이미 한 번 겪은 함정이다.
+		_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		_tr.stretch_mode = TextureRect.STRETCH_SCALE
 		_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(_tr)
@@ -436,13 +469,15 @@ class _Portrait extends Control:
 		_tr.texture = tex
 		if tex == null:
 			return
-		# ── 세로를 채우고 좌우를 자른다 ──────────────────────────────────
-		# 폭에 맞추면 인물이 자리 안에 얌전히 들어가서 작아진다. 미연시 초상은
-		# 얼굴이 화면에서 차지하는 비율이 곧 존재감이라, 세로를 기준으로 채우고
-		# 넘치는 좌우를 자르는 편이 맞다.
+		# ── 인물을 통째로 세운다 ─────────────────────────────────────────
+		# 가로·세로 중 **작은 쪽**에 맞춘다. 세로만 맞추면 가로로 넘쳐 좌우가
+		# 잘리고, 그러면 활이나 무기처럼 옆으로 뻗은 것이 통째로 사라진다.
+		# 인물이 누구인지는 실루엣이 말하는데 그 실루엣이 잘리면 의미가 없다.
 		var ts := Vector2(tex.get_width(), tex.get_height())
-		if ts.y <= 0.0:
+		if ts.y <= 0.0 or ts.x <= 0.0:
 			return
-		var k: float = size.y / ts.y
+		var k: float = minf(size.x / ts.x, size.y / ts.y)
 		_tr.size = ts * k
-		_tr.position = Vector2((size.x - _tr.size.x) * 0.5, 0)
+		# 가로는 가운데, 세로는 바닥에 세운다 - 발치가 대사판에 닿아야
+		# 인물이 화면에 서 있는 것으로 읽힌다.
+		_tr.position = Vector2((size.x - _tr.size.x) * 0.5, size.y - _tr.size.y)

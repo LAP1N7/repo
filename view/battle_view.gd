@@ -1739,10 +1739,17 @@ func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") 
 	var tex := UiKit.art(["cutin", "standing"], type_id)
 	if tex != null:
 		# 판을 꽉 채우도록 아트를 확대하고(COVER), 남는 좌우는 폴리곤이 잘라 준다.
+		# ── 어느 쪽을 남길 것인가 ────────────────────────────────────────
+		# 컷인은 폭 428px 짜리 세로 띠라, 가로가 넓은 원화는 대부분이 잘린다.
+		# 가운데를 남기면 인물이 반쯤 걸린 채로 나온다 - 서브컬처 스탠딩은
+		# 인물이 화면 오른쪽에 서고 왼쪽이 여백인 구도가 많기 때문이다.
+		#
+		# 오른쪽을 남긴다. 잘리는 쪽은 배경이고 남는 쪽이 인물이다.
 		var src := _art_box(tex)
 		var box := Vector2(CUTIN_X + CUTIN_SKEW, 720.0)
 		var k: float = maxf(box.x / src.x, box.y / src.y)
-		var off := (box - src * k) * 0.5
+		var crop: float = float(CutinShots.of(type_id).get("crop", 1.0))
+		var off := Vector2((box.x - src.x * k) * crop, (box.y - src.y * k) * 0.5)
 		var uv := PackedVector2Array()
 		for pt in shape:
 			uv.append((pt - off) / k)
