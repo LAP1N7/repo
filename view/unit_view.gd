@@ -28,6 +28,13 @@ extends Node2D
 ## 리그가 없는 개체(기계류)를 그리는 동그라미의 반지름.
 ## 리그 키(ART_H)와 눈에 띄게 다르면 같은 판 위의 물건으로 안 읽힌다.
 const R: float = 30.0
+
+## ── 발판 ─────────────────────────────────────────────────────────────────
+## 대원이 칸 **안에** 들어가는 게 아니라 칸을 **밟고 선다.** 그래서 발밑 표식은
+## 칸의 가로세로 비를 따라간 납작한 타원이어야 한다. 정원이면 떠 보인다.
+const FOOT_R: float = 27.0
+const FOOT_SQUASH: float = 0.46
+const FOOT_Y: float = 20.0
 const HP_W: float = 44.0
 const NAME_SIZE: int = 11
 const CHIP_SIZE: int = 12
@@ -462,8 +469,13 @@ func _draw() -> void:
 
 	var ring := Color(0.35, 0.75, 1.0) if unit.team == Unit.TEAM_PLAYER else Color(1.0, 0.42, 0.38)
 
-	# ── 그림자. 스프라이트가 타일 위에 떠 보이지 않게 한다.
-	draw_circle(Vector2(0, R * 0.72), R * 0.62, Color(0, 0, 0, 0.28))
+	# ── 발판 ─────────────────────────────────────────────────────────────
+	# 동그라미가 아니라 **타원**이다. 칸이 가로로 넓으므로(78x64) 발밑 표식도
+	# 그 비율을 따라야 "이 칸을 밟고 서 있다" 로 읽힌다. 정원을 그리면 대원이
+	# 칸 위에 떠 있는 것처럼 보인다.
+	draw_set_transform(Vector2(0, FOOT_Y), 0.0, Vector2(1.0, FOOT_SQUASH))
+	draw_circle(Vector2(0, 3.0 / FOOT_SQUASH), FOOT_R * 0.92, Color(0, 0, 0, 0.34))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# ── 진영은 바닥 표식으로 가른다 ──────────────────────────────────────
 	# 예전에는 몸통을 파랑/빨강으로 칠했다. 그런데 직업 색도 몸통에 있어서
@@ -473,8 +485,10 @@ func _draw() -> void:
 	# 진영은 발밑에, 직업은 몸통에 둔다. 자리가 갈리면 둘 다 읽힌다.
 	# 아군은 채운 호, 적은 점선 호다. 색을 못 가리는 사람에게도 모양이 남는다.
 	var seg: int = 28 if unit.team == Unit.TEAM_PLAYER else 12
-	draw_arc(Vector2(0, R * 0.78), R * 0.86, 0.0, TAU, seg,
-		Color(ring.r, ring.g, ring.b, 0.9), 3.0)
+	draw_set_transform(Vector2(0, FOOT_Y), 0.0, Vector2(1.0, FOOT_SQUASH))
+	draw_arc(Vector2.ZERO, FOOT_R, 0.0, TAU, seg,
+		Color(ring.r, ring.g, ring.b, 0.95), 3.0 / FOOT_SQUASH)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if has_art():
 		# 아트가 있으면 본체는 스프라이트가 그린다. 팀 구분은 발밑 고리로만 남긴다.

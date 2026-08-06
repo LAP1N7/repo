@@ -113,7 +113,7 @@ func setup(p_run: RunState) -> void:
 		b.size = Vector2(79, 104)
 		b.type_id = String(tid)
 		b.label = String(s["name"])
-		b.sub = UiText.t("loadout.unit_stat", "HP%d 공%d") % [s["hp"], s["atk"]]
+		b.sub = UiText.t("loadout.unit_stat", "HP%d ATK%d") % [s["hp"], s["atk"]]
 		b.tint = s["color"]
 		add_child(b)
 		b.pressed.connect(_on_type_pressed.bind(String(tid)))
@@ -269,7 +269,7 @@ func _build_roster() -> void:
 		pick.pressed.connect(func(): sel_member = i; refresh())
 
 		UiKit.label(roster_root, Vector2(RIGHT_X + 150, y + 6), Vector2(280, 20),
-			UiText.t("loadout.m05", "HP %d · 공격 %d · 사거리 %d · 이동 %d") % [
+			UiText.t("loadout.m05", "HP %d · ATK %d · RNG %d · MOV %d") % [
 				s["hp"], s["atk"], s["range"], s["move"]], 11, UiKit.MUTED)
 
 		# 특수 슬롯은 규칙 3칸과 별개다. 그래서 규칙 목록 안이 아니라 헤더 줄에 둔다.

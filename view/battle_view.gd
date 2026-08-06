@@ -41,10 +41,21 @@ var tut: Tutorial = null
 ## 게임 규칙은 한 줄도 안 바뀐다.
 ## 좌우를 조금 좁혀 칸 사이가 붙어 보이게 한다. 8열이 나란히 설 때 칸이
 ## 너무 넓으면 격자가 아니라 표처럼 읽힌다.
-const TILE_W: float = 98.0
-const TILE_H: float = 81.0
+## ── 칸은 발판이다 ────────────────────────────────────────────────────────
+## 칸이 98x81 이고 대원이 74 였다. 대원이 칸 **안에** 얌전히 들어가 있으니
+## 격자가 주인공이고 대원이 장식처럼 보였다. 판을 봐도 누가 어디 있는지가
+## 한눈에 안 들어왔다.
+##
+## 명일방주는 반대다. 칸은 작고, 오퍼레이터는 그 칸을 **밟고 서서** 위로
+## 넘친다. 그래서 시선이 칸이 아니라 사람에게 간다.
+##
+## 가로를 줄이고 세로를 더 줄였다. 대원(74)이 칸 높이(64)보다 크므로 자연히
+## 칸 위로 올라선다. 맨해튼 거리는 칸 수로 세므로 규칙은 하나도 안 바뀐다.
+const TILE_W: float = 78.0
+const TILE_H: float = 64.0
 
-const BOARD_ORIGIN := Vector2(36, 100)
+## 판이 좁아진 만큼 왼쪽 영역(36~820) 안에서 가운데로 민다.
+const BOARD_ORIGIN := Vector2(116, 128)
 const TILE: int = Grid.TILE
 ## ── 한 동작에 주는 시간 ──────────────────────────────────────────────────
 ## 0.22초였다. 걷기 한 사이클을 그 안에 욱여넣으니 다리가 두 번 깜빡이고 끝나서,
@@ -223,6 +234,8 @@ func setup(p_run: RunState) -> void:
 
 	fx = Node2D.new()
 	fx.position = BOARD_ORIGIN
+	# 터짐 효과는 유닛보다 위다. 유닛 뒤에서 터지면 무슨 일이 났는지 안 보인다.
+	fx.z_index = 120
 	add_child(fx)
 	_build_ui()
 	_reset()
@@ -447,7 +460,8 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 		# 범위가 보이는 것과 "언제" 터지는지를 아는 것은 다른 문제다. 칸만 밝혀
 		# 두면 플레이어는 계속 위험한 줄 알고, 실제로 급한 한 틱을 놓친다.
 		if u.fuse_ticks >= 0:
-			var at := _live_pos(u) + Vector2(0, -UNIT_R - 14.0)
+			# 머리 위 정가운데는 이름표가 쓴다. 오른쪽 어깨 위로 비켜 놓는다.
+			var at := _live_pos(u) + Vector2(UNIT_R * 0.75, -UNIT_R - 6.0)
 			var fs := UiKit.font(16)
 			var txt := str(maxi(0, u.fuse_ticks))
 			var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
@@ -785,7 +799,15 @@ func _build_ui() -> void:
 	# ── 맨 위 층 ─────────────────────────────────────────────────────────
 	# 유닛(board)·효과(fx)보다 **나중에** 붙어야 위에 그려진다. 개체 위에
 	# 마우스를 올려 여는 창이 그 개체에 가리면 앞뒤가 안 맞는다.
+	# ── 이 층이 판에서 가장 위다 ─────────────────────────────────────────
+	# UnitView 안쪽이 절대 z 를 쓴다(체력바 60 · 규칙 칩 100). 그래서 트리
+	# 순서만으로는 이 층이 위로 안 온다 - 자폭 도화선 숫자가 체력바 **밑에**
+	# 깔려 있었다. 가장 급한 정보가 가장 아래에 있었던 셈이다.
+	#
+	# 여기 오는 것은 전부 "지금 당장 알아야 하는 것" 이다.
+	# 도화선 · 범위 경계 · 표적 화살표 · 개체 정보.
 	top_layer = _TopLayer.new()
+	top_layer.z_index = 200
 	top_layer.view = self
 	top_layer.size = Vector2(1280, 720)
 	top_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -903,7 +925,7 @@ func _build_rules_panel() -> void:
 		var up := int(party[i].get("upgrade", 0))
 		var first: bool = bool(party[i].get("special_first", false))
 		UiKit.label(rules_root, Vector2(px, y), Vector2(560, 20),
-			UiText.t("battle.m02", "%s%s   HP %d · 공격 %d · 사거리 %d · 이동 %d") % [
+			UiText.t("battle.m02", "%s%s   HP %d · ATK %d · RNG %d · MOV %d") % [
 				s["name"], "" if up == 0 else " +%d" % up,
 				run.upgraded_stat(party[i]["type"], "hp", int(s["hp"])),
 				run.upgraded_stat(party[i]["type"], "atk", int(s["atk"])),
@@ -2421,7 +2443,7 @@ class _SquadCard extends Control:
 		# 이 자리에는 **지금 이 대원이 뭘 할 수 있는가** 를 둔다. 공격력·방어·
 		# 사거리·이동은 판을 보다가 "왜 저기서 멈췄지" 를 물을 때 필요한 값이고,
 		# 그 질문은 항상 판을 보는 중에 생긴다.
-		var stat := UiText.t("battle.squad_stat", "공 %d · 방 %d · 사거리 %d · 이동 %d") % [
+		var stat := UiText.t("battle.squad_stat", "ATK %d · DEF %d · RNG %d · MOV %d") % [
 			unit.atk, 2 + unit.passive_def + unit.command_def,
 			unit.atk_range, unit.move_range]
 		draw_string(fs, Vector2(106, 72), stat,

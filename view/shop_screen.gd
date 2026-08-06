@@ -143,7 +143,7 @@ func refresh() -> void:
 	# 제외권이 몇 장 남았는지 안내문에 적는다. 카드마다 숫자가 붙지만,
 	# 지금 몇 장인지를 한 곳에서도 말해 줘야 "쓸까 말까" 를 결정할 수 있다.
 	lbl_hint.text = UiText.t("shop.hint",
-		"카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 제외권 %d장 남음") 		% run.ban_tokens
+		"카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 정제권을 1장 쓴다 (%d장)") 		% run.refine_tokens
 	btn_reroll.text = UiText.t("shop.reroll", "리롤  (-%d)") % run.reroll_cost()
 	btn_reroll.disabled = not run.can_reroll()
 
@@ -225,7 +225,7 @@ func _build_shop() -> void:
 		var cid: String = run.offers[i]
 		var card := CardNode.new()
 		shop_root.add_child(card)
-		card.setup(cid, i, false, cid != "", run.ban_tokens)
+		card.setup(cid, i, false, cid != "", run.refine_tokens)
 		card.enabled = run.can_buy(i)
 		if cid != "" and not run.can_buy(i):
 			card.note = UiText.t("shop.note_poor", "예산 부족 (%d)") % run.price_of(cid)

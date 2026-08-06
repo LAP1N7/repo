@@ -32,13 +32,13 @@ const TABLE: Dictionary = {
 		"group": "전투",
 		"name": "화력 증폭",
 		"per": 5,
-		"text": "출전 대원 전원 공격력 +5%",
+		"text": "출전 대원 전원 ATK +5%",
 	},
 	"def": {
 		"group": "전투",
 		"name": "장갑 보강",
 		"per": 1,
-		"text": "출전 대원 전원 방어 +1",
+		"text": "출전 대원 전원 DEF +1",
 	},
 	"hp": {
 		"group": "전투",
@@ -53,13 +53,13 @@ const TABLE: Dictionary = {
 		"group": "축",
 		"name": "표적 연산 강화",
 		"per": 8,
-		"text": "TARGET 모듈을 장착한 대원 공격력 +8%",
+		"text": "TARGET 모듈을 장착한 대원 ATK +8%",
 	},
 	"axis_position": {
 		"group": "축",
 		"name": "기동 연산 강화",
 		"per": 1,
-		"text": "POSITION 모듈을 장착한 대원 방어 +1",
+		"text": "POSITION 모듈을 장착한 대원 DEF +1",
 	},
 	"axis_doctrine": {
 		"group": "축",

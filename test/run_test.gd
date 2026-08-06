@@ -120,6 +120,9 @@ func test_shop() -> void:
 func test_ban() -> void:
 	print("\n[2] 카드 추방")
 	var r := fresh()
+	# 제외는 정제권을 쓴다. 넉넉히 주고 나머지 동작을 본다 -
+	# 정제권이 없을 때의 동작은 [10] 에서 따로 잰다.
+	r.refine_tokens = 9
 	var victim: String = r.offers[0]
 
 	ok(r.ban(0), "추방 성공")
@@ -138,6 +141,7 @@ func test_ban() -> void:
 
 	# 전부 추방하면 제시가 비어야 하고 리롤도 막혀야 한다 (무한 루프 방지)
 	var r2 := fresh()
+	r2.refine_tokens = 9
 	for cid in Cards.deck_order():
 		r2.banned[cid] = true
 	for sid in Specials.ORDER:
@@ -888,38 +892,34 @@ func test_command() -> void:
 	ok(a.hand[0] == b.hand[0], "같은 시드면 같은 모듈이 나온다", str(a.hand))
 
 
-## ── 제외권 ───────────────────────────────────────────────────────────────
-## [제외] 는 그 모듈을 런 전체에서 없앤다. 그게 공짜였다 - 마음에 안 드는 것을
-## 계속 지우면 주머니가 내가 원하는 카드로만 남고, 상점이 "무엇이 나왔는가" 가
-## 아니라 "무엇을 남길 것인가" 가 된다. 매 런이 같은 덱으로 수렴한다.
+## ── 제외는 정제권을 쓴다 ─────────────────────────────────────────────────
+## 예전에는 공짜였다. 마음에 안 드는 것을 계속 지우면 주머니가 내가 원하는
+## 카드로만 남고, 상점이 "무엇이 나왔는가" 가 아니라 "무엇을 남길 것인가" 가
+## 된다. 매 런이 같은 덱으로 수렴한다.
+##
+## 손패를 버리는 것(정제)과 같은 자원을 쓴다. 따로 두면 저울질이 사라진다 -
+## 각각 자기 것만 쓰면 되니까.
 func test_ban_tokens() -> void:
-	print("\n[10] 제외권")
+	print("
+[10] 제외 · 정제권")
 	var r := fresh()
-	ok(r.ban_tokens == RunState.BAN_TOKENS_START,
-		"시작 제외권 %d장" % RunState.BAN_TOKENS_START, str(r.ban_tokens))
+	r.refine_tokens = 2
 
-	var before := r.ban_tokens
-	ok(r.ban(0), "제외권이 있으면 제외된다")
-	ok(r.ban_tokens == before - 1, "제외권을 1장 쓴다", str(r.ban_tokens))
+	ok(r.ban(0), "정제권이 있으면 제외된다")
+	ok(r.refine_tokens == 1, "정제권을 1장 쓴다", str(r.refine_tokens))
 
-	# 다 쓰면 못 지운다. 예전에는 0장이어도 눌리는 대로 지워졌다.
-	r.ban_tokens = 0
-	var pool_before := r.pool().size()
+	# 같은 자원이므로 손패 정제와 서로 깎아먹는다. 그게 요점이다.
+	r.hand = ["near_first"] as Array[String]
+	ok(r.refine("near_first"), "남은 1장으로 손패를 버릴 수 있다")
+	ok(r.refine_tokens == 0, "이제 0장", str(r.refine_tokens))
+
 	var idx := -1
 	for i in r.offers.size():
 		if r.offers[i] != "":
 			idx = i
 			break
 	ok(idx >= 0, "제외할 자리가 있다")
-	ok(not r.ban(idx), "제외권이 없으면 제외되지 않는다")
+	var pool_before := r.pool().size()
+	ok(not r.ban(idx), "정제권이 없으면 제외되지 않는다")
 	ok(r.offers[idx] != "", "자리가 그대로 남는다")
 	ok(r.pool().size() == pool_before, "주머니도 그대로다")
-
-	# 단계를 깨면 보충된다.
-	r.on_stage_cleared()
-	ok(r.ban_tokens == RunState.BAN_TOKENS_PER_STAGE,
-		"단계를 깨면 %d장 보충" % RunState.BAN_TOKENS_PER_STAGE, str(r.ban_tokens))
-
-	# 새 런에서는 처음 값으로 돌아간다.
-	r.start_run(1)
-	ok(r.ban_tokens == RunState.BAN_TOKENS_START, "새 런에서 초기화된다")
