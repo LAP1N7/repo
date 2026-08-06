@@ -20,14 +20,21 @@ $root = $PSScriptRoot
 $dir = "C:\Users\minseo\Downloads\Godot_v4.7.1-stable_win64.exe"
 $gui = Join-Path $dir "Godot_v4.7.1-stable_win64.exe"
 $cli = Join-Path $dir "Godot_v4.7.1-stable_win64_console.exe"
-$web = Join-Path (Split-Path $root -Parent) "build\web"
+# ── 웹 빌드는 반드시 repo 안의 docs/ 로 나간다 ────────────────────────────
+# GitHub Pages 가 docs/ 를 서빙한다. 예전에는 여기가 ..uild\web 이라
+# **repo 밖**으로 나갔고, 그래서 export 를 아무리 돌려도 배포본은 그대로였다.
+# 로컬에서 잘 도는데 공개된 페이지만 옛날 버전인, 알아채기 가장 어려운 종류의
+# 사고였다. 익스포트 프리셋의 출력 경로와 같은 곳이어야 한다.
+$web = Join-Path $root "docs"
 
 if (-not (Test-Path $cli)) { throw "Godot 을 찾을 수 없다: $cli" }
 
 function Invoke-Export {
-    New-Item -ItemType Directory -Force -Path $web | Out-Null
-    & $cli --headless --path $root --export-release "Web" (Join-Path $web "index.html")
-    Write-Host "[export] $web" -ForegroundColor Green
+    # build_web.ps1 하나만 쓴다. 익스포트만으로는 부족하기 때문이다 - 로딩
+    # 셸은 게임이 뜨기 전에 그려지므로 .pck 를 못 읽고, TIP 문구와 폰트를
+    # 웹 루트에 따로 복사해 줘야 한다. 여기서 --export-release 를 직접 부르면
+    # 그 복사가 빠져 로딩 화면만 조용히 깨진다.
+    & (Join-Path $root "build_web.ps1")
 }
 
 function Invoke-Serve {
