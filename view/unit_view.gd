@@ -79,6 +79,23 @@ var anim: AnimationPlayer
 ## 때렸다. 걸음과 그림이 어긋나면 그 순간만은 게임이 아니라 인형극처럼 보인다.
 ##
 ## 이제 걸을 때는 가는 쪽을, 때릴 때는 표적 쪽을 본다.
+## ── 화면상의 생사 ────────────────────────────────────────────────────────
+## Unit.alive 를 그대로 보면 안 된다.
+##
+## 전투 코어는 battle.step() 한 번에 **틱 전체**를 계산한다. 여섯이 다 움직이고
+## 죽을 사람이 다 죽은 다음에야 뷰가 그 틱의 이벤트를 하나씩 재생한다. 그래서
+## alive 를 직접 보면, 그 틱 어딘가에서 죽은 대원이 **재생이 시작되기도 전에**
+## 사라진다. 화면에는 빈 칸을 계속 때리고 피해 숫자가 뜨는 그림이 남는다.
+##
+## 재생이 그 대원의 사망 이벤트에 닿았을 때 이 값이 켜진다. 규칙의 시간과
+## 화면의 시간을 분리하는 것이 이 한 줄의 목적이다.
+var view_dead: bool = false
+
+
+func shown_alive() -> bool:
+	return unit != null and not view_dead
+
+
 var facing: int = 1
 
 ## 그림의 배율(부호 없는 크기). 방향을 바꿀 때 이 값에 부호만 다시 붙인다.
@@ -95,6 +112,7 @@ var overlay: _Overlay
 func setup(p_unit: Unit, p_font: Font) -> void:
 	unit = p_unit
 	font = p_font
+	view_dead = not p_unit.alive
 
 	art = Sprite2D.new()
 	art.z_index = 0
@@ -387,10 +405,10 @@ func _process(delta: float) -> void:
 	chip.modulate.a = chip_alpha
 
 	if rig != null:
-		rig.visible = unit != null and unit.alive
+		rig.visible = shown_alive()
 		rig.modulate = Color(1, 1, 1).lerp(Color(4, 4, 4), flash)
 	if art != null and art.visible:
-		art.visible = unit != null and unit.alive
+		art.visible = shown_alive()
 		# 피격 플래시는 스프라이트를 하얗게 태워서 표현한다.
 		art.modulate = Color(1, 1, 1).lerp(Color(4, 4, 4), flash)
 	queue_redraw()
@@ -402,7 +420,7 @@ func _draw() -> void:
 	if unit == null:
 		return
 
-	if not unit.alive:
+	if view_dead:
 		# 사망: 흐릿한 십자 표시만 남긴다.
 		var g := Color(0.35, 0.35, 0.4, 0.55)
 		draw_line(Vector2(-13, -13), Vector2(13, 13), g, 3.0)
@@ -463,7 +481,7 @@ class _Overlay extends Node2D:
 		if owner_view == null or owner_view.unit == null:
 			return
 		var u: Unit = owner_view.unit
-		if not u.alive:
+		if not owner_view.shown_alive():
 			return
 
 		var top := UnitView.R + 3.0

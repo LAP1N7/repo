@@ -26,6 +26,7 @@ func _init() -> void:
 	await test_gate_lock()
 	await test_card_fit()
 	await test_sfx()
+	await test_death_lag()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [pass_n + fail_n, fail_n])
 	quit(1 if fail_n > 0 else 0)
 
@@ -346,3 +347,37 @@ func test_sfx() -> void:
 	ok(blocked, "같은 소리는 짧은 시간 안에 한 번만 난다")
 
 	bus.queue_free()
+
+
+## ── 규칙의 시간과 화면의 시간 ────────────────────────────────────────────
+## battle.step() 은 틱 전체를 한 번에 계산한다. 여섯이 다 움직이고 죽을 사람이
+## 다 죽은 다음에야 뷰가 그 틱의 이벤트를 하나씩 재생한다.
+##
+## 그래서 UnitView 가 Unit.alive 를 직접 보면, 그 틱 어딘가에서 죽은 대원이
+## **재생이 시작되기도 전에** 사라진다. 화면에는 빈 칸을 계속 때리고 피해
+## 숫자가 뜨는 그림이 남는다 - 실제로 그렇게 보고됐다.
+##
+## 스크린샷으로는 절대 못 잡는다. 어느 한 장을 봐도 그냥 "빈 칸에 숫자" 이고,
+## 그게 틀렸다는 것은 앞뒤 프레임을 알아야만 보인다.
+func test_death_lag() -> void:
+	print("
+[7] 사망 표시가 재생을 앞지르지 않는가")
+	var u := Unit.create(0, "warrior", Unit.TEAM_PLAYER, Vector2i(1, 1), [])
+	var v := UnitView.new()
+	get_root().add_child(v)
+	v.setup(u, UiKit.font(11))
+	await process_frame
+
+	ok(v.shown_alive(), "처음에는 살아 있는 것으로 보인다")
+
+	# 코어가 먼저 죽인다. 뷰는 아직 그 이벤트를 재생하지 않았다.
+	u.alive = false
+	await process_frame
+	ok(v.shown_alive(),
+		"규칙에서 죽어도 재생이 닿기 전에는 화면에 남아 있다")
+
+	# 재생이 사망 이벤트에 닿았다.
+	v.view_dead = true
+	await process_frame
+	ok(not v.shown_alive(), "사망 이벤트를 재생하면 사라진다")
+	v.queue_free()

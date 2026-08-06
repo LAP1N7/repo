@@ -243,7 +243,7 @@ func _process(_delta: float) -> void:
 		var m := get_local_mouse_position()
 		var best := HOVER_R
 		for u in battle.units:
-			if not u.alive:
+			if not _shown_alive(u):
 				continue
 			var d := m.distance_to(_live_pos(u))
 			if d < best:
@@ -419,10 +419,10 @@ func _draw_arrows(c: CanvasItem) -> void:
 	if battle == null:
 		return
 	for e in battle.units:
-		if not e.alive or e.last_target == null:
+		if not _shown_alive(e) or e.last_target == null:
 			continue
 		var t: Unit = e.last_target
-		if not t.alive:
+		if not _shown_alive(t):
 			continue
 		var firing := Grid.manhattan(e.pos, t.pos) <= e.atk_range
 		var col := e.color
@@ -524,6 +524,18 @@ func _draw_hover(c: CanvasItem) -> void:
 ##
 ## 판정과 그림은 UnitView 가 실제로 놓인 자리를 봐야 한다. 규칙은 pos 로,
 ## 화면은 이 함수로.
+## 화면에서 아직 살아 있는 것으로 보이는가. 규칙의 생사(Unit.alive)와 다르다.
+##
+## 전투 코어는 틱 전체를 한 번에 계산하고 뷰는 그걸 나중에 재생한다. 그래서
+## 판 위의 그림과 판정은 alive 가 아니라 **재생이 어디까지 왔는지**를 봐야 한다.
+func _shown_alive(u: Unit) -> bool:
+	if u.index < unit_views.size():
+		var v := unit_views[u.index]
+		if v != null and is_instance_valid(v):
+			return v.shown_alive()
+	return u.alive
+
+
 func _live_pos(u: Unit) -> Vector2:
 	if u.index < unit_views.size():
 		var v := unit_views[u.index]
@@ -1329,6 +1341,10 @@ func _play_events(evs: Array, my_id: int) -> void:
 					tw3.tween_property(d, "scale", Vector2(1.0, 1.0), 0.14 / speed)
 					_shake(7.0)
 					await tw3.finished
+				# 여기서 비로소 화면에서 지운다. Unit.alive 는 이미 한참 전에
+				# 꺼졌지만, 재생이 이 이벤트에 닿기 전까지는 살아 있는 것으로
+				# 보여야 한다. (UnitView.view_dead 주석 참조)
+				unit_views[e["unit"]].view_dead = true
 
 			"barrage_warn":
 				sfx.play("defend", 1.35)
