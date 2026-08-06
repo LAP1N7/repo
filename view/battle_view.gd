@@ -460,6 +460,15 @@ func _draw_hover(c: CanvasItem) -> void:
 	for t in u.traits:
 		rows.append([UiText.t("hover.trait", "특성"), Traits.describe(String(t)),
 			Color(1.0, 0.62, 0.30)])
+	# ── 지금 무엇을 하고 있는가 ──────────────────────────────────────────
+	# 전황판의 회색 네모 아래 붉은 줄이 이것을 뜻한다. 줄 하나만 보고 뜻을
+	# 알아낼 방법이 없었으므로, 여기서 말로 적는다.
+	if u.last_target != null and u.last_target.alive:
+		var reach := Grid.manhattan(u.pos, u.last_target.pos) <= u.atk_range
+		rows.append([UiText.t("hover.now", "지금"),
+			(UiText.t("hover.firing", "%s 을(를) 때리는 중") if reach
+				else UiText.t("hover.closing", "%s 에게 접근 중")) % u.last_target.display_name,
+			UiKit.BAD if reach else UiKit.ACCENT])
 	if u.team == Unit.TEAM_ENEMY:
 		rows.append([UiText.t("hover.ai", "기본 판단"),
 			Innates.describe(u.type_id), UiKit.FAINT])
@@ -1267,6 +1276,8 @@ func _play_events(evs: Array, my_id: int) -> void:
 				# 공격과 피격을 나눠 낸다. 하나로 묶으면 "때렸다" 와 "맞았다" 가
 				# 구분이 안 돼서 누가 이기고 있는지 소리로는 안 읽힌다.
 				# 근접(사거리 1)과 원거리도 가른다.
+				# 때릴 때는 표적 쪽을 본다. 뒤에 있는 적을 앞을 보고 치면 안 된다.
+				a.face_to(t.position.x - a.position.x)
 				sfx.play("attack_melee" if a.unit.atk_range <= 1 else "attack_ranged")
 				sfx.play("hit", 0.92 if e["damage"] >= 20 else 1.08)
 				var atk_time := ACT_TIME * 0.75 / speed
@@ -1971,6 +1982,9 @@ func _walk(v: UnitView, path: Array, dest: Vector2i) -> void:
 	# 배속과 이동 칸 수가 바뀌어도 항상 온전한 걸음이 보인다.
 	var steps: int = maxi(1, path.size() - 1)
 	var per := (ACT_TIME / float(steps)) / speed
+	# 가는 쪽을 보게 한다. 물러나는 대원이 앞을 본 채 뒤로 미끄러지면
+	# 그 순간만은 게임이 아니라 인형극처럼 보인다.
+	v.face_to(tile_center(dest).x - v.position.x)
 	v.play_motion(UnitView.ANIM_WALK, per)
 	await _walk_steps(v, path, dest)
 	v.rest_motion()
@@ -2465,10 +2479,15 @@ class _RosterPanel extends Control:
 			draw_rect(r, Color(0.44, 0.46, 0.52, a2))
 			draw_rect(r, Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b,
 				1.0 if lit else a2), false, 2.5 if lit else 1.5)
-			# 사거리 안이면 지금 실제로 때리는 중이다. 밑줄로 구분한다.
+			# ── 붉은 밑줄 = 지금 실제로 때리는 중 ────────────────────────
+			# 노리는 것과 닿는 것은 다르다. 사거리 밖에서 다가오는 중인 적과
+			# 이미 붙어서 때리고 있는 적이 화면에서 같아 보이면, 이 판이
+			# 급한지 아닌지를 알 수가 없다.
+			#
+			# 줄 하나로는 뜻이 안 읽히므로 네모에 손을 올리면 판 위 정보창이
+			# "지금 ○○ 을 때리는 중" 이라고 말로 적어 준다. (_draw_hover)
 			if Grid.manhattan(e.pos, u.pos) <= e.atk_range:
-				draw_line(Vector2(fx, y + 8 + FOE_BOX + 3),
-					Vector2(fx + FOE_BOX, y + 8 + FOE_BOX + 3), UiKit.BAD, 2.0)
+				draw_rect(Rect2(fx, y + 8 + FOE_BOX + 2, FOE_BOX, 3.0), UiKit.BAD)
 			fx += FOE_BOX + FOE_GAP
 		if foes.size() > shown:
 			draw_string(fs, Vector2(fx + 2, y + 30), "+%d" % (foes.size() - shown),

@@ -71,6 +71,23 @@ var art: Sprite2D
 var rig: Node2D
 var anim: AnimationPlayer
 
+## ── 바라보는 쪽 ──────────────────────────────────────────────────────────
+## +1 이면 오른쪽, -1 이면 왼쪽. 원본 그림은 전부 오른쪽을 보게 그린다(ASSETS.md).
+##
+## 예전에는 진영으로만 정했다 - 아군은 오른쪽, 적은 왼쪽 고정. 그래서 물러나는
+## 대원이 **뒤로 미끄러지듯** 움직였고, 뒤에 있는 적을 칠 때도 반대쪽을 보고
+## 때렸다. 걸음과 그림이 어긋나면 그 순간만은 게임이 아니라 인형극처럼 보인다.
+##
+## 이제 걸을 때는 가는 쪽을, 때릴 때는 표적 쪽을 본다.
+var facing: int = 1
+
+## 그림의 배율(부호 없는 크기). 방향을 바꿀 때 이 값에 부호만 다시 붙인다.
+var _scale_k: float = 1.0
+## 리그를 담은 노드. 단일 그림이면 null 이고 art 를 직접 뒤집는다.
+var _holder: Node2D = null
+## 리그 경계 상자의 가운데 x. 뒤집을 때 위치를 다시 잡는 데 쓴다.
+var _rig_center_x: float = 0.0
+
 ## HP 바 · 궁극기 표시 · 이름을 그리는 별도 레이어. 항상 모든 스프라이트 위에 뜬다.
 var overlay: _Overlay
 
@@ -144,6 +161,7 @@ func _set_rig(packed: PackedScene) -> void:
 	add_child(holder)
 	holder.add_child(inst)
 	rig = inst
+	_holder = holder
 
 	anim = _find_anim(inst)
 	if anim != null and anim.has_animation(ANIM_WALK):
@@ -156,8 +174,11 @@ func _set_rig(packed: PackedScene) -> void:
 		return
 
 	var k := ART_W / box.size.x
+	_scale_k = k
+	_rig_center_x = box.get_center().x
+	facing = -1 if unit.team == Unit.TEAM_ENEMY else 1
 	# 발밑(경계 상자 아래쪽)을 GROUND_Y 에 붙인다.
-	holder.scale = Vector2(-k if unit.team == Unit.TEAM_ENEMY else k, k)
+	holder.scale = Vector2(k * facing, k)
 	holder.position = Vector2(
 		-box.get_center().x * holder.scale.x,
 		GROUND_Y - box.end.y * k)
@@ -290,10 +311,12 @@ func set_art(tex: Texture2D) -> void:
 
 	# 가로를 ART_W 로 맞추고 세로는 비율대로 따라간다.
 	var k := ART_W / w
-	# 적은 좌우를 뒤집는다. 원본은 오른쪽을 보게 그린다. (ASSETS.md)
+	_scale_k = k
+	facing = -1 if unit.team == Unit.TEAM_ENEMY else 1
+	# 좌우를 뒤집는다. 원본은 오른쪽을 보게 그린다. (ASSETS.md)
 	# flip_h 는 centered=false 일 때 왼쪽 끝을 축으로 뒤집어 위치가 어긋난다.
 	# scale.x 부호로 뒤집으면 노드 원점(발밑 가운데)을 축으로 돌아 제자리를 지킨다.
-	art.scale = Vector2(-k if unit.team == Unit.TEAM_ENEMY else k, k)
+	art.scale = Vector2(k * facing, k)
 	queue_redraw()
 
 
@@ -481,3 +504,21 @@ class _Overlay extends Node2D:
 			UnitView.NAME_SIZE, 4, Color(0, 0, 0, 0.95))
 		draw_string(f, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			UnitView.NAME_SIZE, Color(1, 1, 1))
+
+
+## 그 방향을 보게 한다. dx 가 0 에 가까우면(세로 이동) 지금 방향을 유지한다.
+##
+## 세로로 움직일 때까지 뒤집으면 대원이 제자리에서 빙글빙글 돈다. 좌우로 실제
+## 의미 있게 움직일 때만 바꾼다.
+func face_to(dx: float) -> void:
+	if absf(dx) < 4.0:
+		return
+	var want: int = 1 if dx > 0.0 else -1
+	if want == facing:
+		return
+	facing = want
+	if _holder != null and is_instance_valid(_holder):
+		_holder.scale.x = _scale_k * facing
+		_holder.position.x = -_rig_center_x * _holder.scale.x
+	elif art != null and art.texture != null:
+		art.scale.x = _scale_k * facing
