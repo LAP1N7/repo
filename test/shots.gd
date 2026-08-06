@@ -83,6 +83,7 @@ func _init() -> void:
 	# 호버 정보가 유닛보다 위에 그려지는지. 마우스를 못 쓰니 값을 직접 넣는다.
 	# _process 가 매 프레임 마우스로 다시 계산하므로 잠시 끈다.
 	mid.set_process(false)
+	mid.roster_root.set_process(false)
 	for u in mid.battle.units:
 		if u.alive and u.team == Unit.TEAM_ENEMY:
 			mid.hover_unit = u

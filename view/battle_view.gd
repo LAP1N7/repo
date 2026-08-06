@@ -69,6 +69,9 @@ const COL_FOE := Color(1.0, 0.45, 0.42)
 ## 판 위 동그라미의 반지름. 화살표가 몸통을 피해 가려면 이 값을 알아야 한다.
 const UNIT_R: float = 34.0
 
+## 호버로 잡히는 반경. 칸(98x81)보다 조금 작게 잡아 옆 칸을 안 먹게 한다.
+const HOVER_R: float = 38.0
+
 const ROSTER_X: float = 900.0
 const COL_W: float = 340.0
 ## 전황판 높이. 대원 셋 x 66 + 머리말.
@@ -168,6 +171,10 @@ var roster_root: Control
 ## 지금 마우스가 올라간 판 위의 대원. 없으면 null.
 var hover_unit: Unit = null
 
+## 전황판의 회색 네모 위에 마우스가 올라갔을 때 그 적. 판에서 아무것도 안
+## 잡혔을 때만 쓴다 - 전황판에서 짚어도 **판 위에서** 정체가 뜨게 하려는 것이다.
+var roster_hover: Unit = null
+
 
 func setup(p_run: RunState) -> void:
 	sfx = Sfx.new()
@@ -227,15 +234,24 @@ func _process(_delta: float) -> void:
 	# 하단 바는 내 대원 셋만 보여 준다 - 적이 무엇인지 물어볼 데가 화면에
 	# 아무 데도 없었고, 그건 "적 알고리즘을 공개한다" 는 원칙과 정면으로
 	# 어긋난다.
+	# ── 칸이 아니라 **그려진 자리**로 잡는다 ─────────────────────────────
+	# 마우스 좌표를 칸으로 바꿔 pos 와 비교했더니, 이동 연출 중에는 아직 오지
+	# 않은 칸이 반응하고 정작 대원이 서 있는 자리는 반응하지 않았다.
+	# 화면에서 보이는 것을 가리키면 그것이 잡혀야 한다.
 	hover_unit = null
 	if battle != null:
-		var m := get_local_mouse_position() - BOARD_ORIGIN
-		var cell := Vector2i(int(floor(m.x / TILE_W)), int(floor(m.y / TILE_H)))
-		if m.x >= 0.0 and m.y >= 0.0 and Grid.in_bounds(cell):
-			for u in battle.units:
-				if u.alive and u.pos == cell:
-					hover_unit = u
-					break
+		var m := get_local_mouse_position()
+		var best := HOVER_R
+		for u in battle.units:
+			if not u.alive:
+				continue
+			var d := m.distance_to(_live_pos(u))
+			if d < best:
+				best = d
+				hover_unit = u
+	# 판에서 아무것도 안 잡혔으면 전황판이 가리키는 적을 쓴다.
+	if hover_unit == null:
+		hover_unit = roster_hover
 	if overlay != null:
 		overlay.queue_redraw()
 
@@ -412,10 +428,10 @@ func _draw_arrows(c: CanvasItem) -> void:
 		var col := e.color
 		col = Color(minf(1.0, col.r * 1.15 + 0.10), minf(1.0, col.g * 1.15 + 0.10),
 			minf(1.0, col.b * 1.15 + 0.10), 0.95 if firing else 0.5)
-		var pa := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
-			e.pos.y * TILE_H + TILE_H * 0.5)
-		var pb := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
-			t.pos.y * TILE_H + TILE_H * 0.5)
+		# 화면에 실제로 그려진 자리에서 출발한다. pos 로 그리면 아직 걸어가는
+		# 중인 대원의 화살표가 도착지에서 시작한다.
+		var pa := _live_pos(e)
+		var pb := _live_pos(t)
 		# ── 동그라미 가장자리에서 시작해 가장자리에서 끝난다 ────────────
 		# 가운데에서 그으면 활의 대부분이 몸통 뒤에 파묻히고 화살촉만 삐죽
 		# 나온다. 실제로 그렇게 나왔다 - 무엇을 가리키는지 알 수가 없었다.
@@ -426,7 +442,7 @@ func _draw_arrows(c: CanvasItem) -> void:
 		var dir := (pb - pa).normalized()
 		pa += dir * minf(UNIT_R, span * 0.42)
 		pb -= dir * minf(UNIT_R, span * 0.42)
-		_arc_arrow(c, pa, pb, col, 5.0 if firing else 3.0,
+		_arc_arrow(c, pa, pb, col, 3.0 if firing else 2.0,
 			(1 if e.index % 2 == 0 else -1) * 0.34)
 
 
@@ -487,6 +503,24 @@ func _draw_hover(c: CanvasItem) -> void:
 		c.draw_string(fs, at + Vector2(96, y), String(r[1]),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, r[2])
 		y += 17.0
+
+
+## 그 대원이 **지금 화면에서 서 있는** 자리.
+##
+## ── 왜 좌표를 두 벌 쓰는가 ───────────────────────────────────────────────
+## 전투 코어는 틱이 끝나는 순간 pos 를 목적지로 바꾼다. 그런데 화면은 그
+## 이동을 0.3초에 걸쳐 보여 준다. 그래서 pos 로 그리면 **아직 걸어가는 중인
+## 대원의 화살표가 이미 도착지에서 출발한다.** 실제로 화살표가 유닛보다 한 칸
+## 앞서 있었고, 호버 판정도 같은 이유로 빈 칸에서 반응했다.
+##
+## 판정과 그림은 UnitView 가 실제로 놓인 자리를 봐야 한다. 규칙은 pos 로,
+## 화면은 이 함수로.
+func _live_pos(u: Unit) -> Vector2:
+	if u.index < unit_views.size():
+		var v := unit_views[u.index]
+		if v != null and is_instance_valid(v):
+			return BOARD_ORIGIN + v.position
+	return BOARD_ORIGIN + tile_center(u.pos)
 
 
 ## 유닛이 서는 자리(board 로컬 좌표).
@@ -596,7 +630,8 @@ func _build_ui() -> void:
 	roster_root.view = self
 	roster_root.position = Vector2(ROSTER_X, 100)
 	roster_root.size = Vector2(COL_W, ROSTER_H)
-	roster_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 네모 위에 손이 올라간 것을 알아야 하므로 마우스를 받는다.
+	roster_root.mouse_filter = Control.MOUSE_FILTER_PASS
 	ui.add_child(roster_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
@@ -2289,15 +2324,32 @@ class _RosterPanel extends Control:
 	const FOE_BOX: float = 30.0
 	const FOE_GAP: float = 6.0
 	## 한 줄에 나란히 놓을 수 있는 적 수. 넘치면 "+N" 으로 접는다.
-	##
-	## 셋이면 가장 왼쪽 네모가 HP 막대 끝(x 220)을 파고들어 글자와 겹쳤다.
-	## 둘로 줄이고 막대도 짧게 잡아 둘이 절대 안 만나게 한다.
-	const FOE_MAX: int = 2
+	const FOE_MAX: int = 3
+	## 적 네모가 시작하는 x. HP 막대 끝(70+132=202)보다 뒤여야 안 겹친다.
+	const FOE_X: float = 214.0
 
+	## 이번에 그린 적 네모들. [{ rect, unit }] - 마우스 판정이 읽는다.
+	var _foe_hits: Array = []
+
+	## ── 네모에 손을 올리면 그 적이 **판 위에서** 밝혀진다 ───────────────
+	## 회색 네모만 봐서는 누구인지 알 수가 없다. 그렇다고 여기에 또 정보창을
+	## 띄우면 같은 것을 두 군데서 설명하게 된다.
+	##
+	## 판 위의 그 개체를 호버한 것과 **똑같이** 취급한다. 그러면 정체를 밝히는
+	## 창은 한 종류뿐이고, 눈은 자연히 판으로 간다 - 어차피 거기서 싸운다.
 	func _process(_d: float) -> void:
+		if view != null:
+			var m := get_local_mouse_position()
+			var hit: Unit = null
+			for h in _foe_hits:
+				if (h["rect"] as Rect2).has_point(m):
+					hit = h["unit"]
+					break
+			view.roster_hover = hit
 		queue_redraw()
 
 	func _draw() -> void:
+		_foe_hits.clear()
 		if view == null or view.battle == null:
 			return
 		var b = view.battle
@@ -2390,13 +2442,15 @@ class _RosterPanel extends Control:
 			Color(UiKit.GOOD.r, UiKit.GOOD.g, UiKit.GOOD.b, dim))
 
 		# ── 이 대원을 노리는 적 ──────────────────────────────────────────
-		# 오른쪽 끝에서부터 왼쪽으로 나란히 깐다. 겹쳐 놓으면 몇인지 안 세어진다.
+		# **왼쪽에서 오른쪽으로 그냥 나열한다.** 오른쪽 끝에서부터 거꾸로 깔았
+		# 더니 수가 늘 때마다 시작점이 움직여서, 줄마다 네모가 서로 다른 자리에
+		# 놓이고 겹친 것처럼 보였다. 시작점을 고정하면 그런 일이 없다.
 		var foes: Array = []
 		for e in b.units:
 			if e.alive and e.team == Unit.TEAM_ENEMY and e.last_target == u:
 				foes.append(e)
 		var shown: int = mini(foes.size(), FOE_MAX)
-		var fx := size.x - FOE_BOX - 6.0
+		var fx := FOE_X
 		for i in shown:
 			var e: Unit = foes[i]
 			var mine: int = maxi(0, Threat.score(e, u))
@@ -2406,13 +2460,16 @@ class _RosterPanel extends Control:
 					top = maxi(top, maxi(0, Threat.score(e, a)))
 			var a2: float = 0.32 + 0.68 * clampf(float(mine) / float(top), 0.0, 1.0)
 			var r := Rect2(fx, y + 8, FOE_BOX, FOE_BOX)
+			_foe_hits.append({ "rect": r, "unit": e })
+			var lit: bool = view != null and view.hover_unit == e
 			draw_rect(r, Color(0.44, 0.46, 0.52, a2))
-			draw_rect(r, Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b, a2), false, 1.5)
+			draw_rect(r, Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b,
+				1.0 if lit else a2), false, 2.5 if lit else 1.5)
 			# 사거리 안이면 지금 실제로 때리는 중이다. 밑줄로 구분한다.
 			if Grid.manhattan(e.pos, u.pos) <= e.atk_range:
 				draw_line(Vector2(fx, y + 8 + FOE_BOX + 3),
 					Vector2(fx + FOE_BOX, y + 8 + FOE_BOX + 3), UiKit.BAD, 2.0)
-			fx -= FOE_BOX + FOE_GAP
+			fx += FOE_BOX + FOE_GAP
 		if foes.size() > shown:
-			draw_string(fs, Vector2(fx + 6, y + 30), "+%d" % (foes.size() - shown),
+			draw_string(fs, Vector2(fx + 2, y + 30), "+%d" % (foes.size() - shown),
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.BAD)
