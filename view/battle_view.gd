@@ -60,7 +60,7 @@ const CONTRIB_W: float = 176.0
 ## ── 오른쪽 열 배치 ───────────────────────────────────────────────────────
 ## 판은 x 36~820 을 쓴다. 그 오른쪽이 정보 열이다.
 ## 로그에 남기는 줄 수. 패널이 좁아지면서 일곱 줄은 넘쳤다.
-const LOG_LINES: int = 9
+const LOG_LINES: int = 200
 
 ## 진영 색. 로그·표적선·전황판이 전부 이 둘만 쓴다.
 const COL_ALLY := Color(0.45, 0.80, 1.0)
@@ -69,10 +69,13 @@ const COL_FOE := Color(1.0, 0.45, 0.42)
 const ROSTER_X: float = 900.0
 const COL_W: float = 340.0
 ## 전황판 높이. 대원 셋 x 66 + 머리말.
-const ROSTER_H: float = 226.0
+const ROSTER_H: float = 268.0
 ## 기록 패널. [보급 수령](y 596) 바로 위에서 끝난다.
-const LOG_Y: float = 344.0
-const LOG_H: float = 226.0
+## 기록 패널의 아래끝을 **판 아래끝(y 586)과 맞춘다.**
+## 오른쪽 열의 아래끝이 판과 다르면 화면 아래에 계단이 하나 생긴다 - 정렬은
+## 장식이 아니라 "이 둘이 같은 층이다" 를 말하는 문법이다.
+const LOG_Y: float = 386.0
+const LOG_H: float = 178.0
 ## 기록 글이 쓰는 폭. 나머지는 판단 표가 쓴다.
 const LOG_TEXT_W: float = 186.0
 
@@ -97,6 +100,9 @@ const COL_TILE_B := Color(0.13, 0.14, 0.19)
 ## 더 어둡게 굽고(가장 밝은 곳 72/255) 얹는 비율을 올리는 편이 맞다 -
 ## 판은 여전히 어둡고 무늬만 살아난다.
 const BG_ALPHA: float = 0.55
+
+## 판 경계에서 사진을 얼마나 안으로 들일지.
+const BG_INSET: float = 10.0
 const COL_PLAYER_ZONE := Color(0.25, 0.5, 0.8, 0.15)
 const COL_ENEMY_ZONE := Color(0.8, 0.3, 0.28, 0.15)
 
@@ -181,9 +187,14 @@ func setup(p_run: RunState) -> void:
 	#
 	# 그리고 지형이 노드가 되면 격자선이 그 아래로 깔린다. 그래서 진영 표시부터
 	# 격자선까지를 overlay 로 옮겨 지형 **위에** 다시 그린다.
+	# ── 판보다 한 겹 안쪽에 깐다 ─────────────────────────────────────────
+	# 판 경계에 딱 맞추면 사진의 잘린 변이 격자 테두리와 겹쳐 지저분해진다.
+	# 사방 10px 을 비우면 배경이 판 **안에 놓인 것**처럼 읽히고, 바깥 한 줄이
+	# 어두운 채로 남아 판의 윤곽도 또렷해진다.
 	terrain = TextureRect.new()
-	terrain.position = BOARD_ORIGIN
-	terrain.size = Vector2(Grid.W * TILE_W, Grid.H * TILE_H)
+	terrain.position = BOARD_ORIGIN + Vector2(BG_INSET, BG_INSET)
+	terrain.size = Vector2(Grid.W * TILE_W - BG_INSET * 2,
+		Grid.H * TILE_H - BG_INSET * 2)
 	terrain.stretch_mode = TextureRect.STRETCH_SCALE
 	terrain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	terrain.modulate = Color(1, 1, 1, BG_ALPHA)
@@ -318,19 +329,24 @@ func _draw_overlay(c: CanvasItem) -> void:
 			var t: Unit = e.last_target
 			if not t.alive:
 				continue
+			# ── 선 색은 **쏘는 쪽 유닛의 고유색**이다 ────────────────────
+			# 진영 색 둘로만 그으면 적이 셋일 때 누가 그은 선인지 알 수 없다.
+			# 유닛 색을 쓰면 판 위의 동그라미와 선이 같은 색이라 눈이 바로 잇는다.
+			#
+			# 옅게 그었더니 배경 사진 위에서 거의 안 보였다. 진하게, 굵게.
 			var firing := Grid.manhattan(e.pos, t.pos) <= e.atk_range
-			var col := Color(1.0, 0.42, 0.38, 0.34) if e.team == Unit.TEAM_ENEMY 				else Color(0.45, 0.80, 1.0, 0.30)
-			if not firing:
-				col.a *= 0.42
+			var col := e.color
+			col = Color(minf(1.0, col.r * 1.15 + 0.10), minf(1.0, col.g * 1.15 + 0.10),
+				minf(1.0, col.b * 1.15 + 0.10), 0.85 if firing else 0.42)
 			var pa := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
 				e.pos.y * TILE_H + TILE_H * 0.5)
 			var pb := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
 				t.pos.y * TILE_H + TILE_H * 0.5)
-			c.draw_line(pa, pb, col, 2.0 if firing else 1.0)
+			c.draw_line(pa, pb, col, 4.0 if firing else 2.0)
 			# 표적 쪽 끝에 표시를 남긴다. 선만으로는 어느 쪽이 노려지는
 			# 쪽인지 안 읽힌다.
 			if firing:
-				c.draw_circle(pb, 5.0, Color(col.r, col.g, col.b, 0.55), false, 1.5)
+				c.draw_circle(pb, 7.0, Color(col.r, col.g, col.b, 0.9), false, 2.5)
 
 		# 지금 적이 가장 많이 노리는 아군에게 고리를 씌운다.
 		# 막대(위협)와 판(고리)이 같은 것을 가리켜야 "내가 어그로를 관리하고
@@ -486,11 +502,14 @@ func _build_ui() -> void:
 	# 오른쪽이 통째로 비고 기록은 아래로 밀려 잘렸다. 나란히 두면 둘 다 산다.
 	log_label = RichTextLabel.new()
 	log_label.bbcode_enabled = true
-	log_label.scroll_active = false
+	# 넘치면 잘라 버리는 게 아니라 스크롤로 본다. 휠로 위를 되짚을 수 있어야
+	# "아까 무슨 일이 있었지" 에 답할 수 있다.
+	log_label.scroll_active = true
+	log_label.scroll_following = true
 	log_label.fit_content = false
 	log_label.position = Vector2(8, 5)
 	log_label.size = Vector2(LOG_TEXT_W, LOG_H - 10)
-	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	log_label.add_theme_font_override("normal_font", UiKit.font(10))
 	log_label.add_theme_font_size_override("normal_font_size", 10)
 	log_label.add_theme_constant_override("line_separation", -2)
@@ -2055,26 +2074,29 @@ class _SquadCard extends Control:
 		# 지금 적이 누구를 노릴지가 여기서 갈린다. 도발을 넣으면 이 막대가
 		# 올라가고, 그때 격자의 어그로 선이 이 대원 쪽으로 옮겨 온다.
 		# 두 표시가 같은 것을 말해야 "내가 어그로를 관리하고 있다" 가 성립한다.
-		draw_rect(Rect2(s.x - 62, 8, 54, 4), Color(0.14, 0.15, 0.19))
-		draw_rect(Rect2(s.x - 62, 8, 54.0 * clampf(threat_norm, 0.0, 1.0), 4),
-			UiKit.BAD if aimed_by > 0 else Color(0.62, 0.55, 0.42))
+		draw_rect(Rect2(s.x - 74, 8, 66, 6), Color(0.14, 0.15, 0.19))
+		draw_rect(Rect2(s.x - 74, 8, 66.0 * clampf(threat_norm, 0.0, 1.0), 6),
+			UiKit.BAD if aimed_by > 0 else Color(0.66, 0.56, 0.36))
 		# 노려지는 중이면 몇에게 노려지는지 숫자로 못 박는다. 막대는 "누가 더
 		# 위험한가" 를, 숫자는 "그래서 지금 맞고 있는가" 를 답한다.
 		var tag := UiText.t("battle.threat", "위협")
 		if aimed_by > 0:
 			tag = UiText.t("battle.aimed", "피표적 %d") % aimed_by
-		draw_string(fs, Vector2(s.x - 62, 26), tag,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 9,
+		draw_string(fs, Vector2(s.x - 74, 28), tag,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10,
 			UiKit.BAD if aimed_by > 0 else UiKit.FAINT)
 
-		# ── 기여도 ───────────────────────────────────────────────────────
-		var work := unit.damage_dealt + unit.healing_done
-		draw_rect(Rect2(106, 58, bw, 4), Color(0.14, 0.15, 0.19))
-		draw_rect(Rect2(106, 58, bw * float(work) / float(maxi(1, contrib_top)), 4),
-			UiKit.GOOD if unit.healing_done > unit.damage_dealt else UiKit.ACCENT)
-		draw_string(fs, Vector2(106, 72),
-			UiText.t("battle.squad_work", "피해 %d · 회복 %d") % [
-				unit.damage_dealt, unit.healing_done],
+		# ── 전투 수치 ────────────────────────────────────────────────────
+		# 누적 피해·회복은 오른쪽 전황판이 이미 말한다. 여기서 또 말하면 같은
+		# 값이 화면 두 곳에 있는 것이고, 그러면 둘 다 안 읽힌다.
+		#
+		# 이 자리에는 **지금 이 대원이 뭘 할 수 있는가** 를 둔다. 공격력·방어·
+		# 사거리·이동은 판을 보다가 "왜 저기서 멈췄지" 를 물을 때 필요한 값이고,
+		# 그 질문은 항상 판을 보는 중에 생긴다.
+		var stat := UiText.t("battle.squad_stat", "공 %d · 방 %d · 사거리 %d · 이동 %d") % [
+			unit.atk, 2 + unit.passive_def + unit.command_def,
+			unit.atk_range, unit.move_range]
+		draw_string(fs, Vector2(106, 72), stat,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)
 
 		if dead:
@@ -2142,9 +2164,13 @@ class _SquadCard extends Control:
 class _RosterPanel extends Control:
 	var view
 
-	const ROW_H: float = 66.0
-	const FACE: float = 52.0
-	const FOE_BOX: float = 26.0
+	const ROW_H: float = 78.0
+	const FACE: float = 60.0
+	## 적 네모. 겹쳐 놓으면 몇인지 안 세어지므로 오른쪽부터 나란히 깐다.
+	const FOE_BOX: float = 34.0
+	const FOE_GAP: float = 6.0
+	## 한 줄에 나란히 놓을 수 있는 적 수. 넘치면 "+N" 으로 접는다.
+	const FOE_MAX: int = 3
 
 	func _process(_d: float) -> void:
 		queue_redraw()
@@ -2154,79 +2180,117 @@ class _RosterPanel extends Control:
 			return
 		var b = view.battle
 		var fs: Font = UiKit.font(11)
-		draw_string(fs, Vector2(0, 12), UiText.t("battle.roster_head", "전황"),
+
+		# ── 사선 줄무늬 바탕 ─────────────────────────────────────────────
+		# 포격 예고와 카드 테두리가 이미 쓰는 어법이다. 같은 무늬를 두르면
+		# 이 패널이 "전술 정보를 읽는 자리" 라는 것이 화면 전체와 이어진다.
+		var pad := Rect2(-8, 14, size.x + 8, size.y - 14)
+		draw_rect(pad, Color(0.09, 0.10, 0.135, 0.72))
+		var step := 16.0
+		var d := -pad.size.y
+		while d < pad.size.x:
+			var x0: float = pad.position.x + maxf(d, 0.0)
+			var y0: float = pad.position.y + maxf(-d, 0.0)
+			var run_len: float = minf(pad.size.x - maxf(d, 0.0),
+				pad.size.y - maxf(-d, 0.0))
+			if run_len > 0.0:
+				draw_line(Vector2(x0, y0), Vector2(x0 + run_len, y0 + run_len),
+					Color(1, 1, 1, 0.028), 1.0)
+			d += step
+		# 사선으로 깎은 모서리. 카드와 같은 사이버틱 어법.
+		_chamfer(pad, Color(0.42, 0.62, 0.80, 0.45))
+
+		draw_string(fs, Vector2(0, 11), UiText.t("battle.roster_head", "전황"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UiKit.MUTED)
 
-		# 위협 점수는 적마다 다르다(거리 항이 있다). 줄마다 그 적 기준으로
-		# 다시 재야 진하기가 거짓말을 안 한다.
 		var allies: Array = []
 		for u in b.units:
 			if u.team == Unit.TEAM_PLAYER:
 				allies.append(u)
 
-		var y := 22.0
+		var y := 26.0
 		for u in allies:
 			_row(u, y, fs, b, allies)
 			y += ROW_H
+
+	## 왼쪽 위·오른쪽 아래를 사선으로 깎은 테두리.
+	func _chamfer(r: Rect2, col: Color) -> void:
+		var c := 12.0
+		var pts := PackedVector2Array([
+			r.position + Vector2(c, 0),
+			r.position + Vector2(r.size.x, 0),
+			r.position + Vector2(r.size.x, r.size.y - c),
+			r.position + Vector2(r.size.x - c, r.size.y),
+			r.position + Vector2(0, r.size.y),
+			r.position + Vector2(0, c),
+		])
+		for i in pts.size():
+			draw_line(pts[i], pts[(i + 1) % pts.size()], col, 1.0)
 
 	func _row(u: Unit, y: float, fs: Font, b, allies: Array) -> void:
 		var dim: float = 1.0 if u.alive else 0.35
 		var neon: Color = u.color
 		neon.a = dim
 
-		# 얼굴 자리. 실제 얼굴은 자식 노드가 아니라 여기서 텍스처로 그린다 -
-		# 줄이 셋뿐이라 노드를 만들고 관리할 값어치가 없다.
 		var face_rect := Rect2(0, y, FACE, FACE)
 		draw_rect(face_rect, Color(0.10, 0.11, 0.15, dim))
-		draw_rect(face_rect, Color(neon.r, neon.g, neon.b, 0.55 * dim), false, 1.0)
 		var tex := UiKit.art(["portraits", "units"], u.type_id)
 		if tex != null:
 			draw_texture_rect(tex, face_rect, false, Color(1, 1, 1, dim))
+		draw_rect(face_rect, Color(neon.r, neon.g, neon.b, 0.75 * dim), false, 1.0)
 
 		var x := FACE + 10.0
 		draw_string(fs, Vector2(x, y + 13), u.display_name,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 			Color(UiKit.TEXT.r, UiKit.TEXT.g, UiKit.TEXT.b, dim))
 
-		# HP. 숫자와 막대를 같이 둔다 - 막대는 비율을, 숫자는 남은 양을 말한다.
-		draw_string(fs, Vector2(x + 78, y + 13), "%d / %d" % [u.hp, u.max_hp],
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+		# HP. 막대는 비율을, 숫자는 남은 양을 말한다.
+		var bw := 150.0
+		draw_string(fs, Vector2(x + 80, y + 13), "%d / %d" % [u.hp, u.max_hp],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
 			Color(UiKit.MUTED.r, UiKit.MUTED.g, UiKit.MUTED.b, dim))
-		var bw := 158.0
-		draw_rect(Rect2(x, y + 20, bw, 5), Color(0.15, 0.16, 0.20, dim))
+		draw_rect(Rect2(x, y + 20, bw, 6), Color(0.15, 0.16, 0.20, dim))
 		var ratio: float = 0.0 if u.max_hp <= 0 else clampf(
 			float(u.hp) / float(u.max_hp), 0.0, 1.0)
-		draw_rect(Rect2(x, y + 20, bw * ratio, 5),
+		draw_rect(Rect2(x, y + 20, bw * ratio, 6),
 			Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b, dim) if ratio < 0.35 else neon)
 
-		# 한 일. 이게 있어야 "누가 실제로 일했는가" 를 판 도중에 알 수 있다.
-		draw_string(fs, Vector2(x, y + 40),
-			UiText.t("battle.roster_work", "피해 %d · 회복 %d") % [
-				u.damage_dealt, u.healing_done],
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 10,
-			Color(UiKit.FAINT.r, UiKit.FAINT.g, UiKit.FAINT.b, dim))
+		# ── 한 일은 색으로 가른다 ────────────────────────────────────────
+		# 피해와 회복은 성격이 반대다. 같은 회색으로 나란히 적으면 눈이 둘을
+		# 구별하지 않고 그냥 "숫자 두 개" 로 읽는다.
+		var dmg := UiText.t("battle.roster_dmg", "피해 %d") % u.damage_dealt
+		draw_string(fs, Vector2(x, y + 44), dmg, HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+			Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b, dim))
+		var w1: float = fs.get_string_size(dmg, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		draw_string(fs, Vector2(x + w1 + 10, y + 44),
+			UiText.t("battle.roster_heal", "회복 %d") % u.healing_done,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+			Color(UiKit.GOOD.r, UiKit.GOOD.g, UiKit.GOOD.b, dim))
 
 		# ── 이 대원을 노리는 적 ──────────────────────────────────────────
-		var fx := size.x - FOE_BOX
+		# 오른쪽 끝에서부터 왼쪽으로 나란히 깐다. 겹쳐 놓으면 몇인지 안 세어진다.
+		var foes: Array = []
 		for e in b.units:
-			if not e.alive or e.team != Unit.TEAM_ENEMY or e.last_target != u:
-				continue
-			# 그 적이 보기에 이 대원이 아군 중 얼마나 위협적인가.
+			if e.alive and e.team == Unit.TEAM_ENEMY and e.last_target == u:
+				foes.append(e)
+		var shown: int = mini(foes.size(), FOE_MAX)
+		var fx := size.x - FOE_BOX - 6.0
+		for i in shown:
+			var e: Unit = foes[i]
 			var mine: int = maxi(0, Threat.score(e, u))
 			var top: int = 1
 			for a in allies:
 				if a.alive:
 					top = maxi(top, maxi(0, Threat.score(e, a)))
-			var share: float = clampf(float(mine) / float(top), 0.0, 1.0)
-			var a2: float = 0.30 + 0.70 * share
-			var r := Rect2(fx, y + 6, FOE_BOX, FOE_BOX)
-			draw_rect(r, Color(0.42, 0.44, 0.50, a2))
-			draw_rect(r, Color(1.0, 0.45, 0.42, a2), false, 1.0)
-			# 사거리 안이면 실제로 때리는 중이다. 밑줄로 구분한다.
+			var a2: float = 0.32 + 0.68 * clampf(float(mine) / float(top), 0.0, 1.0)
+			var r := Rect2(fx, y + 8, FOE_BOX, FOE_BOX)
+			draw_rect(r, Color(0.44, 0.46, 0.52, a2))
+			draw_rect(r, Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b, a2), false, 1.5)
+			# 사거리 안이면 지금 실제로 때리는 중이다. 밑줄로 구분한다.
 			if Grid.manhattan(e.pos, u.pos) <= e.atk_range:
-				draw_line(Vector2(fx, y + 6 + FOE_BOX + 2),
-					Vector2(fx + FOE_BOX, y + 6 + FOE_BOX + 2),
-					Color(1.0, 0.45, 0.42, 0.9), 2.0)
-			fx -= FOE_BOX + 5.0
-			if fx < size.x - 110.0:
-				break
+				draw_line(Vector2(fx, y + 8 + FOE_BOX + 3),
+					Vector2(fx + FOE_BOX, y + 8 + FOE_BOX + 3), UiKit.BAD, 2.0)
+			fx -= FOE_BOX + FOE_GAP
+		if foes.size() > shown:
+			draw_string(fs, Vector2(fx + 6, y + 30), "+%d" % (foes.size() - shown),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.BAD)

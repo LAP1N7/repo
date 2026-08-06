@@ -10,11 +10,17 @@ const TEXT := Color(0.93, 0.94, 0.97)
 const MUTED := Color(0.55, 0.58, 0.68)
 ## 부차 정보용. LINE(0.30) 은 테두리 색이라 글자로 쓰면 거의 안 읽힌다.
 const FAINT := Color(0.46, 0.50, 0.60)
-const ACCENT := Color(1.0, 0.78, 0.35)
-const GOOD := Color(0.42, 0.95, 0.62)
-const BAD := Color(1.0, 0.42, 0.38)
-const TEAM_P := Color(0.35, 0.75, 1.0)
-const TEAM_E := Color(1.0, 0.42, 0.38)
+## ── 빨강·노랑은 채도를 한 단계 올려 둔다 ────────────────────────────────
+## 배경이 청회색으로 깔리면서 따뜻한 색이 전부 뿌옇게 보였다. 화면에서 가장
+## 급한 정보(피해·경고·강조)가 배경에 묻히면 색을 쓰는 의미가 없다.
+##
+## 초록(GOOD)은 안 건드린다. 회복은 급한 정보가 아니고, 초록까지 같이 올리면
+## 세 색이 전부 튀어서 다시 아무것도 안 튀는 것과 같아진다.
+const ACCENT := Color(1.0, 0.74, 0.20)
+const GOOD := Color(0.36, 0.96, 0.58)
+const BAD := Color(1.0, 0.33, 0.28)
+const TEAM_P := Color(0.32, 0.76, 1.0)
+const TEAM_E := Color(1.0, 0.33, 0.28)
 
 static var _font: Font = null
 

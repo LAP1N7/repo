@@ -101,20 +101,23 @@ func setup(p_run: RunState) -> void:
 	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
 	# 로딩 화면의 TIP 이 그 역할을 한다 - 유닛 버튼 아래에 태그를 달면 정보가
 	# 늘어난 만큼 화면이 빽빽해지고, 정작 고를 때 읽는 건 HP·공격력이다.
-	UiKit.label(self, Vector2(48, 340), Vector2(460, 22),
-		UiText.t("loadout.unit_pick", "유닛 선택"), 15, UiKit.MUTED)
+	_head(Vector2(48, 340), UiText.t("loadout.unit_pick", "유닛 선택"))
 	var x := 48.0
 	for tid in UnitData.playable():
 		var s: Dictionary = UnitData.TABLE[tid]
-		# 유닛이 6종이 되면서 폭을 줄였다. 이 행은 RIGHT_X(560) 전에 끝나야 한다.
-		# 안 그러면 오른쪽 규칙 슬롯 위를 덮어 3번 슬롯이 안 보인다.
-		var b := UiKit.button(self, Vector2(x, 364), Vector2(79, 44),
-			"%s
-HP%d 공%d" % [s["name"], s["hp"], s["atk"]], 10, 3)
+		# 얼굴을 세운 카드다. 이름과 숫자만 있던 버튼은 여섯 개가 나란히 놓이면
+		# 전부 같은 회색 상자로 보여서, 고르는 일이 읽는 일이 됐다. 얼굴이
+		# 있으면 고르는 일이 다시 보는 일이 된다.
+		var b := _Tile.new()
+		b.position = Vector2(x, 364)
+		b.size = Vector2(79, 104)
+		b.type_id = String(tid)
+		b.label = String(s["name"])
+		b.sub = UiText.t("loadout.unit_stat", "HP%d 공%d") % [s["hp"], s["atk"]]
+		b.tint = s["color"]
+		add_child(b)
 		b.pressed.connect(_on_type_pressed.bind(String(tid)))
 		type_buttons[tid] = b
-
-
 		if tut != null:
 			tut.register_anchor("unit_%s" % tid, b)
 		x += 84.0
@@ -134,9 +137,12 @@ func refresh() -> void:
 	_build_hand()
 
 	for tid in type_buttons:
-		var b: Button = type_buttons[tid]
+		var b = type_buttons[tid]
 		b.disabled = run.party_full()
-		b.modulate = UiKit.ACCENT if sel_type == tid else Color(1, 1, 1)
+		# 고른 것은 타일이 스스로 표시한다. modulate 로 전체를 물들이면 얼굴까지
+		# 노랗게 변해서 누구인지 안 보인다.
+		b.selected = sel_type == tid
+		b.queue_redraw()
 
 	var reason := run.blocking_reason()
 	btn_fight.disabled = not run.ready_to_fight()
@@ -159,9 +165,9 @@ func _build_grid() -> void:
 	for c in grid_root.get_children():
 		c.queue_free()
 
-	UiKit.label(grid_root, Vector2(48, 96), Vector2(460, 22),
-		UiText.t("loadout.field", "아군 진영 - %d칸 중 %d칸에 배치") % [Grid.PLAYER_SLOTS.size(), run.required_party()],
-		15, UiKit.MUTED)
+	_head(Vector2(48, 96),
+		UiText.t("loadout.field", "아군 진영 - %d칸 중 %d칸에 배치") % [
+			Grid.PLAYER_SLOTS.size(), run.required_party()], grid_root)
 
 	var can_place := sel_type != "" and not run.party_full()
 
@@ -172,33 +178,23 @@ func _build_grid() -> void:
 		var row := p.y - 1
 		var at := GRID_AT + Vector2(col * TILE, row * TILE)
 
-		var b := Button.new()
+		var b := _Tile.new()
 		b.position = at
 		b.size = Vector2(TILE - 6, TILE - 6)
-		b.add_theme_font_override("font", UiKit.font(11))
-		b.add_theme_font_size_override("font_size", 12)
 		grid_root.add_child(b)
 
 		var member := _member_at(i)
 		if member >= 0:
 			var tid: String = run.roster[member]["type"]
-			var s: Dictionary = UnitData.TABLE[tid]
-			var uc: Color = s["color"]
-			b.text = String(s["name"])
-			b.add_theme_stylebox_override("normal", UiKit.box(uc.darkened(0.5), uc, 5))
-			b.add_theme_stylebox_override("hover", UiKit.box(uc.darkened(0.3), Color.WHITE, 5))
-			b.add_theme_stylebox_override("pressed", UiKit.box(uc.darkened(0.2), Color.WHITE, 5))
+			b.type_id = tid
+			b.label = String(UnitData.TABLE[tid]["name"])
+			b.tint = UnitData.TABLE[tid]["color"]
 			b.tooltip_text = UiText.t("loadout.m02", "누르면 배치를 무른다 (꽂은 카드는 손패로 돌아온다)")
 			b.pressed.connect(_on_slot_remove.bind(member))
 		else:
 			# 빈 칸도 항상 보여야 한다. 어디에 놓을 수 있는지가 안 보이면 조작을 못 한다.
-			var edge: Color = UiKit.TEAM_P if can_place else UiKit.LINE
-			b.text = ""
-			b.add_theme_stylebox_override("normal", UiKit.box(Color(0.145, 0.17, 0.215), edge, 5))
-			b.add_theme_stylebox_override("hover",
-				UiKit.box(Color(0.22, 0.28, 0.36), Color.WHITE, 5))
-			b.add_theme_stylebox_override("disabled",
-				UiKit.box(Color(0.115, 0.125, 0.155), UiKit.LINE, 5))
+			b.empty = true
+			b.tint = UiKit.TEAM_P if can_place else UiKit.LINE
 			b.disabled = not can_place
 			b.pressed.connect(_on_slot_place.bind(i))
 		if tut != null:
@@ -452,3 +448,145 @@ func _on_hand_clicked(card: CardNode) -> void:
 		if tut != null:
 			tut.notify_action("equip")
 		refresh()
+
+
+## ── 머리말 ───────────────────────────────────────────────────────────────
+## 글자 앞에 짧은 색 막대를 세운다. NIKKE·명일방주 계열의 인상은 장식이 아니라
+## **정렬**에서 온다 - 막대가 왼쪽 기준선을 만들면 아래 요소가 전부 그 선에
+## 맞춰 정렬된 것처럼 읽힌다. 선 하나로 화면이 정리되는 이유가 그것이다.
+func _head(at: Vector2, text: String, parent: Node = null) -> void:
+	var host: Node = parent if parent != null else self
+	var bar := ColorRect.new()
+	bar.color = Axes.color(Axes.POSITION)
+	bar.position = at + Vector2(0, 4)
+	bar.size = Vector2(3, 16)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.add_child(bar)
+	UiKit.label(host, at + Vector2(11, 0), Vector2(520, 22), text, 15, UiKit.TEXT)
+
+
+## ── 얼굴 타일 ────────────────────────────────────────────────────────────
+## 진영 칸과 유닛 선택이 같은 물건을 쓴다. 둘 다 "이 대원을 고른다" 이므로
+## 생김새가 달라야 할 이유가 없다.
+##
+## 왼쪽 위·오른쪽 아래를 사선으로 깎는다. 모듈 카드와 전황판이 이미 쓰는
+## 어법이라, 같은 모양을 두르면 화면 전체가 한 벌로 읽힌다.
+##
+## ── 세 겹으로 그린다 ─────────────────────────────────────────────────────
+##   _draw()   바탕 사선 판
+##   _tr       얼굴 (TextureRect 자식)
+##   _ov       이름띠 · 테두리 · 선택 표시
+##
+## 얼굴을 _draw() 안에서 draw_texture_rect 로 그리면 이 프로젝트에서는 회색
+## 사각형이 나온다. SD 얼굴·지형 배경·스토리 초상에서 이미 세 번 겪었다.
+## 그리고 얼굴이 노드가 되면 자식이 부모보다 나중에 그려지므로, 이름띠와
+## 테두리도 같이 노드로 올려야 얼굴에 안 가린다.
+class _Tile extends Button:
+	var type_id: String = ""
+	var label: String = ""
+	var sub: String = ""
+	var tint: Color = Color(0.4, 0.5, 0.6)
+	var empty: bool = false
+	var selected: bool = false
+
+	const CUT: float = 11.0
+
+	var _clip: Control
+	var _tr: TextureRect
+	var _ov: Control
+
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		var blank := StyleBoxEmpty.new()
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			add_theme_stylebox_override(st, blank)
+
+		# 자르는 일은 **감싸는 Control** 이 한다. TextureRect 의
+		# KEEP_ASPECT_COVERED 는 제 칸 밖까지 그려서, 얼굴 하나가 화면 절반을
+		# 덮어 버렸다. 크기 계산을 직접 하면 그런 일이 없다.
+		_clip = Control.new()
+		_clip.clip_contents = true
+		_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_clip)
+		_tr = TextureRect.new()
+		# 최소 크기를 텍스처 크기로 잡지 않게 한다. 이걸 안 하면 size 를 아무리
+		# 작게 줘도 192x192 로 되돌아가서, 75px 칸 안에 192px 그림의 왼쪽 위
+		# 귀퉁이만 보인다.
+		_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_tr.stretch_mode = TextureRect.STRETCH_SCALE
+		_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_clip.add_child(_tr)
+
+		_ov = _TileFace.new()
+		_ov.set("tile", self)
+		_ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_ov)
+		_layout()
+
+	func _layout() -> void:
+		if _clip == null:
+			return
+		var band := band_h()
+		_clip.position = Vector2(2, 2)
+		_clip.size = Vector2(size.x - 4, size.y - band - 2)
+		var tex := null if (empty or type_id == "") 			else UiKit.art(["portraits", "units"], type_id)
+		_tr.texture = tex
+		_tr.modulate = Color(1, 1, 1, 0.45 if disabled else 1.0)
+		# 얼굴은 **통째로** 보여야 한다. 채워서 자르면 192x192 짜리 정사각
+		# 초상이 머리카락만 남는다 - 여섯이 나란히 놓였을 때 누가 누구인지
+		# 구별이 안 되면 얼굴을 넣은 의미가 없다.
+		_tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_tr.position = Vector2.ZERO
+		_tr.size = _clip.size
+		_ov.position = Vector2.ZERO
+		_ov.size = size
+		_ov.queue_redraw()
+
+	## 아래쪽 이름띠 높이.
+	func band_h() -> float:
+		return 26.0 if sub != "" else 16.0
+
+	func shape(s: Vector2) -> PackedVector2Array:
+		return PackedVector2Array([
+			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
+			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
+		])
+
+	func _draw() -> void:
+		_layout()
+		var body := Color(0.10, 0.115, 0.15) if empty else tint.darkened(0.72)
+		if disabled:
+			body = Color(0.085, 0.09, 0.11)
+		draw_colored_polygon(shape(size), body)
+
+
+## 타일의 이름띠와 테두리. 얼굴 위에 얹혀야 하므로 별도 노드다.
+class _TileFace extends Control:
+	var tile
+
+	func _draw() -> void:
+		if tile == null:
+			return
+		var s := size
+		var on: bool = tile.is_hovered() or tile.selected
+		var t: Color = tile.tint
+
+		var band: float = tile.band_h()
+		if String(tile.label) != "":
+			var ly: float = s.y - band
+			draw_rect(Rect2(2, ly, s.x - 4, band - 2), Color(0, 0, 0, 0.68))
+			var fs := UiKit.font(11)
+			draw_string(fs, Vector2(0, ly + 12), String(tile.label),
+				HORIZONTAL_ALIGNMENT_CENTER, s.x, 12,
+				UiKit.FAINT if tile.disabled else UiKit.TEXT)
+			if String(tile.sub) != "":
+				draw_string(fs, Vector2(0, ly + 23), String(tile.sub),
+					HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UiKit.FAINT)
+
+		var line := PackedVector2Array(tile.shape(s))
+		line.append(line[0])
+		draw_polyline(line, Color(t.r, t.g, t.b, 1.0 if on else 0.62), 2.0, true)
+		# 고른 것은 왼쪽에 굵은 막대를 세운다. 테두리만으로는 호버와 구별이 안 된다.
+		if tile.selected:
+			draw_rect(Rect2(0, tile.CUT, 4, s.y - tile.CUT), t)

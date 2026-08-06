@@ -233,5 +233,9 @@
   "battle.heal_log": "+%d",
   "battle.wave_log2": "%d 페이즈 진입",
   "battle.roster_head": "전황",
-  "battle.roster_work": "피해 %d · 회복 %d"
+  "battle.roster_work": "피해 %d · 회복 %d",
+  "battle.roster_dmg": "피해 %d",
+  "battle.roster_heal": "회복 %d",
+  "battle.squad_stat": "공 %d · 방 %d · 사거리 %d · 이동 %d",
+  "loadout.unit_stat": "HP%d 공%d"
 }
