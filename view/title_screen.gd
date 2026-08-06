@@ -150,8 +150,19 @@ func setup() -> void:
 	# 브라우저에서는 조작 전까지 소리를 못 낸다. 가만히 기다리는 사람에게는
 	# 그냥 "음악이 없는 게임" 으로 보이므로, 왜 조용한지 한 줄 알린다.
 	# 잠금이 풀리면 스스로 사라진다.
-	_lbl_audio = UiKit.label(self, Vector2(290, 574), Vector2(700, 20), "", 11, UiKit.MUTED)
-	_lbl_audio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_audio = UiKit.label(self, Vector2(TEXT_X, 568), Vector2(560, 20), "", 11, UiKit.MUTED)
+
+	# ── 출처 ─────────────────────────────────────────────────────────────
+	# 영상에 박혀 있던 워터마크는 잘라 냈다. 제목 화면 한복판에 생성 도구
+	# 로고가 있는 것과, 출처를 밝히는 것은 다른 일이다.
+	#
+	# 밝히긴 해야 하므로 화면 맨 아래에 작게 한 줄로 남긴다. 읽으려면 읽히고,
+	# 안 찾으면 안 보이는 크기다.
+	if _video != null:
+		var cr := UiKit.label(self, Vector2(0, 696), Vector2(1268, 16),
+			UiText.t("title.credit", "opening video · KlingAI 3.0"), 9,
+			Color(UiKit.FAINT.r, UiKit.FAINT.g, UiKit.FAINT.b, 0.55))
+		cr.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
 var _lbl_audio: Label

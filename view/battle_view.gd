@@ -68,7 +68,14 @@ const TILE: int = Grid.TILE
 ## 사람에게는 느리다. 2배(0.5초)가 "보이면서 답답하지 않은" 지점이고, 자세히
 ## 보고 싶으면 1x 를, 결과만 보고 싶으면 4x 를 누르면 된다.
 const ACT_TIME: float = 1.0
-const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
+
+## ── 배속에 8x 를 더한다 ──────────────────────────────────────────────────
+## 한 동작을 1초로 늘리면서 4x 가 예전 1x(0.22초)보다도 느려졌다. 배속 단추가
+## 셋 다 "느림 / 덜 느림 / 조금 덜 느림" 이 된 셈이다 - 고장은 아니지만 쓸모가
+## 없어졌고, 쓸모가 없으면 고장난 것과 같다.
+##
+## 1x 는 동작을 보는 자리, 8x 는 결과만 보는 자리다. 양 끝이 다 필요하다.
+const SPEEDS: Array[float] = [1.0, 2.0, 4.0, 8.0]
 
 ## 규칙 패널 한 유닛이 차지하는 높이와 한 줄 높이.
 ## ROW_H = 헤더 22 + 5줄 × ROW_LINE. 줄이면 다음 유닛 헤더를 덮는다.
@@ -740,12 +747,12 @@ func _build_ui() -> void:
 
 	UiKit.label(ui, Vector2(986, 24), Vector2(60, 20),
 		UiText.t("battle.speed", "배속"), 11, UiKit.FAINT)
-	var sx := 1040.0
+	var sx := 1006.0
 	for m in SPEEDS:
-		var b := UiKit.button(ui, Vector2(sx, 20), Vector2(42, 26), "%dx" % int(m), 12, 4)
+		var b := UiKit.button(ui, Vector2(sx, 20), Vector2(40, 26), "%dx" % int(m), 12, 4)
 		b.pressed.connect(_on_speed_pressed.bind(m))
 		speed_buttons.append(b)
-		sx += 58.0
+		sx += 46.0
 
 	# 소리 토글. 설정은 Sfx 의 정적 변수라 화면을 넘어가도 유지된다.
 	btn_sound = UiKit.button(ui, Vector2(sx + 6, 20), Vector2(64, 26), "", 11, 4)
@@ -1436,7 +1443,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 					_c(String(e.get("rule_name", "")), UiKit.TEXT)])
 				if who.team == Unit.TEAM_PLAYER:
 					_show_trace(who, e)
-				await _wait(ACT_TIME * 0.45)
+				await _wait(ACT_TIME * 0.20)
 
 			"move":
 				sfx.play("step")
@@ -1477,7 +1484,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 				_log("   %s %s" % [_who(unit_views[e["target"]].unit),
 					_c(UiText.t("battle.heal_log", "+%d") % e["amount"], UiKit.GOOD)])
 				_pop_number(unit_views[e["target"]].position, "+%d" % e["amount"], UiKit.GOOD)
-				await _wait(ACT_TIME * 0.6)
+				await _wait(ACT_TIME * 0.32)
 
 			"special":
 				sfx.play("special")
@@ -1485,10 +1492,10 @@ func _play_events(evs: Array, my_id: int) -> void:
 
 			"defend":
 				sfx.play("defend")
-				await _wait(ACT_TIME * 0.4)
+				await _wait(ACT_TIME * 0.25)
 
 			"hold", "idle":
-				await _wait(ACT_TIME * 0.2)
+				await _wait(ACT_TIME * 0.10)
 
 			"death":
 				# ☠(U+2620)는 프리텐다드에 없어 네모로 떴다. 글리프 검사(test/glyph_check.gd)가
@@ -1552,7 +1559,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 				await _wave_banner(int(e["wave"]) + 1, int(e["total"]))
 
 			"result":
-				await _wait(ACT_TIME)
+				await _wait(ACT_TIME * 0.6)
 
 
 ## 특수 스킬 재생. cutin 플래그가 붙은 희귀 스킬만 컷인 연출을 탄다.
@@ -1631,7 +1638,25 @@ func _play_special(e: Dictionary) -> void:
 ## 도입부 2.09초 + 공개 1.53초 = 총 3.6초. 훑는 쪽이 조금 더 길다.
 const CUTIN_X: float = 384.0        ## 1280 의 30%. 일러스트가 차지하는 폭.
 const CUTIN_SKEW: float = 44.0      ## 사선 프레임의 기울기(위가 넓고 아래가 좁다).
-const CUTIN_ART: Vector2 = Vector2(600, 900)
+## ── 컷인이 쓰는 "원화 상자" ─────────────────────────────────────────────
+## 예전에는 600x900 으로 못 박혀 있었다. 일러스트를 그 크기로 **늘여서** 그리기
+## 때문에, 원본 비율이 다르면 인물이 통째로 찌그러진다. standing 을 v2 로
+## 바꾸면서 가로가 긴 그림(1200x800)이 생겼고, 컷인이 눌린 얼굴로 나왔다.
+##
+## 이제 세로만 900 으로 고정하고 가로는 **원본 비율을 따라간다.** 컷인 좌표는
+## 정규화(0~1)라 상자 크기가 바뀌어도 그대로 맞는다(data/cutin_shots.gd).
+const CUTIN_ART_H: float = 900.0
+
+## 지금 컷인이 쓰는 상자. _cutin 이 그림을 고를 때마다 다시 잡는다.
+var _cut_box: Vector2 = Vector2(600, 900)
+
+
+## 그 그림의 원본 비율을 지킨 상자.
+func _art_box(tex: Texture2D) -> Vector2:
+	if tex == null or tex.get_height() <= 0:
+		return Vector2(600, CUTIN_ART_H)
+	return Vector2(CUTIN_ART_H * float(tex.get_width()) / float(tex.get_height()),
+		CUTIN_ART_H)
 
 func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") -> void:
 	Engine.time_scale = 0.35
@@ -1714,9 +1739,10 @@ func _cutin(skill_name: String, tint: Color, type_id: String, sid: String = "") 
 	var tex := UiKit.art(["cutin", "standing"], type_id)
 	if tex != null:
 		# 판을 꽉 채우도록 아트를 확대하고(COVER), 남는 좌우는 폴리곤이 잘라 준다.
+		var src := _art_box(tex)
 		var box := Vector2(CUTIN_X + CUTIN_SKEW, 720.0)
-		var k: float = maxf(box.x / CUTIN_ART.x, box.y / CUTIN_ART.y)
-		var off := (box - CUTIN_ART * k) * 0.5
+		var k: float = maxf(box.x / src.x, box.y / src.y)
+		var off := (box - src * k) * 0.5
 		var uv := PackedVector2Array()
 		for pt in shape:
 			uv.append((pt - off) / k)
@@ -1908,7 +1934,9 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 	var art := TextureRect.new()
 	art.texture = tex
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.size = CUTIN_ART
+	# 원본 비율을 지킨 상자에 그린다. 고정 크기로 늘이면 얼굴이 눌린다.
+	_cut_box = _art_box(tex)
+	art.size = _cut_box
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(art)
 
@@ -2028,7 +2056,7 @@ func _cutin_intro(layer: Control, tex: Texture2D, shot: Dictionary,
 
 ## 아트를 지점 p(정규화)가 화면 한가운데 오도록 즉시 옮긴다. z 는 배율.
 func _cam(art: Control, p: Vector2, z: float) -> void:
-	var k := (720.0 / CUTIN_ART.y) * z
+	var k := (720.0 / _cut_box.y) * z
 	art.scale = Vector2(k, k)
 	art.position = _cam_pos(p, k)
 
@@ -2037,7 +2065,7 @@ func _cam(art: Control, p: Vector2, z: float) -> void:
 ## 하나만 어긋나면 확대하면서 화면이 미끄러진다.
 func _cam_to(tw: Tween, art: Control, p: Vector2, z: float, sec: float,
 		trans: Tween.TransitionType, ease_t: Tween.EaseType) -> void:
-	var k := (720.0 / CUTIN_ART.y) * z
+	var k := (720.0 / _cut_box.y) * z
 	tw.tween_property(art, "scale", Vector2(k, k), sec).set_trans(trans).set_ease(ease_t)
 	tw.parallel().tween_property(art, "position", _cam_pos(p, k), sec)\
 		.set_trans(trans).set_ease(ease_t)
@@ -2147,11 +2175,11 @@ class _CutinHud extends Control:
 
 func _cam_pos(p: Vector2, k: float) -> Vector2:
 	var half := Vector2(640.0, 360.0) / k              # 보이는 영역의 절반(원화 픽셀)
-	var lo := half / CUTIN_ART
+	var lo := half / _cut_box
 	var q := Vector2(
 		clampf(p.x, minf(lo.x, 0.5), maxf(1.0 - lo.x, 0.5)),
 		clampf(p.y, minf(lo.y, 0.5), maxf(1.0 - lo.y, 0.5)))
-	return Vector2(640, 360) - Vector2(q.x * CUTIN_ART.x, q.y * CUTIN_ART.y) * k
+	return Vector2(640, 360) - Vector2(q.x * _cut_box.x, q.y * _cut_box.y) * k
 
 
 ## 경로를 한 칸씩 밟아 이동한다.

@@ -249,5 +249,6 @@
   "hover.now": "지금",
   "hover.firing": "%s 을(를) 때리는 중",
   "hover.closing": "%s 에게 접근 중",
-  "card.ban_n": "제외 %d"
+  "card.ban_n": "제외 %d",
+  "title.credit": "opening video · KlingAI 3.0"
 }
