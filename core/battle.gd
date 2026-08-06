@@ -95,6 +95,8 @@ func setup(p_stage_id: int, party: Array) -> void:
 		))
 		# 보조 지휘 강화는 편성이 확정된 이 순간 한 번만 얹는다.
 		units[units.size() - 1].apply_command(member.get("cmd", {}))
+		# 야전 정비는 부대 단위 값이다. 누구 것을 읽어도 같다.
+		repair_pct = int((member.get("cmd", {}) as Dictionary).get("repair", 0))
 		idx += 1
 
 	var stage: Dictionary = Stages.get_stage(p_stage_id)
@@ -142,25 +144,44 @@ func _spawn_wave(n: int) -> void:
 		_emit({ "type": "wave", "wave": n, "units": spawned, "total": waves.size() })
 
 
-## 페이즈 사이 응급 처치. 살아남은 대원이 최대 HP 의 이만큼을 회복한다.
+## ── 페이즈를 넘어가도 HP 는 그대로다 ────────────────────────────────────
 ##
-## ── 왜 필요한가 ──────────────────────────────────────────────────────────
-## 이게 없으면 페이즈는 "판이 바뀐다" 가 아니라 그냥 "적이 두 배" 다. 앞 파에서
-## 깎인 HP 를 그대로 들고 다음 파를 맞으니, 페이즈를 쪼갠 순간 난이도가 배로
-## 뛴다. 실측으로 모듈 없이 1단계 승률이 50% 에서 0~25% 로 떨어졌다 - 첫 판은
-## 기본기만으로 이겨야 하는 판인데 그게 무너졌다.
+## 예전에는 페이즈가 바뀔 때마다 최대 HP 의 60% 를 공짜로 돌려줬다. 그러면
+## 페이즈가 "한 판 안의 두 번째 문제" 가 아니라 그냥 **따로 노는 두 판**이
+## 된다. 앞 파에서 얼마나 아꼈는지가 뒤 파에 아무 영향을 안 주므로, 1페이즈를
+## 어떻게 풀든 2페이즈는 늘 같은 조건에서 시작한다.
 ##
-## 회복은 **플레이어만** 받는다. 새로 오는 쪽은 어차피 만피로 등장한다.
-## 정수 연산만 쓴다. 결정론은 여기서도 예외가 없다.
-const REPAIR_PCT: int = 60
+## HP 를 들고 넘어가야 "빨리 끝내는 것" 과 "안 맞고 끝내는 것" 이 값을 갖는다.
+## 그게 알고리즘을 짜는 이유가 된다.
+##
+## 회복이 필요하면 **산다.** 보조 지휘의 [야전 정비] 가 그 자리다
+## (data/command.gd). 공짜였던 것을 선택으로 바꾼 것이지 없앤 것이 아니다.
+## 공짜로 붙는 최소 응급 처치.
+##
+## 0 으로 두고 재 봤더니 3~5단계 승률이 1~3% 로 무너졌다. 페이즈가 셋이면 적이
+## 여덟인데 대원은 셋이고 회복이 하나도 없으니, 알고리즘을 어떻게 짜든 산술이
+## 안 맞는다. 그건 어려운 게 아니라 불가능한 것이다.
+##
+## 그렇다고 예전처럼 60% 를 돌려주면 페이즈가 **따로 노는 두 판**이 된다.
+## 1페이즈를 얼마나 아꼈는지가 2페이즈에 아무 영향을 안 주기 때문이다.
+##
+## 20% 는 그 사이다. 깎인 것의 대부분은 그대로 남으므로 "빨리 · 안 맞고 끝내기"
+## 가 여전히 값을 갖고, 그러면서 여덟을 상대할 산술은 성립한다.
+## 더 필요하면 보조 지휘의 [야전 정비] 를 산다.
+const BASE_REPAIR_PCT: int = 20
+
+var repair_pct: int = 0
 
 
 func _repair() -> void:
+	var pct: int = BASE_REPAIR_PCT + repair_pct
+	if pct <= 0:
+		return
 	var healed: Array = []
 	for u in units:
 		if not u.alive or u.team != Unit.TEAM_PLAYER:
 			continue
-		var amount: int = u.heal(u.max_hp * REPAIR_PCT / 100)
+		var amount: int = u.heal(u.max_hp * pct / 100)
 		if amount > 0:
 			healed.append({ "target": u.index, "amount": amount, "target_hp": u.hp })
 	if not healed.is_empty():
@@ -415,6 +436,12 @@ func step() -> bool:
 			u.ambush_ticks -= 1
 			if u.ambush_ticks == 0:
 				u.ambush_ready = true
+				u.ambush_done = true
+				# 보너스에는 유효 기간이 있다. 풀리고 나서 이 틱 수 안에
+				# 때려야 한 방이 세진다.
+				# +1 인 이유: 이 틱이 끝날 때 아래 정산에서 한 번 깎인다.
+				# 그래서 **실제로 때릴 수 있는 틱이 %d개** 남으려면 하나 더 준다.
+				u.ambush_bonus_ticks = Specials.AMBUSH_WINDOW + 1
 				_emit({ "type": "ambush_end", "unit": u.index })
 			else:
 				_emit({ "type": "ambush", "unit": u.index })
@@ -467,6 +494,11 @@ func step() -> bool:
 
 		_execute(u, choice)
 
+	# ── 도화선 ───────────────────────────────────────────────────────────
+	# 붙은 자폭체는 스스로 타들어 간다. 행동이 다 끝난 뒤에 센다 - 이번 틱에
+	# 물러나 떨어졌으면 도화선이 꺼져야 하기 때문이다.
+	_tick_fuses()
+
 	# 자폭은 틱의 모든 행동이 끝난 뒤에 한꺼번에 처리한다.
 	#
 	# 죽는 자리마다 터뜨리면 사망 처리 지점이 다섯 군데(평타·범위·반격·불굴·포격)
@@ -480,6 +512,11 @@ func step() -> bool:
 		u.hit_pending = false
 		u.moved_last_tick = u.moved_this_tick
 		u.moved_this_tick = false
+		# 잠복 보너스는 시간이 지나면 식는다.
+		if u.ambush_ready:
+			u.ambush_bonus_ticks -= 1
+			if u.ambush_bonus_ticks <= 0:
+				u.ambush_ready = false
 		# "적이 다가오는 중인가" 를 다음 틱에 판정할 수 있게 거리를 남긴다.
 		var nd: int = Grid.UNREACHABLE
 		for e in living_enemies_of(u):
@@ -610,16 +647,49 @@ func _resolve_explosions() -> void:
 			return
 
 
+## 붙어 있는 자폭체의 도화선을 센다. 0 이 되면 스스로 터진다.
+##
+## 떨어지면 꺼진다. "물러나서 끊는다" 가 실제로 통해야 선택이 된다.
+func _tick_fuses() -> void:
+	for u in units:
+		if not u.alive or not Traits.has(u, Traits.VOLATILE):
+			continue
+		var touching := false
+		for e in living_enemies_of(u):
+			if Grid.manhattan(u.pos, e.pos) <= 1:
+				touching = true
+				break
+		if not touching:
+			if u.fuse_ticks >= 0:
+				u.fuse_ticks = -1
+				_emit({ "type": "fuse", "unit": u.index, "left": -1 })
+			continue
+		if u.fuse_ticks < 0:
+			u.fuse_ticks = Traits.FUSE_TICKS
+		else:
+			u.fuse_ticks -= 1
+		_emit({ "type": "fuse", "unit": u.index, "left": u.fuse_ticks })
+		if u.fuse_ticks <= 0:
+			# 스스로 터진다. 처치가 아니므로 아무에게도 공적이 안 붙는다.
+			u.alive = false
+			team_loss_pending[u.team] = true
+			_emit({ "type": "death", "unit": u.index })
+			_recharge_on_death()
+
+
 func _explode(src: Unit) -> void:
 	var hits: Array = []
-	# Grid.DIRS 순서로 돈다. 인접 4칸이고, 적아를 가리지 않는다.
-	for d in Grid.DIRS:
-		var v := unit_at(src.pos + d)
-		if v == null:
-			continue
-		var dealt: int = v.take_damage(Traits.VOLATILE_DAMAGE, null)
-		last_damage_tick = tick
-		hits.append({ "target": v.index, "damage": dealt, "target_hp": v.hp })
+	# 자신을 중심으로 한 3x3. 좌표 순서로 돌아 난수가 끼지 않는다.
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if dx == 0 and dy == 0:
+				continue
+			var v := unit_at(src.pos + Vector2i(dx, dy))
+			if v == null:
+				continue
+			var dealt: int = v.take_damage(Traits.VOLATILE_DAMAGE, null)
+			last_damage_tick = tick
+			hits.append({ "target": v.index, "damage": dealt, "target_hp": v.hp })
 	_emit({ "type": "explode", "unit": src.index, "at": src.pos, "hits": hits })
 	for h in hits:
 		var t: Unit = units[int(h["target"])]

@@ -44,7 +44,7 @@ const KITS: Array = [
 
 
 func _init() -> void:
-	print("=== 스테이지 난이도 (편성 %d x 모듈 %d x 강화 3단계) ===\n"
+	print("=== 스테이지 난이도 (편성 %d x 모듈 %d x 강화 1/3/5) ===\n"
 		% [COMPS.size(), KITS.size()])
 	print("  단계   승률   전멸패  정체패  시간초과   평균틱")
 	print("  ---------------------------------------------------")
@@ -57,7 +57,9 @@ func _init() -> void:
 		var n := 0
 		for cn in COMPS:
 			for kit in KITS:
-				for up in [0, 1, 2]:
+				# 강화 1/3/5 로 훑는다. 0~2 로 재면 후반 스테이지를 실제보다
+				# 훨씬 어렵게 본다 - 4단계에 도달한 편성이 무강화일 리가 없다.
+				for up in [1, 3, 5]:
 					var b := _play(stage, COMPS[cn], kit, up)
 					n += 1
 					ticks += b.tick

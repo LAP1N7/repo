@@ -112,6 +112,17 @@ const TABLE: Dictionary = {
 		"pick": "lowest_hp_enemy",
 		"text": "HP 비율이 가장 낮은 적을 쫓는다",
 	},
+	"frail_hunt": {
+		"axis": "target",
+		"tag": "rear",
+		"tier": 2,
+		"cost": 3,
+		"name": "약체 사냥",
+		"cond": "always",
+		"cond_arg": 0,
+		"pick": "lowest_max_hp_enemy",
+		"text": "최대 HP가 가장 낮은 적을 쫓는다",
+	},
 	"finisher": {
 		"axis": "target",
 		"tag": "execute",
@@ -422,7 +433,7 @@ const TABLE: Dictionary = {
 		"cond": "tick_below",
 		"cond_arg": 4,
 		"stance": "ambush",
-		"text": "3틱간 멈추고 사라진다. 해제 후 첫 공격이 강해진다",
+		"text": "3틱간 사라진다(맞지도 때리지도 않음). 해제 후 3틱 안의 첫 공격 +60%",
 	},
 
 	# ── PASSIVE · 상시 ────────────────────────────────

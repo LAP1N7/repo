@@ -66,6 +66,7 @@ const BASE_AI: Dictionary = {
 	# **아무와도 상호작용하지 않는 개체**가 되어 판이 정체로 끝난다.
 	"beacon":    { "act": "attack", "power": 0, "stand": "advance", "flee_within": 0 },
 	"bomber":    { "act": "attack", "power": 100, "stand": "advance", "flee_within": 0 },
+	"stalker":   { "act": "attack", "power": 100, "stand": "advance", "flee_within": 0 },
 	# 감독기는 뒤에 머문다. 붙으면 죽고, 죽으면 나머지가 약해진다.
 	"overseer":  { "act": "attack", "power": 100, "stand": "hold", "flee_within": 2 },
 

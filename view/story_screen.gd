@@ -231,14 +231,26 @@ func _process(delta: float) -> void:
 ## 배경 아트 자리. 파일이 없으면 회색 네모와 자리 이름만 놓는다.
 class _ArtSlot extends Control:
 	var art_id: String = ""
+	var _img: Control
+	var _shown: String = ""
 
 	func _draw() -> void:
 		if art_id == "":
 			return
 		var tex := UiKit.art(["story"], art_id)
 		if tex != null:
-			draw_texture_rect(tex, Rect2(Vector2.ZERO, size), false)
+			# 그림은 노드로 붙인다. draw_texture_rect 는 이 프로젝트에서
+			# 흰 사각형이 된다. (UiKit.image 주석 참조)
+			if _shown != art_id:
+				_shown = art_id
+				if _img != null:
+					_img.queue_free()
+				_img = UiKit.image(self, Rect2(Vector2.ZERO, size), tex, "cover")
 			return
+		if _img != null:
+			_img.queue_free()
+			_img = null
+			_shown = ""
 		# 아직 안 들어온 배경. 자리만 잡아 둔다.
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.22, 0.23, 0.26))
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.42, 0.44, 0.50), false, 1.0)

@@ -131,7 +131,19 @@ var extra_action: bool = false
 var ambush_ticks: int = 0
 
 ## 잠복이 풀린 뒤 첫 공격에 실릴 보너스. 해제되면 켜지고 한 번 쓰면 꺼진다.
+##
+## **유효 기간이 있다.** 예전에는 한 번 켜지면 공격할 때까지 영원히 남아서,
+## 잠복 후 열 틱을 걸어간 뒤 때려도 보너스가 그대로 실렸다. 그러면 이 태세는
+## "3틱을 버리고 한 방을 산다" 가 아니라 그냥 "공짜 강화" 다.
 var ambush_ready: bool = false
+var ambush_bonus_ticks: int = 0
+
+## 이번 전투에서 이미 잠복했는가. 한 번뿐이다 - 안 그러면 조건이 참인 동안
+## 계속 숨었다 나왔다 하며 아무 일도 안 한다.
+var ambush_done: bool = false
+
+## 자폭 도화선. -1 이면 아직 안 붙었다. 0 이 되면 스스로 터진다.
+var fuse_ticks: int = -1
 
 ## 한 번 정하면 끝까지 쫓는 표적. [후열 침투] 가 쓴다.
 var locked_target: Unit = null
@@ -306,7 +318,7 @@ func power_damage(percent: int) -> int:
 	# 알 수 없게 된다.
 	var doc := Doctrines.amount(doctrines, "attack_pct")
 	# 잠복이 풀린 뒤 첫 공격. 멈춰 있던 값을 여기서 받는다.
-	var amb := 60 if ambush_ready else 0
+	var amb := Specials.AMBUSH_POWER if ambush_ready else 0
 	return maxi(1, atk * (percent + focus_bonus + doc + passive_atk_pct
 		+ trait_atk_pct + amb) / 100)
 

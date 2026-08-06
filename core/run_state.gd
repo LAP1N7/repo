@@ -795,6 +795,7 @@ func to_party() -> Array:
 				"axis_target": command_amount("axis_target"),
 				"axis_position": command_amount("axis_position"),
 				"axis_doctrine": command_amount("axis_doctrine"),
+				"repair": command_amount("repair"),
 			},
 		})
 	return out

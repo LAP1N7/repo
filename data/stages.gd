@@ -39,13 +39,24 @@ const TABLE: Array[Dictionary] = [
 		# 맞는다 - "죽이는 것" 과 "어디서 죽이는 것" 이 다르다는 걸 여기서 배운다.
 		# 아직 아프지는 않다. 배우는 판이지 벌주는 판이 아니다.
 		"waves": [
+			# ── 기조: 닥돌 ───────────────────────────────────────────────
+			# 자폭체가 **먼저** 온다. 첫 판부터 피를 깎고 시작하게 만드는 것이
+			# 목적이다 - 페이즈 사이에 HP 가 안 돌아오므로(core/battle.gd),
+			# 1페이즈를 얼마나 아꼈는지가 2페이즈에 그대로 남는다.
+			#
+			# 그 한 줄이 이 게임의 첫 교훈이다. "이겼다" 가 아니라 "얼마나
+			# 아끼고 이겼다" 를 처음부터 묻는다.
 			[
-				{ "type": "warrior", "pos": Vector2i(5, 1), "cards": [] },
-				{ "type": "warrior", "pos": Vector2i(5, 3), "cards": [] },
+				{ "type": "bomber", "pos": Vector2i(5, 1), "cards": [],
+				  "traits": ["volatile"] },
+				{ "type": "bomber", "pos": Vector2i(5, 3), "cards": [],
+				  "traits": ["volatile"] },
 			],
 			[
-				{ "type": "bomber", "pos": Vector2i(5, 2), "cards": [],
-				  "traits": ["volatile"] },
+				{ "type": "stalker", "pos": Vector2i(5, 2),
+				  "cards": ["frail_hunt", "forced_march"], "traits": ["volatile"] },
+				{ "type": "warrior", "pos": Vector2i(6, 1), "cards": [] },
+				{ "type": "warrior", "pos": Vector2i(6, 3), "cards": [] },
 			],
 		],
 	},
@@ -66,16 +77,22 @@ const TABLE: Array[Dictionary] = [
 		# 새 기믹을 배우기도 전에 물량으로 진다 - 실측으로 승률이 27% 였다.
 		# 2페이즈에서 포탑 둘로 "물러나면 손해" 를 확실히 못 박는다.
 		"waves": [
+			# 1페이즈는 순수한 카이팅 판이다. 이 시점의 플레이어는 전술이
+			# 모자라므로 새 개체를 여기서 섞으면 배우기 전에 물량으로 진다.
 			[
 				{ "type": "archer", "pos": Vector2i(5, 1),
 				  "cards": ["far_in_range", "keep_range", "hold_fire"] },
-				{ "type": "musketeer", "pos": Vector2i(5, 3),
-				  "cards": ["near_first"] },
-			],
-			[
-				{ "type": "archer", "pos": Vector2i(6, 1),
+				{ "type": "archer", "pos": Vector2i(5, 3),
 				  "cards": ["near_first", "run_down"] },
-				{ "type": "turret", "pos": Vector2i(5, 3), "cards": [],
+			],
+			# 2페이즈에서 고정 포대를 소개한다. 방패병이 앞을 막는 동안 포탑
+			# 둘이 뒤에서 쏜다 - **붙어야 하는데 붙는 길이 막혀 있다.**
+			[
+				{ "type": "shieldman", "pos": Vector2i(5, 2),
+				  "cards": ["near_first", "guard_stance", "front_line"] },
+				{ "type": "turret", "pos": Vector2i(6, 1), "cards": [],
+				  "traits": ["immobile"] },
+				{ "type": "turret", "pos": Vector2i(6, 3), "cards": [],
 				  "traits": ["immobile"] },
 			],
 		],
@@ -96,17 +113,29 @@ const TABLE: Array[Dictionary] = [
 		# **표적 모듈을 안 산 대가를 판이 직접 청구한다.** HP 를 60 으로 낮게
 		# 둔 것은 의도다 - 못 부수는 벽이 아니라 한 박자를 뺏는 장치여야 한다.
 		"waves": [
+			# ── 유인 신호기가 표적 판단을 시험한다 ───────────────────────
+			# 기본 표적 판단은 위협도를 본다(core/rules.gd). 표적 모듈이 없는
+			# 대원은 아무것도 안 하는 신호기부터 친다. 그 사이 자폭체가 붙는다.
 			[
-				{ "type": "shieldman", "pos": Vector2i(5, 1),
-				  "cards": ["near_first", "guard_stance", "front_line"] },
-				{ "type": "beacon", "pos": Vector2i(5, 3), "cards": [],
+				{ "type": "bomber", "pos": Vector2i(5, 1), "cards": [],
+				  "traits": ["volatile"] },
+				{ "type": "bomber", "pos": Vector2i(5, 3), "cards": [],
+				  "traits": ["volatile"] },
+				{ "type": "beacon", "pos": Vector2i(6, 2), "cards": [],
 				  "traits": ["beacon"] },
+				{ "type": "archer", "pos": Vector2i(6, 1),
+				  "cards": ["execute", "keep_range"] },
 			],
+			# 2페이즈는 진짜 방벽이다. 신호기가 표적을 흐리는 동안 악사가
+			# 뒤에서 살린다 - 후열을 못 끊으면 영영 안 끝난다.
 			[
-				{ "type": "shieldman", "pos": Vector2i(5, 2),
-				  "cards": ["near_first", "guard_stance", "front_line"] },
+				{ "type": "beacon", "pos": Vector2i(5, 2), "cards": [],
+				  "traits": ["beacon"] },
 				{ "type": "bard", "pos": Vector2i(6, 2),
 				  "cards": ["behind_guard"], "special": "cantabile" },
+				{ "type": "musketeer", "pos": Vector2i(6, 1),
+				  "cards": ["execute", "front_line"] },
+				{ "type": "warrior", "pos": Vector2i(5, 3), "cards": [] },
 			],
 		],
 	},
@@ -139,22 +168,30 @@ const TABLE: Array[Dictionary] = [
 			],
 		},
 		"waves": [
+			# 감독기가 처음부터 서 있다. 살려 두면 암살자가 25% 세진다 -
+			# "먼저 끊어야 할 적" 이 판 위에 명시적으로 존재한다.
 			[
+				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": ["keep_range"],
+				  "traits": ["overseer"] },
 				{ "type": "assassin", "pos": Vector2i(5, 1),
 				  "cards": ["backline", "forced_march", "berserk"],
 				  "special": "shadow_rend" },
 				{ "type": "assassin", "pos": Vector2i(5, 3),
 				  "cards": ["backline", "forced_march"] },
 			],
+			# 2페이즈는 같은 문제에 신호기가 얹힌다. 감독기를 끊어야 하는데
+			# 표적 판단은 신호기로 끌린다.
 			[
-				{ "type": "musketeer", "pos": Vector2i(5, 2),
-				  "cards": ["execute", "front_line"] },
-			],
-			# 마지막 파는 감독기 혼자다. 뒤에 숨어 있던 것이 직접 나서는 그림이라
-			# [전열 유지] 를 준다 - 안 그러면 아무도 안 다가와 정체로 끝난다.
-			[
-				{ "type": "overseer", "pos": Vector2i(5, 2),
-				  "cards": ["near_first", "front_line"], "traits": ["overseer", "zealot"] },
+				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": ["keep_range"],
+				  "traits": ["overseer"] },
+				{ "type": "assassin", "pos": Vector2i(5, 1),
+				  "cards": ["backline", "forced_march"] },
+				{ "type": "archer", "pos": Vector2i(6, 3),
+				  "cards": ["execute", "keep_range"] },
+				# 전사 하나를 뺐다. 감독기가 전원을 25% 세게 만드는 판에서
+				# 다섯은 산술이 안 맞았다 - 실측 승률 11%.
+				{ "type": "beacon", "pos": Vector2i(6, 1), "cards": [],
+				  "traits": ["beacon"] },
 			],
 		],
 	},
@@ -188,18 +225,36 @@ const TABLE: Array[Dictionary] = [
 			],
 		},
 		"waves": [
+			# ── 1페이즈 · 표적 ───────────────────────────────────────────
+			# 신호기 둘이 표적 판단을 통째로 흔든다. 그 사이 추격 자폭체가
+			# 가장 약한 대원 하나만 물고 들어온다. 표적을 못 짜면 여기서
+			# 후열이 먼저 사라진다.
 			[
-				{ "type": "shieldman", "pos": Vector2i(5, 1),
-				  "cards": ["near_first", "guard_stance", "front_line"] },
+				{ "type": "beacon", "pos": Vector2i(5, 1), "cards": [],
+				  "traits": ["beacon"] },
 				{ "type": "beacon", "pos": Vector2i(5, 3), "cards": [],
 				  "traits": ["beacon"] },
+				{ "type": "stalker", "pos": Vector2i(6, 2),
+				  "cards": ["frail_hunt", "forced_march"], "traits": ["volatile"] },
+				{ "type": "shieldman", "pos": Vector2i(6, 1),
+				  "cards": ["near_first", "guard_stance", "front_line"] },
 			],
+			# ── 2페이즈 · 자리 ───────────────────────────────────────────
+			# 고정 포대 둘 + 감독기. 붙어야 하는데 붙는 동안 계속 맞고,
+			# 감독기를 살려 두면 그 피해가 25% 더 커진다.
 			[
-				{ "type": "overseer", "pos": Vector2i(6, 3), "cards": ["keep_range"],
+				{ "type": "turret", "pos": Vector2i(6, 1), "cards": [],
+				  "traits": ["immobile"] },
+				{ "type": "turret", "pos": Vector2i(6, 3), "cards": [],
+				  "traits": ["immobile"] },
+				{ "type": "overseer", "pos": Vector2i(5, 2), "cards": ["keep_range"],
 				  "traits": ["overseer"] },
-				{ "type": "bomber", "pos": Vector2i(5, 2), "cards": ["forced_march"],
+				{ "type": "bomber", "pos": Vector2i(5, 1), "cards": ["forced_march"],
 				  "traits": ["volatile"] },
 			],
+			# ── 3페이즈 · 정예 ───────────────────────────────────────────
+			# 벽이 막고, 궁수가 화력을 모으고, 악사가 살린다. 게다가 악사는
+			# 광신이라 아군이 죽을수록 세진다 - 오래 끌수록 불리하다.
 			[
 				{ "type": "shieldman", "pos": Vector2i(5, 2),
 				  "cards": ["near_first", "guard_stance", "front_line"],

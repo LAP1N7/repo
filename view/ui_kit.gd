@@ -125,6 +125,54 @@ static func art(dirs: Array, id: String) -> Texture2D:
 
 
 ## size 를 주면 그 크기에 맞는 폰트를 돌려준다. 0 이면 큰 글씨용.
+## ── 그림은 반드시 이 함수로 붙인다 ───────────────────────────────────────
+##
+## **_draw() 안에서 draw_texture_rect 를 쓰지 말 것.** 이 프로젝트에서는 그리면
+## 흰/회색 사각형이 나온다. 네 번 겪었다 - SD 얼굴, 판 뒤 지형, 스토리 초상,
+## 편성 얼굴 타일. 매번 좌표를 의심하다가 화면을 찍고서야 알아냈다.
+##
+## 그리고 TextureRect 는 expand_mode 를 안 바꾸면 **최소 크기가 텍스처 크기**다.
+## 75px 칸에 넣어도 192px 로 되돌아가서 왼쪽 위 귀퉁이만 보인다. 이것도 한 번
+## 걸렸다.
+##
+## 둘 다 여기서 막는다. 호출부는 "어디에 얼마만큼" 만 말하면 된다.
+##
+##   fit  "contain" 그림 전체가 들어간다 (여백이 생길 수 있다)
+##        "cover"   칸을 채우고 넘치는 쪽을 자른다
+##
+## 반환은 만들어진 노드다. 나중에 texture 만 갈아 끼우려면 들고 있으면 된다.
+static func image(parent: Node, rect: Rect2, tex: Texture2D,
+		fit: String = "contain", tint: Color = Color.WHITE) -> Control:
+	var clip := Control.new()
+	clip.position = rect.position
+	clip.size = rect.size
+	clip.clip_contents = true
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(clip)
+
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.modulate = tint
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 최소 크기를 텍스처 크기로 잡지 않게 한다. 이 한 줄이 빠지면 칸보다 큰
+	# 그림이 칸을 무시하고 원래 크기로 되돌아간다.
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	if tex != null and fit == "cover" and tex.get_height() > 0:
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		var ts := Vector2(tex.get_width(), tex.get_height())
+		var k: float = maxf(rect.size.x / ts.x, rect.size.y / ts.y)
+		tr.size = ts * k
+		# 인물은 발치보다 얼굴이 중요하다. 넘치는 세로는 위쪽을 살린다.
+		tr.position = Vector2((rect.size.x - tr.size.x) * 0.5,
+			(rect.size.y - tr.size.y) * 0.25)
+	else:
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.position = Vector2.ZERO
+		tr.size = rect.size
+	clip.add_child(tr)
+	return clip
+
+
 static func font(size: int = 0) -> Font:
 	return font_role("small" if (size > 0 and size <= small_max()) else "large")
 

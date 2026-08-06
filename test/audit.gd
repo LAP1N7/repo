@@ -72,7 +72,7 @@ const CONDS := [
 ]
 const PICKS := [
 	"nearest_enemy", "farthest_enemy", "farthest_in_range_enemy", "backline_enemy",
-	"lowest_hp_enemy", "lowest_hp_abs_enemy", "toughest_enemy", "healer_enemy",
+	"lowest_hp_enemy", "lowest_max_hp_enemy", "lowest_hp_abs_enemy", "toughest_enemy", "healer_enemy",
 	"ranged_enemy", "melee_enemy", "unguarded_enemy", "strongest_enemy",
 	"focused_enemy", "unfocused_enemy", "far_from_allies_enemy",
 	"highest_threat_enemy", "locked_backline_enemy", "special_ready_enemy",

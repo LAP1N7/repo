@@ -165,6 +165,8 @@ var log_lines: Array[String] = []
 var log_label: RichTextLabel
 ## 오른쪽 위 전황판. 우리 셋과 그들을 노리는 적을 한 자리에서 보여 준다.
 var roster_root: Control
+## 지금 마우스가 올라간 판 위의 대원. 없으면 null.
+var hover_unit: Unit = null
 
 
 func setup(p_run: RunState) -> void:
@@ -235,6 +237,20 @@ func setup(p_run: RunState) -> void:
 ## 어그로 선과 포격 예고는 매 틱 바뀐다. 오버레이만 다시 그린다 -
 ## 바탕과 칸은 안 바뀌므로 부모까지 다시 칠할 이유가 없다.
 func _process(_delta: float) -> void:
+	# ── 판 위에서 마우스가 올라간 대원 ───────────────────────────────────
+	# 명일방주처럼 판 위의 개체에 마우스를 올리면 그 자리에서 정체를 밝힌다.
+	# 하단 바는 내 대원 셋만 보여 준다 - 적이 무엇인지 물어볼 데가 화면에
+	# 아무 데도 없었고, 그건 "적 알고리즘을 공개한다" 는 원칙과 정면으로
+	# 어긋난다.
+	hover_unit = null
+	if battle != null:
+		var m := get_local_mouse_position() - BOARD_ORIGIN
+		var cell := Vector2i(int(floor(m.x / TILE_W)), int(floor(m.y / TILE_H)))
+		if m.x >= 0.0 and m.y >= 0.0 and Grid.in_bounds(cell):
+			for u in battle.units:
+				if u.alive and u.pos == cell:
+					hover_unit = u
+					break
 	if overlay != null:
 		overlay.queue_redraw()
 
@@ -376,6 +392,74 @@ func _draw_overlay(c: CanvasItem) -> void:
 	for y in Grid.H + 1:
 		c.draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
 			BOARD_ORIGIN + Vector2(Grid.W * TILE_W, y * TILE_H), UiKit.LINE, 1.0)
+
+	_draw_hover(c)
+
+
+## ── 판 위 개체 정보 ──────────────────────────────────────────────────────
+## 하단 바의 호버 패널과 같은 어법이다. 사선으로 깎은 판에 이름·정체·수치를
+## 얹는다. 같은 모양이어야 "이건 그 정보와 같은 종류" 로 읽힌다.
+##
+## 적에게는 **역할과 특성**을 적는다. 내 대원은 능력치를 알면 되지만, 적은
+## "저게 뭘 하는 물건인가" 가 먼저다. 자동 포탑이 안 움직인다는 사실을 모르면
+## 그 판은 시행착오가 된다 - 숨기면 시행착오, 공개하면 추리다. (DESIGN 2.4)
+func _draw_hover(c: CanvasItem) -> void:
+	var u := hover_unit
+	if u == null:
+		return
+	var d: Dictionary = UnitData.TABLE.get(u.type_id, {})
+	var rows: Array = []
+	rows.append([UiText.t("hover.role", "역할"), String(d.get("role", "-")), UiKit.MUTED])
+	rows.append([UiText.t("hover.hp", "HP"), "%d / %d" % [maxi(0, u.hp), u.max_hp],
+		UiKit.TEXT])
+	rows.append([UiText.t("hover.stat", "공격 · 사거리 · 이동"),
+		"%d · %d · %d" % [u.atk, u.atk_range, u.move_range], UiKit.TEXT])
+	for t in u.traits:
+		rows.append([UiText.t("hover.trait", "특성"), Traits.describe(String(t)),
+			Color(1.0, 0.62, 0.30)])
+	if u.team == Unit.TEAM_ENEMY:
+		rows.append([UiText.t("hover.ai", "기본 판단"),
+			Innates.describe(u.type_id), UiKit.FAINT])
+
+	var fs := UiKit.font(11)
+	var w := 300.0
+	for r in rows:
+		w = maxf(w, 96.0 + fs.get_string_size(String(r[1]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 20.0)
+	var h: float = 34.0 + rows.size() * 17.0
+
+	# 칸 오른쪽에 붙인다. 화면 밖으로 나가면 왼쪽으로 넘긴다.
+	var at := BOARD_ORIGIN + Vector2(u.pos.x * TILE_W + TILE_W + 8.0,
+		u.pos.y * TILE_H)
+	if at.x + w > 1272.0:
+		at.x = BOARD_ORIGIN.x + u.pos.x * TILE_W - w - 8.0
+	at.y = clampf(at.y, 8.0, 712.0 - h)
+
+	var neon: Color = u.color
+	var cut := 14.0
+	var shape := PackedVector2Array([
+		at + Vector2(cut, 0), at + Vector2(w, 0), at + Vector2(w, h - cut),
+		at + Vector2(w - cut, h), at + Vector2(0, h), at + Vector2(0, cut),
+	])
+	c.draw_colored_polygon(shape, Color(0.06, 0.07, 0.09, 0.96))
+	var line := PackedVector2Array(shape)
+	line.append(shape[0])
+	c.draw_polyline(line, Color(neon.r, neon.g, neon.b, 0.9), 2.0, true)
+
+	c.draw_string(fs, at + Vector2(14, 21), u.display_name,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 15, neon)
+	var tag := UiText.t("hover.foe", "적") if u.team == Unit.TEAM_ENEMY 		else UiText.t("hover.ally", "아군")
+	c.draw_string(fs, at + Vector2(w - 44, 21), tag,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+		UiKit.BAD if u.team == Unit.TEAM_ENEMY else UiKit.TEAM_P)
+
+	var y := 40.0
+	for r in rows:
+		c.draw_string(fs, at + Vector2(14, y), String(r[0]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)
+		c.draw_string(fs, at + Vector2(96, y), String(r[1]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, r[2])
+		y += 17.0
 
 
 ## 유닛이 서는 자리(board 로컬 좌표).

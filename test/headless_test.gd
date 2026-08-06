@@ -46,6 +46,8 @@ func _init() -> void:
 	test_traits()
 	test_barrage()
 	test_threat_stance()
+	test_ambush_spec()
+	test_bomber()
 	test_passives()
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
@@ -642,8 +644,10 @@ func test_barrage() -> void:
 	print("
 [20] 궤도 포격")
 
+	# 페이즈가 없는 검사장을 쓴다. 1단계로 재면 페이즈가 넘어가는 순간
+	# 응급 처치(+20%)가 들어와서 포격 피해를 덮어 버린다.
 	var b := Battle.new()
-	b.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	b.setup(Stages.TEST_ID, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
 	b.hazard = {
 		"kind": "barrage", "name": "검사 포격", "first": 2, "period": 3,
 		"damage": 10, "patterns": [{ "cols": [1] }, { "rows": [2] }],
@@ -664,10 +668,10 @@ func test_barrage() -> void:
 
 	# 패턴은 순서대로 돈다. 난수가 아니다.
 	var a := Battle.new()
-	a.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	a.setup(Stages.TEST_ID, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
 	a.hazard = b.hazard
 	var c := Battle.new()
-	c.setup(1, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	c.setup(Stages.TEST_ID, [member("warrior", 0), member("warrior", 2), member("warrior", 4)])
 	c.hazard = b.hazard
 	for _i in 9:
 		a.step()
@@ -704,3 +708,128 @@ func test_threat_stance() -> void:
 	# 위협 수칙끼리는 여전히 위가 이긴다.
 	ok(Shadow.shadowed_slots(["battle_stance", "taunt"], 1).has(1),
 		"위협 수칙끼리는 위가 아래를 가린다")
+
+
+# ── 22. 잠복 규격 ────────────────────────────────────────────────────────
+
+func test_ambush_spec() -> void:
+	print("
+[22] 잠복")
+
+	var b := Battle.new()
+	b.setup(Stages.TEST_ID, [
+		member("assassin", 0, ["ambush"]), member("warrior", 2), member("warrior", 4)])
+	var me: Unit = b.units[0]
+
+	# 첫 틱에 태세를 고르고 숨는다. 줄어들기 시작하는 것은 그 다음 틱부터다.
+	b.step()
+	ok(me.ambush_ticks == Specials.AMBUSH_TICKS,
+		"첫 틱에 %d틱짜리 잠복에 들어간다" % Specials.AMBUSH_TICKS,
+		str(me.ambush_ticks))
+	# 숨은 동안에는 표적이 되지 않는다.
+	var foe: Unit = b.units[3]
+	ok(not b.living_enemies_of(foe).has(me), "잠복 중에는 표적이 안 된다")
+
+	var moved_from := me.pos
+	b.step()
+	b.step()
+	ok(me.pos == moved_from, "잠복 중에는 움직이지 않는다")
+	ok(me.damage_dealt == 0, "잠복 중에는 때리지 않는다")
+
+	b.step()
+	ok(me.ambush_ready, "%d틱 숨은 뒤 보너스가 걸린다" % Specials.AMBUSH_TICKS)
+	ok(me.ambush_done, "한 판에 한 번뿐이다")
+	ok(me.ambush_bonus_ticks == Specials.AMBUSH_WINDOW,
+		"보너스 창 %d틱" % Specials.AMBUSH_WINDOW, str(me.ambush_bonus_ticks))
+
+	# 보너스는 실제로 위력에 실린다.
+	var plain := Unit.create(0, "assassin", Unit.TEAM_PLAYER, Vector2i(1, 1), [])
+	ok(me.power_damage(100) > plain.power_damage(100),
+		"잠복 해제 후 첫 공격이 세다",
+		"%d vs %d" % [me.power_damage(100), plain.power_damage(100)])
+
+	# ── 창이 지나면 식는다 ───────────────────────────────────────────────
+	# 예전에는 때릴 때까지 영원히 남아서, 잠복 후 열 틱을 걸어간 뒤 때려도
+	# 보너스가 실렸다. 그러면 이건 태세가 아니라 공짜 강화다.
+	for _i in Specials.AMBUSH_WINDOW + 1:
+		b.step()
+	ok(not me.ambush_ready, "창이 지나면 보너스가 사라진다")
+
+
+# ── 23. 자폭체 ───────────────────────────────────────────────────────────
+
+func test_bomber() -> void:
+	print("
+[23] 자폭체")
+
+	var b := Battle.new()
+	b.setup(Stages.TEST_ID, [
+		member("warrior", 0), member("warrior", 1), member("warrior", 2)])
+	var mine := Unit.create(b.units.size(), "bomber", Unit.TEAM_ENEMY,
+		Vector2i(1, 2), [])
+	mine.apply_traits([Traits.VOLATILE])
+	b.units.append(mine)
+
+	# ── 3x3 이어야 한다 ──────────────────────────────────────────────────
+	# 인접 4칸이면 대각선으로 한 칸만 비켜 서서 통째로 피할 수 있었다.
+	var diag: Unit = b.units[0]      # (1,1) - 자폭체 (1,2) 의 대각선이 아니라 위
+	var before := diag.hp
+	mine.alive = false
+	b._resolve_explosions()
+	ok(diag.hp < before, "인접 칸이 맞는다")
+
+	# 대각선도 맞는지 따로 본다.
+	var b2 := Battle.new()
+	b2.setup(Stages.TEST_ID, [
+		member("warrior", 0), member("warrior", 4), member("warrior", 5)])
+	var m2 := Unit.create(b2.units.size(), "bomber", Unit.TEAM_ENEMY,
+		Vector2i(2, 2), [])
+	m2.apply_traits([Traits.VOLATILE])
+	b2.units.append(m2)
+	var corner: Unit = b2.units[0]   # (1,1) = (2,2) 의 대각선
+	var hp0 := corner.hp
+	m2.alive = false
+	b2._resolve_explosions()
+	ok(corner.hp < hp0, "대각선도 맞는다 (3x3)", "%d -> %d" % [hp0, corner.hp])
+
+	# ── 도화선 ───────────────────────────────────────────────────────────
+	var b3 := Battle.new()
+	b3.setup(Stages.TEST_ID, [
+		member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	var m3 := Unit.create(b3.units.size(), "bomber", Unit.TEAM_ENEMY,
+		Vector2i(2, 1), [])
+	m3.apply_traits([Traits.VOLATILE])
+	m3.immobile = true     # 자리를 고정해 붙은 상태만 본다
+	b3.units.append(m3)
+	ok(m3.fuse_ticks < 0, "붙기 전에는 도화선이 없다")
+	b3._tick_fuses()
+	ok(m3.fuse_ticks == Traits.FUSE_TICKS, "붙으면 도화선에 불이 붙는다",
+		str(m3.fuse_ticks))
+	for _i in Traits.FUSE_TICKS:
+		b3._tick_fuses()
+	ok(not m3.alive, "%d틱 뒤 스스로 터진다" % Traits.FUSE_TICKS)
+
+	# 떨어지면 꺼진다. "물러나서 끊는다" 가 실제로 통해야 선택이 된다.
+	var b4 := Battle.new()
+	b4.setup(Stages.TEST_ID, [
+		member("warrior", 0), member("warrior", 2), member("warrior", 4)])
+	var m4 := Unit.create(b4.units.size(), "bomber", Unit.TEAM_ENEMY,
+		Vector2i(2, 1), [])
+	m4.apply_traits([Traits.VOLATILE])
+	m4.immobile = true
+	b4.units.append(m4)
+	b4._tick_fuses()
+	m4.pos = Vector2i(6, 5)
+	b4._tick_fuses()
+	ok(m4.fuse_ticks < 0, "떨어지면 도화선이 꺼진다", str(m4.fuse_ticks))
+
+	# ── 추격 자폭체는 가장 물러 터지는 대원을 문다 ───────────────────────
+	var b5 := Battle.new()
+	b5.setup(Stages.TEST_ID, [
+		member("shieldman", 0), member("archer", 2), member("warrior", 4)])
+	var st := Unit.create(b5.units.size(), "stalker", Unit.TEAM_ENEMY,
+		Vector2i(6, 5), ["frail_hunt", "forced_march"])
+	b5.units.append(st)
+	var t := Rules.resolve_target(st, "lowest_max_hp_enemy", b5, "attack")
+	ok(t != null and t.type_id == "archer",
+		"최대 HP 가 가장 낮은 대원을 고른다", "" if t == null else t.type_id)

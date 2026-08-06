@@ -255,9 +255,15 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		"defend":
 			return _rule(unit, "방어", "defend", unit, 0, 0)
 		"ambush":
-			# 잠복. 멈춰 있는 동안 맞지도 때리지도 않는다.
-			unit.ambush_ticks = maxi(unit.ambush_ticks, 1)
-			return _rule(unit, "잠복", "hold", unit, 0, 0)
+			# ── 잠복 ─────────────────────────────────────────────────────
+			#   3틱간 멈춘다. 그동안 맞지도 때리지도 움직이지도 않는다.
+			#   풀린 뒤 3틱 안에 때리면 그 한 방이 세진다.
+			#
+			# 전투당 한 번이다. 조건이 참인 동안 계속 숨었다 나왔다 하면 그
+			# 대원은 판이 끝날 때까지 아무 일도 안 한다.
+			if not unit.ambush_done:
+				unit.ambush_ticks = Specials.AMBUSH_TICKS
+				return _rule(unit, "잠복", "hold", unit, 0, 0)
 		"avoid_near":
 			if near_d <= 1:
 				return _retreat(unit, state, bonus)
@@ -682,6 +688,15 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 					if e.pos.x < deep.pos.x or (e.pos.x == deep.pos.x and e.hp < deep.hp):
 						deep = e
 			return deep
+
+		# 지금 남은 HP 가 아니라 **원래 그릇이 작은** 적. 깎였는지와 무관하므로
+		# 전투 내내 같은 대상을 고른다 - 추격 자폭체가 이걸로 한 명만 문다.
+		"lowest_max_hp_enemy":
+			var frail: Unit = null
+			for e in enemies:
+				if frail == null or e.max_hp < frail.max_hp:
+					frail = e
+			return frail
 
 		"lowest_hp_enemy":
 			var best: Unit = null
