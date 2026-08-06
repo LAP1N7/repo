@@ -59,6 +59,25 @@ const CONTRIB_W: float = 176.0
 
 const COL_TILE_A := Color(0.16, 0.17, 0.22)
 const COL_TILE_B := Color(0.13, 0.14, 0.19)
+
+## 지형 사진의 진하기.
+##
+## ── 왜 사진을 칸 **위에** 얹는가 ─────────────────────────────────────────
+## 처음에는 사진을 깔고 칸을 반투명으로 덮었다. 결과는 판 전체가 균일한 회색
+## 판이었다 - 어두운 칸 색이 사진을 뿌옇게 덮으면서 도로도 경계선도 다 뭉갰고,
+## 판이 UI 보다 밝아져 격자선까지 안 읽혔다. 배경을 넣었는데 배경은 안 보이고
+## 원래 있던 것만 나빠졌다.
+##
+## 순서를 뒤집으면 둘 다 산다. 칸은 예전 그대로 불투명하게 깔아 판의 어둡기와
+## 체크무늬를 지키고, 사진은 그 위에 옅게 얹어 무늬만 더한다. 얹는 쪽이 옅으면
+## 어두운 칸은 어둡게 남고 사진의 선만 살짝 비친다.
+##
+## 0.30 이면 도로와 구획선이 보이되 유닛·어그로선을 방해하지 않는다.
+## 0.30 으로 시작했다가 올렸다. 사진이 이미 어두워서, 그 위에 30% 로만 얹으면
+## 무늬의 진폭이 다시 3분의 1로 줄어 도로도 자재 더미도 안 보였다. 사진 쪽을
+## 더 어둡게 굽고(가장 밝은 곳 72/255) 얹는 비율을 올리는 편이 맞다 -
+## 판은 여전히 어둡고 무늬만 살아난다.
+const BG_ALPHA: float = 0.55
 const COL_PLAYER_ZONE := Color(0.25, 0.5, 0.8, 0.15)
 const COL_ENEMY_ZONE := Color(0.8, 0.3, 0.28, 0.15)
 
@@ -80,6 +99,9 @@ var board: Node2D
 var fx: Node2D
 var ui: Control
 var unit_views: Array[UnitView] = []
+## 판 뒤에 까는 지형 사진과, 그 위에 그리는 층.
+var terrain: TextureRect
+var overlay: Control
 
 var lbl_stage: Label
 var lbl_tick: Label
@@ -125,6 +147,33 @@ func setup(p_run: RunState) -> void:
 	# UnitView 가 이 폰트로 머리 위 규칙 칩(12px)과 이름을 그린다. 둘 다 작은 글씨다.
 	font = UiKit.font(UnitView.CHIP_SIZE)
 
+	# ── 판은 네 겹이다 ───────────────────────────────────────────────────
+	#   _draw()      바탕 + 칸(불투명)
+	#   terrain      지형 사진 (TextureRect)
+	#   overlay      진영·어그로선·포격 예고·격자선
+	#   board        유닛
+	#
+	# 지형을 왜 노드로 붙이는가: _draw() 안의 draw_texture_rect 가 이 프로젝트
+	# 에서 텍스처를 흰색으로 칠한다. SD 얼굴이 흰 네모로 나왔을 때와 같은
+	# 증상이고, 그때도 TextureRect 자식 노드로 바꿔 해결했다. 좌표만 보고는
+	# 절대 못 찾는 종류라 화면을 찍어 확인해야 한다(test/shots.gd).
+	#
+	# 그리고 지형이 노드가 되면 격자선이 그 아래로 깔린다. 그래서 진영 표시부터
+	# 격자선까지를 overlay 로 옮겨 지형 **위에** 다시 그린다.
+	terrain = TextureRect.new()
+	terrain.position = BOARD_ORIGIN
+	terrain.size = Vector2(Grid.W * TILE_W, Grid.H * TILE_H)
+	terrain.stretch_mode = TextureRect.STRETCH_SCALE
+	terrain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	terrain.modulate = Color(1, 1, 1, BG_ALPHA)
+	add_child(terrain)
+
+	overlay = _Overlay.new()
+	overlay.view = self
+	overlay.size = Vector2(1280, 720)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay)
+
 	board = Node2D.new()
 	board.position = BOARD_ORIGIN
 	# 세로로 긴 스프라이트는 위 칸을 침범한다. Y 정렬을 켜면 화면 아래쪽 유닛이
@@ -151,13 +200,20 @@ func setup(p_run: RunState) -> void:
 
 # ── 그리기 ───────────────────────────────────────────────────────────────
 
-## 포격 예고가 떠 있는 동안만 매 프레임 다시 그린다.
-##
-## 판 전체를 상시 재도색하면 전투 화면이 통째로 매 프레임 갱신된다. 깜빡이는
-## 것은 예고뿐이므로 예고가 있을 때만 켠다.
+## 어그로 선과 포격 예고는 매 틱 바뀐다. 오버레이만 다시 그린다 -
+## 바탕과 칸은 안 바뀌므로 부모까지 다시 칠할 이유가 없다.
 func _process(_delta: float) -> void:
-	if battle != null and not battle.hazard_cells.is_empty():
-		queue_redraw()
+	if overlay != null:
+		overlay.queue_redraw()
+
+
+## 지형 위에 그리는 층. _draw_overlay 를 그대로 부른다.
+class _Overlay extends Control:
+	var view
+
+	func _draw() -> void:
+		if view != null:
+			view._draw_overlay(self)
 
 
 func _draw() -> void:
@@ -169,51 +225,61 @@ func _draw() -> void:
 				Vector2(TILE_W, TILE_H)),
 				COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
 
+
+## 지형 사진을 지금 스테이지 것으로 맞춘다. 없으면 노드를 비워 둔다 -
+## 사진이 없어도 게임은 그대로 돈다. 예전처럼 빈 격자가 될 뿐이다.
+func _refresh_terrain() -> void:
+	if terrain == null:
+		return
+	terrain.texture = UiKit.art(["bg"],
+		"stage%d" % (run.stage_id if run != null else 1))
+
+
+## 지형 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
+##
+## 예전에는 전부 _draw 안에 있었다. 지형이 노드가 되면서 자식이 부모보다 나중에
+## 그려지므로, 여기 있던 것들을 그대로 두면 사진이 격자선을 덮어 버린다.
+func _draw_overlay(c: CanvasItem) -> void:
 	# ── 배율은 위치와 크기 **둘 다**에 걸어야 한다 ───────────────────────
 	# 진영 표시만 크기에 배율을 안 걸어서, 칸은 74px 인데 표시는 64px 로 그려져
 	# 반 칸씩 밀린 것처럼 보였다. 유닛이 어긋난 게 아니라 이 사각형이 어긋난
 	# 것이었다 - 눈에는 똑같이 "격자와 안 맞는다" 로 보인다.
 	var cell := Vector2(TILE_W, TILE_H)
 	for p in Grid.PLAYER_SLOTS:
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
+		c.draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_PLAYER_ZONE)
 	for p in Grid.ENEMY_SLOTS:
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
+		c.draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_ENEMY_ZONE)
 
 	# ── 포격 예고 ────────────────────────────────────────────────────────
 	# 한 틱 뒤에 떨어질 칸을 미리 밝힌다. 예고가 없으면 그건 난수와 구별되지
 	# 않는다 - 플레이어는 알고리즘을 짜 두고 결과를 보는 입장이라, 화면이
 	# 먼저 말해 주지 않으면 편성이 나빴는지 운이 나빴는지 영영 모른다.
-	#
-	# 격자 위에 얹되 유닛보다는 아래다. 누가 그 칸에 서 있는지가 안 가려야 한다.
 	if battle != null and not battle.hazard_cells.is_empty():
 		var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 90.0)
-		for c in battle.hazard_cells:
-			var r := Rect2(BOARD_ORIGIN + Vector2(c.x * TILE_W, c.y * TILE_H),
+		for cc in battle.hazard_cells:
+			var r := Rect2(BOARD_ORIGIN + Vector2(cc.x * TILE_W, cc.y * TILE_H),
 				Vector2(TILE_W, TILE_H))
-			draw_rect(r, Color(1.0, 0.26, 0.20, 0.12 + 0.20 * pulse))
-			draw_rect(r, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), false, 2.0)
-			# 빗금. 깜빡임만으로는 정지 화면에서 안 읽히고, 화면을 찍어 확인할
-			# 수도 없다. 무늬가 있어야 "여기는 위험한 칸" 이 한눈에 들어온다.
+			c.draw_rect(r, Color(1.0, 0.26, 0.20, 0.12 + 0.20 * pulse))
+			c.draw_rect(r, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), false, 2.0)
+			# 빗금. 깜빡임만으로는 정지 화면에서 안 읽힌다.
 			var step := 14.0
 			var d := -r.size.y
 			while d < r.size.x:
 				var x0: float = r.position.x + maxf(d, 0.0)
 				var y0: float = r.position.y + maxf(-d, 0.0)
-				var run: float = minf(r.size.x - maxf(d, 0.0),
+				var run_len: float = minf(r.size.x - maxf(d, 0.0),
 					r.size.y - maxf(-d, 0.0))
-				if run > 0.0:
-					draw_line(Vector2(x0, y0), Vector2(x0 + run, y0 + run),
+				if run_len > 0.0:
+					c.draw_line(Vector2(x0, y0), Vector2(x0 + run_len, y0 + run_len),
 						Color(1.0, 0.40, 0.28, 0.22), 2.0)
 				d += step
 
 	# ── 어그로 선 ────────────────────────────────────────────────────────
-	# 적이 지금 누구를 보고 있는지를 선으로 잇는다.
-	#
-	# 이게 없으면 "내 궁수가 왜 죽었지" 를 답할 수가 없다. 위협도를 넣어도
-	# 화면에 안 보이면 플레이어에게는 없는 것과 같다 - 도발을 넣었을 때 선이
-	# 방패병 쪽으로 옮겨 가는 것이 보여야 그 카드가 무슨 일을 하는지 안다.
+	# 적이 지금 누구를 보고 있는지를 선으로 잇는다. 이게 없으면 "내 궁수가 왜
+	# 죽었지" 를 답할 수가 없다. 위협도를 넣어도 화면에 안 보이면 플레이어에게는
+	# 없는 것과 같다.
 	if battle != null:
 		for e in battle.units:
 			if not e.alive or e.team != Unit.TEAM_ENEMY or e.last_target == null:
@@ -225,17 +291,17 @@ func _draw() -> void:
 			# 판 위에 선이 잔뜩 깔려서 "지금 누가 맞고 있나" 가 오히려 안 보인다.
 			if Grid.manhattan(e.pos, t.pos) > e.atk_range:
 				continue
-			var a := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
+			var pa := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
 				e.pos.y * TILE_H + TILE_H * 0.5)
-			var b := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
+			var pb := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
 				t.pos.y * TILE_H + TILE_H * 0.5)
-			draw_line(a, b, Color(1.0, 0.42, 0.38, 0.20), 1.0)
+			c.draw_line(pa, pb, Color(1.0, 0.42, 0.38, 0.20), 1.0)
 
 	for x in Grid.W + 1:
-		draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),
+		c.draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),
 			BOARD_ORIGIN + Vector2(x * TILE_W, Grid.H * TILE_H), UiKit.LINE, 1.0)
 	for y in Grid.H + 1:
-		draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
+		c.draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
 			BOARD_ORIGIN + Vector2(Grid.W * TILE_W, y * TILE_H), UiKit.LINE, 1.0)
 
 
@@ -701,6 +767,7 @@ func _reset() -> void:
 
 	battle = Battle.new()
 	battle.setup(run.stage_id, run.to_party())
+	_refresh_terrain()
 	_build_unit_views()
 	_build_squad_bar()
 	_clear_log()
