@@ -68,17 +68,29 @@ static func select(unit: Unit, state) -> Dictionary:
 	var target: Unit = picked.get("target", null)
 	# 표적 **모듈**이 골랐는가, 아니면 기본 판단으로 떨어졌는가.
 	# 조립 단계에서 "쫓을지" 를 이 값으로 정한다. (_move_by_stand 참조)
-	var designated := picked.has("rule")
+	# ── 표적 모듈을 **가지고 있으면** 능동적으로 움직인다 ────────────────
+	# picked.has("rule") 만 보면, 조건이 안 걸린 틱에는 원거리가 제자리에
+	# 굳는다. [원거리 추적] 은 사거리 안에 적이 있어야 대상을 고르므로, 적이
+	# 멀리 있는 동안에는 아무것도 안 걸리고 궁수는 한 걸음도 안 움직였다.
+	# 실측으로 30틱 중 이동 0틱이었다.
+	#
+	# 표적 모듈을 샀다는 것은 "이 대원은 적을 찾아간다" 는 선언이다. 그 선언은
+	# 조건이 걸린 틱에만 참일 수 없다.
+	var designated := picked.has("rule") or _has_axis(unit, Axes.TARGET)
+
+	# 표적이 정해졌으니 이제 조건 평가기가 그걸 볼 수 있다.
+	#
+	# 예전에는 이 줄이 위치 축 **뒤에** 있었다. 그래서 [추격 기동](표적 HP<30%)
+	# 처럼 표적을 봐야 하는 위치 조건이 항상 null 을 읽어 **한 번도 발동하지
+	# 못했다.** 실측 발동 0회. 주석에는 "표적을 먼저 계산한다" 고 적혀 있었는데
+	# 정작 코드는 안 그랬다.
+	_ctx_target = target
 
 	# 2) POSITION - 어디에 서는가
 	var pos := _axis(unit, Axes.POSITION, state, trace)
 	var stand := String(pos.get("value", ""))
 
 	# 3) DOCTRINE - 언제 무엇을 하는가
-	#
-	# 표적을 먼저 계산하는 것은 순서가 아니라 의존성 때문이다. [추격 기동] 같은
-	# 조건이 표적을 알아야 판정된다. 우선순위는 조립 단계에서 지켜진다.
-	_ctx_target = target
 	var doc := _pick_doctrine(unit, state, trace)
 	_ctx_target = null
 	var stance := String(doc.get("value", ""))
@@ -183,6 +195,14 @@ static func _pick_doctrine(unit: Unit, state, trace: Dictionary) -> Dictionary:
 	trace[Axes.DOCTRINE] = rows
 	out["threat"] = threat
 	return out
+
+
+## 그 축의 모듈을 하나라도 꽂았는가. 조건이 걸렸는지는 안 본다.
+static func _has_axis(unit: Unit, axis: String) -> bool:
+	for r in unit.card_rules:
+		if String((r as Dictionary).get("axis", "")) == axis:
+			return true
+	return false
 
 
 # ── 2) 표적 ──────────────────────────────────────────────────────────────
@@ -331,7 +351,8 @@ static func _move_by_stand(unit: Unit, state, target: Unit,
 	#
 	# 위치 모듈이 있으면 그쪽이 이긴다 - 플레이어가 명시적으로 자리를 지정한
 	# 것이므로, 협력이 그걸 덮으면 지정이 무의미해진다.
-	if stand in ["follow_guard", "follow_lead", "protect_support", "escort", "rally"]:
+	if stand in ["follow_guard", "follow_lead", "protect_support", "protect_ranged",
+			"escort", "rally"]:
 		var mate := _coop_anchor(unit, state, stand)
 		if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1:
 			# 아군에게 갈 때는 1칸 옆까지 간다. 사거리로 재면 궁수가 3칸 밖에서
@@ -438,6 +459,17 @@ static func _coop_anchor(unit: Unit, state, coop: String) -> Unit:
 				if a.index != unit.index and String(Innates.base_ai(a.type_id)["act"]) == "heal":
 					return a
 			return null
+
+		# 사거리가 긴 아군 곁. 회복형만 지키던 [지원 엄호] 로는 궁수·총사가
+		# 홀로 남는 판을 못 막는다. 뒤에 서는 것은 악사만이 아니다.
+		"protect_ranged":
+			var far_ally: Unit = null
+			for a in state.living_allies_of(unit):
+				if a.index == unit.index or a.atk_range < 2:
+					continue
+				if far_ally == null or a.atk_range > far_ally.atk_range:
+					far_ally = a
+			return far_ally
 		"rally":
 			# 아군 무리의 한가운데. 아군까지 거리 합이 가장 작은 아군을 기준으로
 			# 삼는다. 칸을 직접 고르지 않는 이유는 이동이 아군 기준으로만
@@ -723,6 +755,35 @@ static func resolve_target(unit: Unit, target_kind: String, state, act: String =
 
 		# 지금 남은 HP 가 아니라 **원래 그릇이 작은** 적. 깎였는지와 무관하므로
 		# 전투 내내 같은 대상을 고른다 - 추격 자폭체가 이걸로 한 명만 문다.
+		# ── 개전 시 가장 가까운 적을 끝까지 ──────────────────────────────
+		# [후열 침투] 의 반대다. 한 번 문 것을 놓지 않는 것이 요점이라, 매 틱
+		# 다시 고르는 [근접 추적] 과는 완전히 다른 물건이다. 전열이 흩어지든
+		# 새 적이 붙든 처음 정한 하나를 끝낸다.
+		"locked_frontline_enemy":
+			if unit.locked_target != null and unit.locked_target.alive 					and unit.locked_target.team != unit.team:
+				return unit.locked_target
+			var fb: Unit = null
+			var fb_d: int = Grid.UNREACHABLE
+			for e in enemies:
+				var d3: int = Grid.manhattan(unit.pos, e.pos)
+				if d3 < fb_d:
+					fb_d = d3
+					fb = e
+			unit.locked_target = fb
+			return fb
+
+		# ── 잠복한 적 ────────────────────────────────────────────────────
+		# 숨은 적은 living_enemies_of 에서 아예 빠지므로 다른 어떤 모듈로도
+		# 고를 수 없다. 이 모듈만 그 목록을 따로 본다 - 잠복에 대한 답이
+		# 판 위에 하나는 있어야 한다.
+		"ambushing_enemy":
+			var hidden: Unit = null
+			for e in state.units:
+				if e.alive and e.team != unit.team and e.ambush_ticks > 0:
+					if hidden == null or Grid.manhattan(unit.pos, e.pos) 							< Grid.manhattan(unit.pos, hidden.pos):
+						hidden = e
+			return hidden
+
 		"lowest_max_hp_enemy":
 			var frail: Unit = null
 			for e in enemies:

@@ -318,6 +318,8 @@ func _draw_overlay(c: CanvasItem) -> void:
 		c.draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
 			cell), COL_ENEMY_ZONE)
 
+	_draw_zones(c)
+
 	# ── 포격 예고 ────────────────────────────────────────────────────────
 	# 한 틱 뒤에 떨어질 칸을 미리 밝힌다. 예고가 없으면 그건 난수와 구별되지
 	# 않는다 - 플레이어는 알고리즘을 짜 두고 결과를 보는 입장이라, 화면이
@@ -372,6 +374,63 @@ func _draw_overlay(c: CanvasItem) -> void:
 		c.draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
 			BOARD_ORIGIN + Vector2(Grid.W * TILE_W, y * TILE_H), UiKit.LINE, 1.0)
 
+
+
+## ── 범위 공격이 닿는 칸 ──────────────────────────────────────────────────
+## 자폭체가 어디까지 터지는지, 총사 궁극기가 어디를 쓸어 담는지가 화면에 없었다.
+## "붙기 전에 잡아라" 도 "저 칸을 비켜라" 도 범위를 알아야 성립하는 말인데,
+## 그 범위를 아는 방법이 설명문을 읽는 것뿐이었다.
+##
+## 칸을 개체 **고유색**으로 칠하고 테두리로 진영을 가른다. 색만으로는 누구
+## 것인지 알 수 있고, 테두리만으로는 내 것인지 알 수 있다. 둘을 겹쳐야 판
+## 위에서 한눈에 읽힌다.
+##
+## 격자 위·유닛 아래에 그린다. 누가 그 칸에 서 있는지가 안 가려야 한다.
+func _draw_zones(c: CanvasItem) -> void:
+	if battle == null:
+		return
+	for u in battle.units:
+		if not _shown_alive(u):
+			continue
+		var cells := _danger_cells(u)
+		if cells.is_empty():
+			continue
+		var ally := u.team == Unit.TEAM_PLAYER
+		var edge: Color = COL_ALLY if ally else COL_FOE
+		# 도화선에 불이 붙었으면 진하게. 곧 터진다는 것이 가장 급한 정보다.
+		var hot: bool = u.fuse_ticks >= 0
+		var fill := Color(u.color.r, u.color.g, u.color.b, 0.20 if hot else 0.10)
+		for p in cells:
+			var r := Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
+				Vector2(TILE_W, TILE_H))
+			c.draw_rect(r, fill)
+			c.draw_rect(r, Color(edge.r, edge.g, edge.b, 0.55 if hot else 0.30),
+				false, 2.0 if hot else 1.0)
+
+
+## 그 개체가 지금 범위로 때릴 수 있는 칸. 없으면 빈 배열.
+##
+## 범위가 **지금 성립하는 것**만 그린다. 조건이 안 맞는데 칸을 칠하면 판이
+## 통째로 색으로 덮여서, 정작 위험한 칸이 안 보인다.
+func _danger_cells(u: Unit) -> Array:
+	var out: Array = []
+	# 자폭 - 자신을 중심으로 한 3x3.
+	if Traits.has(u, Traits.VOLATILE):
+		for dy in [-1, 0, 1]:
+			for dx in [-1, 0, 1]:
+				var p := u.pos + Vector2i(dx, dy)
+				if Grid.in_bounds(p):
+					out.append(p)
+	# 총사 궁극기 [거리두기] - 표적 쪽 3칸 부채. 아직 안 썼고 조건이 찼을 때만.
+	if u.special == "point_blank" and not u.special_used and u.last_target != null 			and u.last_target.alive:
+		var d: Vector2i = u.last_target.pos - u.pos
+		var face := Vector2i(signi(d.x), 0) if absi(d.x) >= absi(d.y) 			else Vector2i(0, signi(d.y))
+		if face != Vector2i.ZERO:
+			var side := Vector2i(face.y, face.x)
+			for cc in [u.pos + face, u.pos + face + side, u.pos + face - side]:
+				if Grid.in_bounds(cc):
+					out.append(cc)
+	return out
 
 
 ## 휜 화살표 하나. bend 는 휘는 정도이자 방향이다(부호).

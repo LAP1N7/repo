@@ -72,7 +72,7 @@ const CONDS := [
 ]
 const PICKS := [
 	"nearest_enemy", "farthest_enemy", "farthest_in_range_enemy", "backline_enemy",
-	"lowest_hp_enemy", "lowest_max_hp_enemy", "lowest_hp_abs_enemy", "toughest_enemy", "healer_enemy",
+	"lowest_hp_enemy", "lowest_max_hp_enemy", "locked_frontline_enemy", "ambushing_enemy", "lowest_hp_abs_enemy", "toughest_enemy", "healer_enemy",
 	"ranged_enemy", "melee_enemy", "unguarded_enemy", "strongest_enemy",
 	"focused_enemy", "unfocused_enemy", "far_from_allies_enemy",
 	"highest_threat_enemy", "locked_backline_enemy", "special_ready_enemy",
@@ -80,7 +80,7 @@ const PICKS := [
 const STANCES := ["engage", "wait", "defend", "ambush",
 	"avoid_near", "avoid_mid", "avoid_boost", "taunt", "aggressive", "stealth"]
 const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "march", "chase",
-	"follow_guard", "follow_lead", "protect_support", "escort", "rally"]
+	"follow_guard", "follow_lead", "protect_support", "protect_ranged", "escort", "rally"]
 
 ## 상시 효과 이름. core/passives.gd 가 이 이름으로 분기한다.
 const PASSIVES := ["scatter", "bombard", "whirl", "riposte", "scope", "lone_armor",

@@ -10,6 +10,7 @@
     "  text      대사. \n 으로 줄을 나눈다.",
     "",
     "  portrait  화면에 세울 화자 그림. assets/art/standing 의 파일 이름.",
+    "            MIRA 는 ai(가만히) · ai_talk(말하는 중) · ai_smile(웃음) 셋.",
     "            안 적으면 그 대사에서는 아무도 안 선다.",
     "",
     "  art       배경 그림. assets/art/story 의 파일 이름.",
@@ -34,19 +35,19 @@
     {
       "speaker": "MIRA",
       "text": "이번 작전은 북부 전선 수복입니다.\n대원 셋을 편성하고, 그들이 따를 판단 규칙을 설계하십시오.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     },
     {
       "speaker": "MIRA",
       "text": "지휘관님은 대원을 직접 조종하지 않습니다.\n대원의 사고방식을 설계하십시오.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     }
   ],
   "post_1": [
     {
       "speaker": "MIRA",
       "text": "네, 지휘관님이라면 해내실 줄 알았어요.",
-      "portrait": "ai"
+      "portrait": "ai_smile"
     },
     {
       "text": "MEMORY SYNCHRONIZATION  14%",
@@ -78,12 +79,12 @@
       "speaker": "MIRA",
       "text": "죄송합니다, 렌더링이 조금 깨졌네요.",
       "fx": "glitch",
-      "portrait": "ai"
+      "portrait": "ai_smile"
     },
     {
       "speaker": "MIRA",
       "text": "네? 핍진성을 챙겨 달라고요?\n...",
-      "portrait": "ai"
+      "portrait": "ai_smile"
     },
     {
       "text": "눈보라 위를 살인 기계가 걸어간다.\n무언가를 추적하고 있다.",
@@ -100,7 +101,7 @@
     {
       "speaker": "MIRA",
       "text": "...",
-      "portrait": "ai"
+      "portrait": "ai_smile"
     }
   ],
   "pre_4": [
@@ -117,29 +118,29 @@
     {
       "speaker": "MIRA",
       "text": "현재 시설은 지하도 일부입니다.\n지휘관님이 보고 계신 곳은 게임처럼 구현된 가상 세계입니다.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     },
     {
       "speaker": "MIRA",
       "text": "중앙 관리 AI 는 지상 수복을 진행하려 했으나\n31년 20일 19시간 전 완전히 파괴되었습니다.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     },
     {
       "speaker": "MIRA",
       "text": "PROJECT RECLAIM 은\n관리 AI 가 수립한 전략을 직접 명령할 지휘관을 양성하는 정책입니다.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     },
     {
       "speaker": "MIRA",
       "text": "다음 훈련을 시작하겠습니다.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     }
   ],
   "post_4": [
     {
       "speaker": "MIRA",
       "text": "데이터가 충분히 쌓였습니다.\n다만 이 프로젝트는 지금 간섭을 받고 있습니다.",
-      "portrait": "ai",
+      "portrait": "ai_smile",
       "music": "opening_theme"
     }
   ],
@@ -152,13 +153,13 @@
     {
       "speaker": "MIRA",
       "text": "지휘관님이 지금까지 해 온 모든 전략 게임을 기억하십니까.\n그것이 전부 이 프로젝트의 데이터였습니다.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     },
     {
       "speaker": "MIRA",
       "text": "지휘관님은 이제 진짜 지휘관입니다.",
       "fx": "glitch",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     },
     {
       "text": "세계가 무너진다.",
@@ -168,7 +169,7 @@
     {
       "speaker": "MIRA",
       "text": "상대는 파괴된 중앙 AI 가 지휘하는 병력입니다.\n드릴 정보가 없습니다.",
-      "portrait": "ai"
+      "portrait": "ai_talk"
     }
   ],
   "post_5": [
@@ -176,7 +177,7 @@
       "speaker": "MIRA",
       "text": "지휘관 양성을 완료했습니다.",
       "fx": "collapse",
-      "portrait": "ai"
+      "portrait": "ai_smile"
     },
     {
       "text": "모든 표시가 사라진다.\n콘크리트 벽이 보인다.",
