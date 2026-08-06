@@ -868,14 +868,25 @@ func test_healer_target() -> void:
 	ok(String(d2["card"]["act"]) == "attack",
 		"사거리 안이면 악사도 그 적을 친다", String(d2["card"]["act"]))
 
-	# 사거리 밖에서는 여전히 제자리다. 원거리를 앞으로 보내려면 위치 모듈이
-	# 필요하다는 규칙(Innates 주석)은 악사에게도 똑같이 적용된다.
-	ok(String(d["card"]["act"]) == "hold",
-		"사거리 밖에서는 제자리 - 위치 모듈이 있어야 간다", String(d["card"]["act"]))
+	# 사거리 밖이면 **쫓는다.** 카드가 "쫓는다" 라고 적혀 있으면 쫓아야 한다.
+	ok(String(d["card"]["act"]) == "move_toward",
+		"표적 모듈 하나만 꽂아도 접근한다", String(d["card"]["act"]))
 
-	# 위치 모듈을 같이 꽂으면 간다.
-	var d3 := decide(Stages.TEST_ID, [
-		member("bard", 0, ["near_first", "front_line"]),
-		member("warrior", 2), member("warrior", 4)])
-	ok(String(d3["card"]["act"]) == "move_toward",
-		"위치 모듈을 꽂으면 접근한다", String(d3["card"]["act"]))
+	# 모듈이 하나도 없으면 예전 그대로 제자리다 - 경제의 근거는 남는다.
+	var idle := decide(Stages.TEST_ID, [
+		member("archer", 0), member("warrior", 2), member("warrior", 4)])
+	ok(String(idle["card"]["act"]) == "hold",
+		"모듈이 없는 원거리는 여전히 제자리", String(idle["card"]["act"]))
+
+	# 쫓아도 **사거리 안까지만** 간다. 궁수가 근접으로 걸어 들어가면 안 된다.
+	# 적이 다가와서 붙는 것과 내가 걸어 들어가는 것은 다르다. 이동 계획만
+	# 따로 물어봐야 후자를 잰다.
+	var b2 := Battle.new()
+	b2.setup(Stages.TEST_ID, [
+		member("archer", 0, ["near_first"]), member("warrior", 2), member("warrior", 4)])
+	var arc: Unit = b2.units[0]
+	var foe2: Unit = b2.units[3]
+	var landed := b2.plan_move(arc, foe2, true, 0)
+	ok(Grid.manhattan(landed, foe2.pos) >= arc.atk_range,
+		"쫓아도 사거리 안까지만 간다",
+		"거리 %d / 사거리 %d" % [Grid.manhattan(landed, foe2.pos), arc.atk_range])

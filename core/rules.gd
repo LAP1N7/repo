@@ -66,6 +66,9 @@ static func select(unit: Unit, state) -> Dictionary:
 	# 1) TARGET - 누구를 쫓는가
 	var picked := _pick_target(unit, state, trace)
 	var target: Unit = picked.get("target", null)
+	# 표적 **모듈**이 골랐는가, 아니면 기본 판단으로 떨어졌는가.
+	# 조립 단계에서 "쫓을지" 를 이 값으로 정한다. (_move_by_stand 참조)
+	var designated := picked.has("rule")
 
 	# 2) POSITION - 어디에 서는가
 	var pos := _axis(unit, Axes.POSITION, state, trace)
@@ -89,7 +92,7 @@ static func select(unit: Unit, state) -> Dictionary:
 			late["trace"] = trace
 			return late
 
-	var built := _assemble(unit, state, target, stance, stand)
+	var built := _assemble(unit, state, target, stance, stand, designated)
 	if built.is_empty():
 		return {}
 
@@ -240,7 +243,7 @@ static func _ally_focus(unit: Unit, state) -> Unit:
 ##
 ## 여기가 `교전 > 위치 > 표적` 우선순위가 실제로 지켜지는 곳이다.
 static func _assemble(unit: Unit, state, target: Unit, stance: String,
-		stand: String) -> Dictionary:
+		stand: String, designated: bool = false) -> Dictionary:
 	var ai := Innates.base_ai(unit.type_id)
 	var act_kind := String(ai["act"])
 	var power := int(ai["power"])
@@ -315,11 +318,11 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			return _rule(unit, "공격", "attack", target, power, 0)
 
 	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
-	return _move_by_stand(unit, state, target, stand, bonus)
+	return _move_by_stand(unit, state, target, stand, bonus, designated)
 
 
 static func _move_by_stand(unit: Unit, state, target: Unit,
-		stand: String, bonus: int) -> Dictionary:
+		stand: String, bonus: int, designated: bool = false) -> Dictionary:
 	var ai := Innates.base_ai(unit.type_id)
 
 	# ── 협력이 위치 모듈보다 먼저 걸린다 ─────────────────────────────────
@@ -379,8 +382,25 @@ static func _move_by_stand(unit: Unit, state, target: Unit,
 		"frontline", "flank", "march":
 			return _approach(unit, state, target, bonus, "전진")
 
-	# 위치 모듈이 없다. 직업 기본 AI 가 정한다.
-	if String(ai["stand"]) == "advance" or stand == "chase":
+	# ── 표적 모듈을 꽂았으면 쫓는다 ──────────────────────────────────────
+	# 표적 카드 열세 장이 전부 "**쫓는다**" 라고 적혀 있는데 실제로는 안 쫓았다.
+	# 원거리는 기본 판단이 제자리라, 표적만 꽂은 궁수·악사가 대상을 정해 놓고
+	# 판이 끝날 때까지 한 걸음도 안 움직였다. 카드가 자기 문장과 모순이었다.
+	#
+	# 표적을 지정하는 것은 "저 녀석이다" 라는 명시적인 선택이다. 그 선택에
+	# 다리를 안 달아 주면 산 모듈이 아무 일도 안 하는 것이고, 그건 어떤 설계
+	# 원칙으로도 못 덮는다.
+	#
+	# ── 그래도 위치 축은 안 죽는다 ───────────────────────────────────────
+	# 쫓는다는 것은 **사거리 안까지만** 간다는 뜻이다(plan_move 가 atk_range 에서
+	# 멈춘다). 궁수는 3칸, 총사는 2칸에서 선다 - 근접으로 걸어 들어가지 않는다.
+	# 어디에 · 어떻게 설지는 여전히 위치 축의 몫이다:
+	#   거리 유지  최대 사거리를 지킨다      방패 뒤  아군 뒤에 선다
+	#   밀집       뭉친다                    강행군   한 칸 더 간다
+	#
+	# 모듈이 하나도 없으면 예전 그대로 원거리는 제자리다. "모듈을 사야 대원이
+	# 자기 뜻대로 움직인다" 는 경제의 근거는 그대로 남는다.
+	if String(ai["stand"]) == "advance" or stand == "chase" or designated:
 		return _approach(unit, state, target, bonus, "전진")
 	return _rule(unit, "제자리", "hold", target, 0, 0)
 
