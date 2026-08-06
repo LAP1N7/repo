@@ -17,12 +17,15 @@ const SHOP_Y: float = 156.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
 const HAND_Y: float = 500.0
 
+## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
+## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
+const BAR_Y: float = 374.0
+
 var run: RunState
 
 var lbl_budget: Label
 var lbl_note: Label
 var lbl_strategy: Label
-var stage_buttons: Array[Button] = []
 var btn_reroll: Button
 var btn_refine: Button
 var btn_merge: Button
@@ -60,21 +63,15 @@ func setup(p_run: RunState) -> void:
 	lbl_budget = UiKit.label(self, Vector2(900, 26), Vector2(340, 34), "", 24, UiKit.ACCENT)
 	lbl_budget.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
-	# 스테이지 선택. 여기 말고는 고를 데가 없다 - 런이 시작되는 지점이기 때문이다.
-	UiKit.label(self, Vector2(40, 92), Vector2(70, 24), UiText.t("shop.stage_label", "스테이지"), 13, UiKit.MUTED)
-	var sx := 108.0
-	for s in Stages.TABLE:
-		var b := UiKit.button(self, Vector2(sx, 88), Vector2(146, 30),
-			"%d. %s" % [s["id"], s["name"]], 12)
-		b.pressed.connect(_on_stage_pressed.bind(int(s["id"])))
-		stage_buttons.append(b)
-		sx += 152.0
-
-	# 적 전략은 숨기지 않고 그대로 공개한다. 숨기면 시행착오 게임이 되고,
-	# 공개하면 추리 게임이 된다. (DESIGN 2.4)
-	lbl_strategy = UiKit.label(self, Vector2(sx + 12, 95), Vector2(560, 22), "", 13, UiKit.BAD)
-
-	lbl_note = UiKit.label(self, Vector2(40, 122), Vector2(900, 22), "", 13, UiKit.MUTED)
+	# ── 스테이지 선택기는 뺐다 ───────────────────────────────────────────
+	# 다섯 칸짜리 버튼 줄이 화면 위를 가로질렀는데, 런은 1부터 5까지 순서대로만
+	# 간다. 고를 수 없는 것을 고를 수 있게 그려 놓으면 그 줄은 정보가 아니라
+	# 소음이다. 지금 어느 판인지는 머리말이 이미 말하고 있다.
+	#
+	# 대신 그 자리를 적 정보에 준다. 적 알고리즘은 숨기지 않고 그대로 공개한다 -
+	# 숨기면 시행착오 게임이 되고, 공개하면 추리 게임이 된다. (DESIGN 2.4)
+	lbl_strategy = UiKit.label(self, Vector2(40, 90), Vector2(1000, 22), "", 13, UiKit.BAD)
+	lbl_note = UiKit.label(self, Vector2(40, 116), Vector2(900, 22), "", 13, UiKit.MUTED)
 
 	shop_root = Control.new()
 	shop_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -84,37 +81,38 @@ func setup(p_run: RunState) -> void:
 	hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hand_root)
 
-	btn_reroll = UiKit.button(self, Vector2(40, 355), Vector2(190, 38), "", 14)
+	# ── 조작 줄은 손패보다 **나중에** 만든다 ─────────────────────────────
+	# 자식은 나중에 붙은 것이 위에 그려진다. 예전에는 버튼을 hand_root 보다
+	# 먼저 만들어서, 손패가 늘어나면 카드가 버튼을 덮고 클릭까지 먹었다.
+	# 만드는 순서 한 줄이 곧 레이어 순서다.
+	var bar := Control.new()
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bar)
+
+	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다.
+	# 카드 아래 여백을 넉넉히 둬야 호버로 카드가 떠오를 때 버튼과 안 겹친다.
+	btn_reroll = UiKit.button(bar, Vector2(40, BAR_Y), Vector2(190, 38), "", 14)
 	btn_reroll.pressed.connect(_on_reroll)
 
-	btn_refine = UiKit.button(self, Vector2(240, 355), Vector2(210, 38), "", 14)
+	btn_refine = UiKit.button(bar, Vector2(240, BAR_Y), Vector2(210, 38), "", 14)
 	btn_refine.pressed.connect(_on_refine_toggle)
 
-	# 합성은 정제 옆에 둔다. 둘 다 "손패를 줄여서 질을 올리는" 조작이라
-	# 같은 자리에 있어야 비교하며 고르게 된다.
-	btn_merge = UiKit.button(self, Vector2(460, 355), Vector2(210, 38), "", 14)
-	btn_merge.pressed.connect(_on_merge_toggle)
-	# ── 지금은 감춘다 ────────────────────────────────────────────────────
 	# 합성은 축 개편에서 빠졌다. 자리를 되살릴 계획(환전·교환)이 있으므로
 	# 노드는 남기고 보이지만 않게 한다. 지우면 배치를 다시 잡아야 한다.
+	btn_merge = UiKit.button(bar, Vector2(460, BAR_Y), Vector2(210, 38), "", 14)
+	btn_merge.pressed.connect(_on_merge_toggle)
 	btn_merge.visible = false
 	btn_merge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# 보조 지휘는 정제 옆이다. 셋 다 "예산을 어디에 쓸까" 라서, 재검색·정제와
 	# 나란히 놓여야 같은 저울에 올려놓고 고르게 된다.
-	# (합성 버튼이 쓰던 자리다. 그건 지금 숨어 있고 클릭도 안 먹는다.)
-	btn_command = UiKit.button(self, Vector2(460, 355), Vector2(210, 38),
+	btn_command = UiKit.button(bar, Vector2(460, BAR_Y), Vector2(210, 38),
 		UiText.t("shop.command", "보조 지휘  →"), 14)
 	btn_command.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func(): command.emit())
 
-	# 안내문은 버튼 줄 **아래**다. 합성 버튼을 (460,355)에 넣으면서 같은 자리에
-	# 있던 이 라벨과 겹쳐 글자가 서로 위에 얹혔다.
-	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다. 안내문을
-	# 336 에 두면 카드가 그 위에 얹혀 글자를 반쯤 먹는다. 카드 아래로 내린다.
-	# 재검색·정제 버튼이 y355~393 을 쓴다. 안내문은 그 아래여야 한다.
-	UiKit.label(self, Vector2(40, 404), Vector2(1200, 22),
-		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 는 이번 런 전체에서 배제 - 다음 스테이지에도 안 나온다."), 12, UiKit.MUTED)
+	UiKit.label(bar, Vector2(40, BAR_Y + 46), Vector2(1200, 22),
+		UiText.t("shop.hint", "카드를 누르면 구매.  [제외] 한 모듈은 전체 작전에서 등장하지 않습니다."), 12, UiKit.MUTED)
 
 	var b_help := UiKit.button(self, Vector2(880, 630), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)
 	b_help.pressed.connect(func(): help.emit())
@@ -132,15 +130,6 @@ func setup(p_run: RunState) -> void:
 	refresh()
 
 
-## 스테이지를 바꾸면 상점 시드가 달라지므로 런을 처음부터 다시 시작한다.
-## 예산·손패·편성이 전부 초기화된다.
-func _on_stage_pressed(sid: int) -> void:
-	if sid == run.stage_id:
-		return
-	run.start(sid)
-	refresh()
-
-
 func refresh() -> void:
 	# 가산금과 리롤값은 이번 스테이지에 산 만큼 오른다. 값이 왜 올랐는지
 	# 화면에 안 적히면 "버그인가?" 가 된다.
@@ -153,11 +142,21 @@ func refresh() -> void:
 	btn_reroll.text = UiText.t("shop.reroll", "리롤  (-%d)") % run.reroll_cost()
 	btn_reroll.disabled = not run.can_reroll()
 
+	# ── 다음 판이 어떤 판인지 한 줄로 다 말한다 ──────────────────────────
+	# 편성을 짜기 전에 알아야 할 것은 "이 판이 무엇을 요구하는가" 하나다.
+	# 적 알고리즘 · 페이즈 수 · 지형 기믹 · 등장 특성을 한 줄에 모은다.
+	# 나눠 놓으면 읽는 순서가 정해지지 않아서 결국 아무도 안 읽는다.
 	var st := Stages.get_stage(run.stage_id)
-	lbl_strategy.text = UiText.t("shop.enemy_strategy", "적 전략:  %s") % st["strategy_text"]
-	for i in stage_buttons.size():
-		var sid := int(Stages.TABLE[i]["id"])
-		stage_buttons[i].modulate = UiKit.ACCENT if sid == run.stage_id else Color(0.7, 0.72, 0.8)
+	var line := UiText.t("shop.enemy_strategy", "적 전략:  %s") % st["strategy_text"]
+	var waves: int = Stages.waves(st).size()
+	if waves > 1:
+		line += UiText.t("shop.waves", "     %d 페이즈") % waves
+	var hz := Stages.hazard(run.stage_id)
+	if not hz.is_empty():
+		line += UiText.t("shop.hazard", "     %s") % String(hz.get("name", ""))
+	for t in Stages.trait_list(run.stage_id):
+		line += "     " + Traits.describe(t).split(" - ")[0]
+	lbl_strategy.text = line
 
 	# 정제권이 없으면 정제 모드로 들어갈 수 없다.
 	if run.refine_tokens <= 0:

@@ -191,17 +191,29 @@ func _swap_section(at: Vector2) -> void:
 class _ArtSlot extends Control:
 	const SKEW: float = 60.0
 
+	## 자리를 채우고 나서 한 번 더 키우는 배율. 1.0 이면 딱 맞게 들어간다.
+	const ZOOM: float = 1.35
+
+	## 위에서 잘라 낼 비율. 인물 사진은 머리 위 여백이 넓어 그대로 두면
+	## 얼굴이 화면 한가운데로 내려앉는다.
+	const FACE_TOP: float = 0.06
+
 	func _ready() -> void:
 		var tex := UiKit.art(["command", "standing"], "ai")
 		if tex == null:
 			return
 		var s := size
 		var shape := _shape()
-		# 폭을 맞추고 아래로 붙인다. 인물은 발치보다 얼굴이 중요하므로
-		# 넘치는 쪽을 위가 아니라 아래로 흘린다.
+		# ── 잘리더라도 크게 ──────────────────────────────────────────────
+		# 폭에 맞추면 인물이 자리 안에 얌전히 들어가지만 존재감이 없다. 궁극기
+		# 컷인이 그렇듯, 인물은 **틀을 넘칠 때** 화면을 장악한다.
+		#
+		# 세로를 기준으로 채우고 가로 배율을 한 번 더 얹는다. 넘치는 쪽은
+		# 자른다 - 얼굴만 살아 있으면 잘린 어깨는 오히려 압박감이 된다.
 		var ts := Vector2(tex.get_width(), tex.get_height())
-		var k: float = s.x / ts.x
-		var off := Vector2(0, s.y - ts.y * k)
+		var k: float = maxf(s.x / ts.x, s.y / ts.y) * ZOOM
+		# 가로는 가운데, 세로는 얼굴이 위쪽에 오도록 위에서 조금만 내린다.
+		var off := Vector2((s.x - ts.x * k) * 0.5, -ts.y * k * FACE_TOP)
 		var uv := PackedVector2Array()
 		for pt in shape:
 			uv.append((pt - off) / k)

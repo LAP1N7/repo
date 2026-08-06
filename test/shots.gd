@@ -61,6 +61,21 @@ func _init() -> void:
 			s.queue_redraw(), 6)
 	run.stage_id = 1
 
+	# 실제로 몇 틱 굴린 화면. 로그 색·표적선·전황판은 전투가 돌아야 확인된다.
+	run.stage_id = 1
+	var mid: BattleScreen = load("res://scenes/battle_view.tscn").instantiate()
+	root.add_child(mid)
+	mid.setup(run)
+	mid.speed = 4.0
+	mid._start_battle()
+	for _i in 220:
+		await process_frame
+	var img2 := root.get_texture().get_image()
+	img2.save_png("%s/11_midbattle.png" % OUT)
+	print("  찍음: 11_midbattle")
+	mid.queue_free()
+	await process_frame
+
 	run.on_stage_cleared(10)
 	await _shot("05_reward", load("res://scenes/reward_screen.tscn").instantiate(),
 		func(s): s.setup(run, ["musketeer", "assassin", "bard"]))

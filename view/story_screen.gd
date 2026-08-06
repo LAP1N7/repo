@@ -75,6 +75,21 @@ func setup(p_beats: Array) -> void:
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fx)
 
+	# ── 화자 초상 ────────────────────────────────────────────────────────
+	# 미연시 어법이다. 목소리만 있던 존재가 화면에 서 있으면 같은 대사가 다르게
+	# 읽힌다. 대사판보다 **먼저** 붙여 판이 초상 위에 얹히게 한다 - 인물이
+	# 판 뒤에서 올라오는 것처럼 보여야 자연스럽다.
+	#
+	# 켜고 끄는 것은 대본이 정한다. data/story.json 의 각 대사에 "portrait" 를
+	# 적으면 그 그림이 뜨고, 안 적으면 안 뜬다. 연출을 코드가 아니라 대본에서
+	# 만지도록 두는 편이 훨씬 빠르다.
+	_portrait = _Portrait.new()
+	_portrait.position = Vector2(PAD + 6, 150)
+	_portrait.size = Vector2(360, 420)
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait.visible = false
+	add_child(_portrait)
+
 	# 대사판. 튜토리얼 말풍선과 같은 사선 어법이다.
 	_bubble = _Panel.new()
 	_bubble.position = Vector2(PAD, 484)
@@ -93,13 +108,47 @@ func setup(p_beats: Array) -> void:
 	_show(0)
 
 
+## 화면이 열린 시각. 갓 열린 창은 잠시 입력을 안 받는다.
+##
+## ── 왜 필요한가 ──────────────────────────────────────────────────────────
+## 보상 화면에서 카드를 누르면 그 클릭 이벤트가 아직 전파 중인 상태에서 이
+## 화면이 트리에 붙는다. 그러면 **같은 클릭 하나가** 보상을 고르고 첫 대사까지
+## 넘겨 버린다.
+##
+## 대사가 여러 줄인 대목은 한 줄만 건너뛰니 티가 안 났다. 그런데 pre_2 처럼
+## 대사가 **한 줄뿐인** 대목은 그 한 번에 통째로 끝나서, 화면이 아예 안 뜬
+## 것처럼 보였다. 실제로 "1스테이지 전 대사는 나오는데 2스테이지 것은 안
+## 나온다" 로 보고됐다.
+##
+## 대본을 늘려서 가릴 문제가 아니다. 대사가 한 줄이어도 읽을 시간은 있어야 한다.
+var _portrait: Control
+
+## MIRA 는 시설의 AI 다. 이름을 한 곳에만 적어 둔다.
+const MIRA_NAME := "MIRA"
+const COL_MIRA := Color(0.96, 0.97, 1.0)
+const COL_HUMAN := Color(1.0, 0.78, 0.35)
+
+var _opened_ms: int = 0
+
+## 이 시간 안에 들어온 입력은 앞 화면에서 새어 나온 것으로 본다.
+const INPUT_GUARD_MS: int = 250
+
+
+func _ready() -> void:
+	_opened_ms = Time.get_ticks_msec()
+
+
+func _accepts_input() -> bool:
+	return Time.get_ticks_msec() - _opened_ms >= INPUT_GUARD_MS
+
+
 func _gui_input(e: InputEvent) -> void:
-	if e is InputEventMouseButton and e.pressed:
+	if e is InputEventMouseButton and e.pressed and _accepts_input():
 		_advance()
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventKey and e.pressed:
+	if e is InputEventKey and e.pressed and _accepts_input():
 		_advance()
 
 
@@ -115,6 +164,21 @@ func _show(i: int) -> void:
 	var b: Dictionary = beats[i]
 	_lbl_name.text = String(b.get("speaker", ""))
 	_lbl_text.text = String(b.get("text", ""))
+
+	# ── 화자에 따라 이름 색을 가른다 ─────────────────────────────────────
+	# MIRA 는 시설의 목소리다. 사람이 아니므로 감정 색을 주지 않는다 - 흰색.
+	# 대원과 그 밖의 사람은 호박색. 색 하나로 "지금 기계가 말하나 사람이
+	# 말하나" 가 읽히면, 이야기가 뒤집히는 대목에서 그 차이가 무기가 된다.
+	var speaker := String(b.get("speaker", ""))
+	_lbl_name.add_theme_color_override("font_color",
+		COL_MIRA if speaker == MIRA_NAME else COL_HUMAN)
+
+	# 화자 초상. 대본이 "portrait" 를 적은 대사에서만 뜬다.
+	var portrait := String(b.get("portrait", ""))
+	_portrait.visible = portrait != ""
+	if portrait != "":
+		(_portrait as _Portrait).art_id = portrait
+		_portrait.queue_redraw()
 
 	var art := String(b.get("art", ""))
 	(_art as _ArtSlot).art_id = art
@@ -305,3 +369,44 @@ class _Holo extends Control:
 			seed_v = (seed_v * 1103515245 + 12345) & 0x7FFFFFFF
 			var ny := float(seed_v % maxi(1, int(s.y)))
 			draw_rect(Rect2(nx, ny, 2, 1), Color(0.6, 0.9, 1.0, 0.16))
+
+
+## 화자 초상. 대사판 위로 반신이 올라온다.
+##
+## 아래를 잘라 낸다 - 미연시가 인물을 무릎에서 자르는 이유와 같다. 발끝까지
+## 보이면 인물이 작아지고, 얼굴이 화면에서 차지하는 비율이 그만큼 줄어든다.
+##
+## 그림은 TextureRect 자식으로 붙인다. _draw() 안의 draw_texture_rect 는 이
+## 프로젝트에서 텍스처를 흰 사각형으로 칠한다(SD 얼굴·지형 배경에서 두 번 겪었다).
+class _Portrait extends Control:
+	var art_id: String = ""
+	var _tr: TextureRect
+
+	func _ready() -> void:
+		clip_contents = true
+		_tr = TextureRect.new()
+		_tr.stretch_mode = TextureRect.STRETCH_SCALE
+		_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_tr)
+		_apply()
+
+	func _draw() -> void:
+		_apply()
+
+	func _apply() -> void:
+		if _tr == null:
+			return
+		var tex := UiKit.art(["standing", "portraits"], art_id) if art_id != "" else null
+		_tr.texture = tex
+		if tex == null:
+			return
+		# ── 세로를 채우고 좌우를 자른다 ──────────────────────────────────
+		# 폭에 맞추면 인물이 자리 안에 얌전히 들어가서 작아진다. 미연시 초상은
+		# 얼굴이 화면에서 차지하는 비율이 곧 존재감이라, 세로를 기준으로 채우고
+		# 넘치는 좌우를 자르는 편이 맞다.
+		var ts := Vector2(tex.get_width(), tex.get_height())
+		if ts.y <= 0.0:
+			return
+		var k: float = size.y / ts.y
+		_tr.size = ts * k
+		_tr.position = Vector2((size.x - _tr.size.x) * 0.5, 0)

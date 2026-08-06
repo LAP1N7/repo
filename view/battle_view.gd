@@ -57,6 +57,25 @@ const ROW_H: float = 112.0
 ## 기여도 막대와 숫자가 쓰는 폭. 오른쪽 끝(x=1264)에 붙는다.
 const CONTRIB_W: float = 176.0
 
+## ── 오른쪽 열 배치 ───────────────────────────────────────────────────────
+## 판은 x 36~820 을 쓴다. 그 오른쪽이 정보 열이다.
+## 로그에 남기는 줄 수. 패널이 좁아지면서 일곱 줄은 넘쳤다.
+const LOG_LINES: int = 9
+
+## 진영 색. 로그·표적선·전황판이 전부 이 둘만 쓴다.
+const COL_ALLY := Color(0.45, 0.80, 1.0)
+const COL_FOE := Color(1.0, 0.45, 0.42)
+
+const ROSTER_X: float = 900.0
+const COL_W: float = 340.0
+## 전황판 높이. 대원 셋 x 66 + 머리말.
+const ROSTER_H: float = 226.0
+## 기록 패널. [보급 수령](y 596) 바로 위에서 끝난다.
+const LOG_Y: float = 344.0
+const LOG_H: float = 226.0
+## 기록 글이 쓰는 폭. 나머지는 판단 표가 쓴다.
+const LOG_TEXT_W: float = 186.0
+
 const COL_TILE_A := Color(0.16, 0.17, 0.22)
 const COL_TILE_B := Color(0.13, 0.14, 0.19)
 
@@ -137,7 +156,9 @@ var contrib_rows: Dictionary = {}
 ## 전투 로그. 무슨 일이 왜 일어났는지 글로 남는다.
 var log_root: Control
 var log_lines: Array[String] = []
-var log_label: Label
+var log_label: RichTextLabel
+## 오른쪽 위 전황판. 우리 셋과 그들을 노리는 적을 한 자리에서 보여 준다.
+var roster_root: Control
 
 
 func setup(p_run: RunState) -> void:
@@ -276,26 +297,62 @@ func _draw_overlay(c: CanvasItem) -> void:
 						Color(1.0, 0.40, 0.28, 0.22), 2.0)
 				d += step
 
-	# ── 어그로 선 ────────────────────────────────────────────────────────
-	# 적이 지금 누구를 보고 있는지를 선으로 잇는다. 이게 없으면 "내 궁수가 왜
+	# ── 표적 선 ──────────────────────────────────────────────────────────
+	# 누가 누구를 보고 있는지를 선으로 잇는다. 이게 없으면 "내 궁수가 왜
 	# 죽었지" 를 답할 수가 없다. 위협도를 넣어도 화면에 안 보이면 플레이어에게는
 	# 없는 것과 같다.
+	#
+	# ── 양쪽 다 긋는다 ───────────────────────────────────────────────────
+	# 예전에는 적 것만 그었다. 그런데 어그로 관리는 **주고받는** 것이다.
+	# 내 대원이 무엇을 보고 있는지가 안 보이면, 표적 모듈을 바꿨을 때 무엇이
+	# 달라졌는지 확인할 방법이 없다.
+	#
+	# 지금 때리는 중(사거리 안)은 진하게, 쫓아가는 중은 옅게 긋는다. 예전에는
+	# 쫓는 중인 것을 아예 안 그렸는데, 그러면 판이 조용한 동안 화면에 아무
+	# 정보도 안 남는다 - 정작 그때가 "누가 누구에게 가고 있나" 를 가장 알고
+	# 싶은 순간이다.
 	if battle != null:
 		for e in battle.units:
-			if not e.alive or e.team != Unit.TEAM_ENEMY or e.last_target == null:
+			if not e.alive or e.last_target == null:
 				continue
 			var t: Unit = e.last_target
 			if not t.alive:
 				continue
-			# 사거리 안에 있을 때만 긋는다. 접근 중인 적까지 전부 이으면
-			# 판 위에 선이 잔뜩 깔려서 "지금 누가 맞고 있나" 가 오히려 안 보인다.
-			if Grid.manhattan(e.pos, t.pos) > e.atk_range:
-				continue
+			var firing := Grid.manhattan(e.pos, t.pos) <= e.atk_range
+			var col := Color(1.0, 0.42, 0.38, 0.34) if e.team == Unit.TEAM_ENEMY 				else Color(0.45, 0.80, 1.0, 0.30)
+			if not firing:
+				col.a *= 0.42
 			var pa := BOARD_ORIGIN + Vector2(e.pos.x * TILE_W + TILE_W * 0.5,
 				e.pos.y * TILE_H + TILE_H * 0.5)
 			var pb := BOARD_ORIGIN + Vector2(t.pos.x * TILE_W + TILE_W * 0.5,
 				t.pos.y * TILE_H + TILE_H * 0.5)
-			c.draw_line(pa, pb, Color(1.0, 0.42, 0.38, 0.20), 1.0)
+			c.draw_line(pa, pb, col, 2.0 if firing else 1.0)
+			# 표적 쪽 끝에 표시를 남긴다. 선만으로는 어느 쪽이 노려지는
+			# 쪽인지 안 읽힌다.
+			if firing:
+				c.draw_circle(pb, 5.0, Color(col.r, col.g, col.b, 0.55), false, 1.5)
+
+		# 지금 적이 가장 많이 노리는 아군에게 고리를 씌운다.
+		# 막대(위협)와 판(고리)이 같은 것을 가리켜야 "내가 어그로를 관리하고
+		# 있다" 가 성립한다.
+		var most: Unit = null
+		var most_n := 0
+		for u in battle.units:
+			if not u.alive or u.team != Unit.TEAM_PLAYER:
+				continue
+			var n := 0
+			for e2 in battle.units:
+				if e2.alive and e2.team == Unit.TEAM_ENEMY and e2.last_target == u:
+					n += 1
+			if n > most_n:
+				most_n = n
+				most = u
+		if most != null:
+			var pc := BOARD_ORIGIN + Vector2(most.pos.x * TILE_W + TILE_W * 0.5,
+				most.pos.y * TILE_H + TILE_H * 0.5)
+			var pulse2: float = 0.6 + 0.4 * sin(Time.get_ticks_msec() / 220.0)
+			c.draw_arc(pc, TILE_W * 0.42, 0.0, TAU, 28,
+				Color(1.0, 0.42, 0.38, 0.30 + 0.35 * pulse2), 2.0)
 
 	for x in Grid.W + 1:
 		c.draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),
@@ -392,34 +449,66 @@ func _build_ui() -> void:
 	# 처음에는 격자 위(48,176)에 얹었는데 대원과 타일을 가렸다. 판단은 "지금
 	# 무슨 일이 벌어지는가" 를 읽는 글이고 그건 전투 기록과 같은 종류다.
 	# 오른쪽 기록 패널 위에 붙여 읽는 눈이 한쪽에만 머물게 한다.
-	trace_root = Control.new()
-	# 오른쪽 3분의 1(x 1000~1264). 기록은 여러 줄이라 넓어야 하고 판단은 짧은
-	# 표라 좁아도 된다. 위아래로 쌓았더니 기록이 아래로 밀려 잘렸다.
-	trace_root.position = Vector2(900, 318)
-	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui.add_child(trace_root)
+	# ── 오른쪽 열은 위아래 둘로 나눈다 ───────────────────────────────────
+	#   위  전황판 - 우리 셋이 지금 어떤 상태이고 누구에게 노려지는가
+	#   아래 교전 기록 + 판단
+	#
+	# 예전에는 기록이 맨 위에 있고 판단이 그 아래 붙어서, 화면 아래쪽 절반이
+	# 통째로 비어 있었다. 정작 가장 알고 싶은 것(누가 맞고 있나)은 아래 대원
+	# 바를 봐야 했고, 시선이 위아래로 계속 튀었다.
+	roster_root = _RosterPanel.new()
+	roster_root.view = self
+	roster_root.position = Vector2(ROSTER_X, 100)
+	roster_root.size = Vector2(COL_W, ROSTER_H)
+	roster_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(roster_root)
 
 	# 전투 로그. 규칙 라벨은 0.6초면 사라져서 놓치면 끝이고, 6명이 동시에 움직이면
 	# 어차피 다 못 읽는다. 글로 남겨야 "내 전술이 무슨 일을 했는지" 를 따라갈 수 있다.
+	#
+	# 기록은 [보급 수령] 바로 위에 붙인다. 판이 끝나고 시선이 그 버튼으로 갈 때
+	# 마지막 몇 줄이 그 자리에 있어야 "무슨 일이 있었는지" 를 이어서 읽는다.
 	log_root = Control.new()
-	# 오른쪽 끝에 붙여 고정한다. 판이 커지거나 줄어도 이 열은 안 움직인다.
-	log_root.position = Vector2(900, 100)
+	log_root.position = Vector2(ROSTER_X, LOG_Y)
 	log_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(log_root)
 	UiKit.label(log_root, Vector2(0, 0), Vector2(300, 20), UiText.t("battle.log_head", "교전 기록"), 13, UiKit.MUTED)
 	var logbg := Panel.new()
-	logbg.position = Vector2(0, 24)
-	# 판단 패널이 x=1000 부터 쓰므로 기록은 그 앞에서 끝나야 한다.
-	# 600 + 388 = 988. 12px 여백을 둔다.
-	logbg.size = Vector2(340, 200)
+	logbg.position = Vector2(0, 22)
+	logbg.size = Vector2(COL_W, LOG_H)
 	logbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logbg.add_theme_stylebox_override("panel",
 		UiKit.box(Color(0.08, 0.09, 0.12), UiKit.LINE, 5))
 	log_root.add_child(logbg)
-	log_label = UiKit.label(logbg, Vector2(8, 5), Vector2(324, 190), "", 10)
-	log_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	# 기본 줄간격이 넓어서 7줄이 패널 밖으로 넘쳐 잘렸다. 좁힌다.
-	log_label.add_theme_constant_override("line_spacing", -6)
+
+	# ── 한 패널을 좌우로 나눠 쓴다 ───────────────────────────────────────
+	# 판단 표는 항목이 넷뿐이라 짧고, 기록은 줄이 길다. 위아래로 쌓으면 넓은
+	# 오른쪽이 통째로 비고 기록은 아래로 밀려 잘렸다. 나란히 두면 둘 다 산다.
+	log_label = RichTextLabel.new()
+	log_label.bbcode_enabled = true
+	log_label.scroll_active = false
+	log_label.fit_content = false
+	log_label.position = Vector2(8, 5)
+	log_label.size = Vector2(LOG_TEXT_W, LOG_H - 10)
+	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_label.add_theme_font_override("normal_font", UiKit.font(10))
+	log_label.add_theme_font_size_override("normal_font_size", 10)
+	log_label.add_theme_constant_override("line_separation", -2)
+	logbg.add_child(log_label)
+
+	# 세로 구분선. 두 정보가 다른 종류라는 것을 선 하나가 말해 준다.
+	var sep := ColorRect.new()
+	sep.color = UiKit.LINE
+	sep.position = Vector2(LOG_TEXT_W + 14, 8)
+	sep.size = Vector2(1, LOG_H - 16)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	logbg.add_child(sep)
+
+	trace_root = Control.new()
+	trace_root.position = Vector2(ROSTER_X + LOG_TEXT_W + 26, LOG_Y + 30)
+	trace_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(trace_root)
+
 	if tut != null:
 		tut.register_anchor("log_panel", logbg)
 
@@ -597,11 +686,44 @@ func _refresh_squad() -> void:
 	for u in battle.units:
 		if u.team == Unit.TEAM_PLAYER:
 			top = maxi(top, u.damage_dealt + u.healing_done)
+
+	# ── 위협 막대는 **실제 점수**로 채운다 ───────────────────────────────
+	# 예전에는 태세 보정(threat_mod)만 그렸다. 그 값은 도발·전투태세를 안 끼면
+	# 항상 0 이라, 위협 막대가 판 내내 비어 있었다. 시스템은 돌고 있는데 화면은
+	# 아무것도 안 돌아가는 것처럼 보였다 - 있으나 마나였다는 뜻이다.
+	#
+	# 기준 적은 살아 있는 적 중 index 가 가장 작은 하나로 고정한다. 적마다
+	# 점수가 조금씩 다르지만(거리 항이 있다) 순서는 대체로 같고, 무엇보다
+	# 매 틱 기준이 흔들리지 않아야 막대가 떨지 않는다.
+	var ref: Unit = null
+	for u in battle.units:
+		if u.alive and u.team == Unit.TEAM_ENEMY:
+			ref = u
+			break
+	var scores: Dictionary = {}
+	var hi := 1
+	for u in battle.units:
+		if not u.alive or u.team != Unit.TEAM_PLAYER:
+			continue
+		var sc: int = 0 if ref == null else maxi(0, Threat.score(ref, u))
+		scores[u.index] = sc
+		hi = maxi(hi, sc)
+
 	for idx in squad_cards:
 		var c = squad_cards[idx]
-		if is_instance_valid(c):
-			c.contrib_top = top
-			c.queue_redraw()
+		if not is_instance_valid(c):
+			continue
+		c.contrib_top = top
+		c.threat_norm = 0.0 if c.unit == null 			else float(scores.get(c.unit.index, 0)) / float(hi)
+		# 지금 이 대원을 노리는 적 수. 막대만으로는 "그래서 맞고 있나" 를
+		# 못 읽는다.
+		var aimed := 0
+		if c.unit != null:
+			for e in battle.units:
+				if e.alive and e.team == Unit.TEAM_ENEMY and e.last_target == c.unit:
+					aimed += 1
+		c.aimed_by = aimed
+		c.queue_redraw()
 
 
 func _refresh_contrib() -> void:
@@ -700,9 +822,30 @@ func _flash_slot(unit_i: int, slot: int) -> void:
 
 # ── 전투 로그 ────────────────────────────────────────────────────────────
 
+## ── 로그는 색으로 계층을 만든다 ─────────────────────────────────────────
+## 전부 같은 흰색이면 일곱 줄이 한 덩어리 글이 되어 아무도 안 읽는다. 읽는
+## 사람이 알고 싶은 것은 순서대로 이렇다.
+##
+##   누가 했나  - 아군은 파랑, 적은 빨강. 색만 봐도 우리 차례인지 알 수 있다
+##   무슨 일이  - 피해·회복·전투 불능 같은 결과어만 진하게
+##   언제       - [틱 14] 는 회색조로 내린다. 있어야 하지만 먼저 읽을 것은 아니다
+func _c(text: String, col: Color) -> String:
+	return "[color=#%s]%s[/color]" % [col.to_html(false), text]
+
+
+func _tick_tag(t: int) -> String:
+	return _c(UiText.t("battle.tick_tag", "[틱 %d]") % t, UiKit.FAINT)
+
+
+## 대원 이름을 진영 색으로. 이 한 줄이 로그 전체의 뼈대다.
+func _who(u: Unit) -> String:
+	return _c(u.display_name,
+		COL_ALLY if u.team == Unit.TEAM_PLAYER else COL_FOE)
+
+
 func _log(line: String) -> void:
 	log_lines.append(line)
-	if log_lines.size() > 7:
+	if log_lines.size() > LOG_LINES:
 		log_lines.remove_at(0)
 	if log_label != null:
 		log_label.text = "
@@ -823,7 +966,8 @@ func _wave_banner(n: int, total: int) -> void:
 	lbl.position = Vector2(0, 300)
 	lbl.modulate = Color(1, 1, 1, 0)
 	add_child(lbl)
-	_log(UiText.t("battle.wave_log", "[틱 %d]  %d 페이즈 진입") % [battle.tick, n])
+	_log("%s %s" % [_tick_tag(battle.tick),
+		_c(UiText.t("battle.wave_log2", "%d 페이즈 진입") % n, Color(1.0, 0.55, 0.35))])
 	var tw := create_tween()
 	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), 0.22 / speed)
 	tw.tween_interval(0.55 / speed)
@@ -928,9 +1072,8 @@ func _play_events(evs: Array, my_id: int) -> void:
 				var who := unit_views[e["unit"]].unit
 				var src := UiText.t("battle.m11", "특수") if bool(e.get("special", false)) 					else (UiText.t("battle.m04", "기본기") if innate else UiText.t("battle.m12", "슬롯%d") % (int(e["slot"]) + 1))
 				# 구분자로 │(U+2502)를 쓰면 프리텐다드에 글리프가 없어 네모로 뜬다.
-				_log(UiText.t("battle.m13", "[틱 %d] %s %s · %s - %s") % [
-					battle.tick, "" if who.team == Unit.TEAM_PLAYER else "적",
-					who.display_name, src, e.get("rule_name", "")])
+				_log("%s %s · %s" % [_tick_tag(battle.tick), _who(who),
+					_c(String(e.get("rule_name", "")), UiKit.TEXT)])
 				if who.team == Unit.TEAM_PLAYER:
 					_show_trace(who, e)
 				await _wait(ACT_TIME * 0.45)
@@ -939,7 +1082,7 @@ func _play_events(evs: Array, my_id: int) -> void:
 				sfx.play("step")
 				var mv := unit_views[e["unit"]]
 				var steps: int = maxi(0, (e.get("path", []) as Array).size() - 1)
-				_log(UiText.t("battle.m14", "        → %d칸 이동") % steps)
+				_log("   " + _c(UiText.t("battle.m14", "→ %d칸 이동") % steps, UiKit.FAINT))
 				await _walk(mv, e.get("path", []), e["to"])
 
 			"attack":
@@ -960,14 +1103,17 @@ func _play_events(evs: Array, my_id: int) -> void:
 				tw2.tween_property(a, "position", home, ACT_TIME * 0.45 / speed)
 				t.hit()
 				_pop_number(t.position, "-%d" % e["damage"], UiKit.ACCENT)
-				_log(UiText.t("battle.m15", "        → %s 에게 %d 피해 (HP %d)") % [
-					t.unit.display_name, e["damage"], e["target_hp"]])
+				_log("   %s %s  %s" % [_who(t.unit),
+					_c(UiText.t("battle.dmg", "-%d") % e["damage"], UiKit.ACCENT),
+					_c("HP %d" % e["target_hp"], UiKit.FAINT)])
 				_shake(3.0)
 				await tw2.finished
 				a.rest_motion()
 
 			"heal":
 				sfx.play("heal")
+				_log("   %s %s" % [_who(unit_views[e["target"]].unit),
+					_c(UiText.t("battle.heal_log", "+%d") % e["amount"], UiKit.GOOD)])
 				_pop_number(unit_views[e["target"]].position, "+%d" % e["amount"], UiKit.GOOD)
 				await _wait(ACT_TIME * 0.6)
 
@@ -986,7 +1132,9 @@ func _play_events(evs: Array, my_id: int) -> void:
 				# ☠(U+2620)는 프리텐다드에 없어 네모로 떴다. 글리프 검사(test/glyph_check.gd)가
 				# 잡아낸다 - 눈으로 찾지 말 것.
 				sfx.play("death")
-				_log(UiText.t("battle.m16", "        [사망] %s") % unit_views[e["unit"]].unit.display_name)
+				_log("   %s %s" % [
+					_c(UiText.t("battle.downed", "[전투 불능]"), UiKit.BAD),
+					_who(unit_views[e["unit"]].unit)])
 				if idx == final_death:
 					await _finisher(e["unit"])
 				else:
@@ -1000,8 +1148,9 @@ func _play_events(evs: Array, my_id: int) -> void:
 
 			"barrage_warn":
 				sfx.play("defend", 1.35)
-				_log(UiText.t("battle.bar_warn", "        [경고] %s 조준 - %d칸") % [
-					e.get("name", "포격"), (e.get("cells", []) as Array).size()])
+				_log("   " + _c(UiText.t("battle.bar_warn", "[경고] %s 조준 - %d칸") % [
+					e.get("name", "포격"), (e.get("cells", []) as Array).size()],
+					Color(1.0, 0.62, 0.30)))
 				await _wait(ACT_TIME * 0.5)
 
 			"barrage":
@@ -1013,8 +1162,8 @@ func _play_events(evs: Array, my_id: int) -> void:
 					unit_views[h["target"]].hit()
 					_pop_number(unit_views[h["target"]].position,
 						"-%d" % h["damage"], Color(1.0, 0.45, 0.28))
-				_log(UiText.t("battle.bar_hit", "        [착탄] %s - %d명 피격") % [
-					e.get("name", "포격"), (e.get("hits", []) as Array).size()])
+				_log("   " + _c(UiText.t("battle.bar_hit", "[착탄] %s - %d명 피격") % [
+					e.get("name", "포격"), (e.get("hits", []) as Array).size()], UiKit.BAD))
 				await _wait(ACT_TIME * 0.8)
 
 			"explode":
@@ -1025,8 +1174,8 @@ func _play_events(evs: Array, my_id: int) -> void:
 					unit_views[h["target"]].hit()
 					_pop_number(unit_views[h["target"]].position,
 						"-%d" % h["damage"], Color(1.0, 0.62, 0.25))
-				_log(UiText.t("battle.explode", "        [자폭] 인접 %d명에게 피해") % [
-					(e.get("hits", []) as Array).size()])
+				_log("   " + _c(UiText.t("battle.explode", "[자폭] 인접 %d명에게 피해") % [
+					(e.get("hits", []) as Array).size()], Color(1.0, 0.62, 0.25)))
 				await _wait(ACT_TIME * 0.7)
 
 			"wave":
@@ -1812,6 +1961,11 @@ class _SquadCard extends Control:
 	var unit: Unit
 	var contrib_top: int = 1
 
+	## 아군 중 이 대원의 위협도가 차지하는 비율(0~1)과, 지금 이 대원을 노리는 적 수.
+	## _refresh_squad 가 매 틱 채운다.
+	var threat_norm: float = 0.0
+	var aimed_by: int = 0
+
 	var _hover: bool = false
 	var _tilt: float = 0.0
 	var _lift: float = 0.0
@@ -1901,12 +2055,17 @@ class _SquadCard extends Control:
 		# 지금 적이 누구를 노릴지가 여기서 갈린다. 도발을 넣으면 이 막대가
 		# 올라가고, 그때 격자의 어그로 선이 이 대원 쪽으로 옮겨 온다.
 		# 두 표시가 같은 것을 말해야 "내가 어그로를 관리하고 있다" 가 성립한다.
-		var th: int = clampi(unit.threat_mod + 10, 0, 50)
-		draw_rect(Rect2(s.x - 44, 8, 36, 4), Color(0.14, 0.15, 0.19))
-		draw_rect(Rect2(s.x - 44, 8, 36.0 * float(th) / 50.0, 4),
-			UiKit.BAD if unit.threat_mod > 0 else UiKit.FAINT)
-		draw_string(fs, Vector2(s.x - 44, 26), UiText.t("battle.threat", "위협"),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UiKit.FAINT)
+		draw_rect(Rect2(s.x - 62, 8, 54, 4), Color(0.14, 0.15, 0.19))
+		draw_rect(Rect2(s.x - 62, 8, 54.0 * clampf(threat_norm, 0.0, 1.0), 4),
+			UiKit.BAD if aimed_by > 0 else Color(0.62, 0.55, 0.42))
+		# 노려지는 중이면 몇에게 노려지는지 숫자로 못 박는다. 막대는 "누가 더
+		# 위험한가" 를, 숫자는 "그래서 지금 맞고 있는가" 를 답한다.
+		var tag := UiText.t("battle.threat", "위협")
+		if aimed_by > 0:
+			tag = UiText.t("battle.aimed", "피표적 %d") % aimed_by
+		draw_string(fs, Vector2(s.x - 62, 26), tag,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 9,
+			UiKit.BAD if aimed_by > 0 else UiKit.FAINT)
 
 		# ── 기여도 ───────────────────────────────────────────────────────
 		var work := unit.damage_dealt + unit.healing_done
@@ -1964,3 +2123,110 @@ class _SquadCard extends Control:
 			draw_string(fs, Vector2(224, y), String(r[2]),
 				HORIZONTAL_ALIGNMENT_LEFT, w - 246, 10, UiKit.MUTED)
 			y += 22.0
+
+
+## ── 전황판 ───────────────────────────────────────────────────────────────
+## 우리 셋을 세로로 세우고, 각자 옆에 **지금 그를 노리고 있는 적**을 붙인다.
+##
+## ── 왜 필요한가 ──────────────────────────────────────────────────────────
+## 어그로는 이 게임의 중심 축인데 화면에 숫자로만 있었다. 막대가 얼마나 찼는지
+## 봐도 "그래서 지금 누가 나를 때리고 있나" 는 알 수 없다. 그건 **누가 누구를**
+## 의 문제이므로 둘을 나란히 놓아야만 읽힌다.
+##
+## 적 얼굴은 아직 없다. 회색 네모로 자리를 잡아 두고 진영 색 테두리만 준다 -
+## 그림이 들어오면 네모만 갈아 끼우면 된다.
+##
+## 불투명도가 곧 위협의 세기다. 그 적이 보기에 이 대원이 다른 아군보다 얼마나
+## 더 위협적인지가 진하기로 나온다. 도발을 넣으면 그 줄의 네모가 진해지고
+## 다른 줄은 옅어진다 - 한 화면에서 원인과 결과가 같이 보인다.
+class _RosterPanel extends Control:
+	var view
+
+	const ROW_H: float = 66.0
+	const FACE: float = 52.0
+	const FOE_BOX: float = 26.0
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if view == null or view.battle == null:
+			return
+		var b = view.battle
+		var fs: Font = UiKit.font(11)
+		draw_string(fs, Vector2(0, 12), UiText.t("battle.roster_head", "전황"),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UiKit.MUTED)
+
+		# 위협 점수는 적마다 다르다(거리 항이 있다). 줄마다 그 적 기준으로
+		# 다시 재야 진하기가 거짓말을 안 한다.
+		var allies: Array = []
+		for u in b.units:
+			if u.team == Unit.TEAM_PLAYER:
+				allies.append(u)
+
+		var y := 22.0
+		for u in allies:
+			_row(u, y, fs, b, allies)
+			y += ROW_H
+
+	func _row(u: Unit, y: float, fs: Font, b, allies: Array) -> void:
+		var dim: float = 1.0 if u.alive else 0.35
+		var neon: Color = u.color
+		neon.a = dim
+
+		# 얼굴 자리. 실제 얼굴은 자식 노드가 아니라 여기서 텍스처로 그린다 -
+		# 줄이 셋뿐이라 노드를 만들고 관리할 값어치가 없다.
+		var face_rect := Rect2(0, y, FACE, FACE)
+		draw_rect(face_rect, Color(0.10, 0.11, 0.15, dim))
+		draw_rect(face_rect, Color(neon.r, neon.g, neon.b, 0.55 * dim), false, 1.0)
+		var tex := UiKit.art(["portraits", "units"], u.type_id)
+		if tex != null:
+			draw_texture_rect(tex, face_rect, false, Color(1, 1, 1, dim))
+
+		var x := FACE + 10.0
+		draw_string(fs, Vector2(x, y + 13), u.display_name,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			Color(UiKit.TEXT.r, UiKit.TEXT.g, UiKit.TEXT.b, dim))
+
+		# HP. 숫자와 막대를 같이 둔다 - 막대는 비율을, 숫자는 남은 양을 말한다.
+		draw_string(fs, Vector2(x + 78, y + 13), "%d / %d" % [u.hp, u.max_hp],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+			Color(UiKit.MUTED.r, UiKit.MUTED.g, UiKit.MUTED.b, dim))
+		var bw := 158.0
+		draw_rect(Rect2(x, y + 20, bw, 5), Color(0.15, 0.16, 0.20, dim))
+		var ratio: float = 0.0 if u.max_hp <= 0 else clampf(
+			float(u.hp) / float(u.max_hp), 0.0, 1.0)
+		draw_rect(Rect2(x, y + 20, bw * ratio, 5),
+			Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b, dim) if ratio < 0.35 else neon)
+
+		# 한 일. 이게 있어야 "누가 실제로 일했는가" 를 판 도중에 알 수 있다.
+		draw_string(fs, Vector2(x, y + 40),
+			UiText.t("battle.roster_work", "피해 %d · 회복 %d") % [
+				u.damage_dealt, u.healing_done],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10,
+			Color(UiKit.FAINT.r, UiKit.FAINT.g, UiKit.FAINT.b, dim))
+
+		# ── 이 대원을 노리는 적 ──────────────────────────────────────────
+		var fx := size.x - FOE_BOX
+		for e in b.units:
+			if not e.alive or e.team != Unit.TEAM_ENEMY or e.last_target != u:
+				continue
+			# 그 적이 보기에 이 대원이 아군 중 얼마나 위협적인가.
+			var mine: int = maxi(0, Threat.score(e, u))
+			var top: int = 1
+			for a in allies:
+				if a.alive:
+					top = maxi(top, maxi(0, Threat.score(e, a)))
+			var share: float = clampf(float(mine) / float(top), 0.0, 1.0)
+			var a2: float = 0.30 + 0.70 * share
+			var r := Rect2(fx, y + 6, FOE_BOX, FOE_BOX)
+			draw_rect(r, Color(0.42, 0.44, 0.50, a2))
+			draw_rect(r, Color(1.0, 0.45, 0.42, a2), false, 1.0)
+			# 사거리 안이면 실제로 때리는 중이다. 밑줄로 구분한다.
+			if Grid.manhattan(e.pos, u.pos) <= e.atk_range:
+				draw_line(Vector2(fx, y + 6 + FOE_BOX + 2),
+					Vector2(fx + FOE_BOX, y + 6 + FOE_BOX + 2),
+					Color(1.0, 0.45, 0.42, 0.9), 2.0)
+			fx -= FOE_BOX + 5.0
+			if fx < size.x - 110.0:
+				break
