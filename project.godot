@@ -30,3 +30,13 @@ window/stretch/mode="canvas_items"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+; ── 2D 텍스처를 밉맵으로 샘플링한다 ─────────────────────────────────────
+; 기본값(Linear)은 원본보다 작게 그릴 때 원본 픽셀을 그대로 집어 온다. 그래서
+; 1100px 짜리 일러스트를 400px 로 줄여 그리면 가는 선이 프레임마다 다른 픽셀에
+; 걸려 **지직거린다.** 확대·축소가 섞이는 화면(컷인·초상·지형)에서 특히 심하다.
+;
+; 밉맵을 쓰면 미리 줄여 둔 단계에서 골라 오므로 그 떨림이 사라진다.
+; 텍스처 쪽 mipmaps/generate 도 같이 켜야 실제로 만들어진다(.import).
+;   3 = Linear Mipmap
+rendering/textures/canvas_textures/default_texture_filter=3
