@@ -26,6 +26,12 @@ var lbl_note: Label
 ## 실험용 장치 목록의 현재 쪽. 한 쪽에 4장씩.
 var swap_page: int = 0
 
+## 기둥별 강화 칸 목록. 호버로 칸이 자라면 아래가 밀려야 하므로 매 프레임
+## 다시 쌓는다.
+var _stacks: Array = []
+## 기둥 아래에 붙어 같이 밀려야 하는 것들(실험용 장치). {node, col, y}
+var _followers: Array = []
+
 
 func setup(p_run: RunState) -> void:
 	run = p_run
@@ -73,6 +79,8 @@ func setup(p_run: RunState) -> void:
 func refresh() -> void:
 	for c in root.get_children():
 		c.queue_free()
+	_stacks.clear()
+	_followers.clear()
 	lbl_budget.text = UiText.t("shop.budget", "예산  %d") % run.budget
 
 	# ── 분류마다 한 기둥 ────────────────────────────────────────────────
@@ -83,17 +91,19 @@ func refresh() -> void:
 	# 화면 구조 자체로 읽히고, 그게 이 화면에서 하는 유일한 고민이다.
 	var x0 := ART_W + 36.0
 	var colw := (1240.0 - x0) / float(Command.GROUPS.size())
+	for _i in Command.GROUPS.size():
+		_stacks.append([])
 	for gi in Command.GROUPS.size():
 		var group := Command.GROUPS[gi]
 		var cx := x0 + float(gi) * colw
 		var head := _Pillar.new()
 		head.position = Vector2(cx, 96)
-		head.size = Vector2(colw - 12.0, 26)
+		head.size = Vector2(colw - 12.0, _Pillar.H)
 		head.title = group
 		head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(head)
 
-		var y := 130.0
+		var y := 96.0 + _Pillar.H + 14.0
 		for id in Command.ids_in(group):
 			var cell := _Cell.new()
 			cell.position = Vector2(cx, y)
@@ -105,12 +115,50 @@ func refresh() -> void:
 			cell.now = Command.amount(id, cell.level)
 			cell.bought.connect(_on_buy)
 			root.add_child(cell)
+			_stacks[gi].append(cell)
 			y += _Cell.BASE_H + 12.0
 
 		# 확률은 항목이 하나뿐이라 기둥 아래가 통째로 빈다. 실험용 장치를
 		# 그 자리에 넣는다 - 둘 다 "무엇이 나오게 할 것인가" 라 성격도 맞는다.
 		if group == "확률":
 			_swap_section(Vector2(cx, y + 10.0), colw - 12.0)
+			# 실험용 장치는 확률 기둥의 유일한 칸 아래에 있다. 그 칸이 펼쳐지면
+			# 같이 내려가야 "밀려났다" 로 읽힌다.
+			for n in root.get_children():
+				if n is Control and not (n in _stacks[gi]) \
+						and (n as Control).position.x >= cx - 1.0 \
+						and (n as Control).position.y > y:
+					_followers.append({"node": n, "col": gi,
+						"y": (n as Control).position.y})
+
+
+## ── 밀려났다가 돌아온다 ─────────────────────────────────────────────────
+## 펼쳐진 칸이 아래 칸을 **덮으면** 그 칸이 사라진 것처럼 보인다. 밀어내면
+## 사라지지 않고 자리를 비켜 준 것이 되고, 손을 떼면 되돌아온다.
+##
+## 자리를 매 프레임 다시 쌓는 이유는 칸 높이가 보간 중이기 때문이다. 목표
+## 위치만 잡아 주고 실제 이동은 각자 지수 감쇠로 따라가게 두면, 여러 칸이
+## 동시에 움직여도 한 덩어리로 밀리는 것처럼 보인다.
+func _process(delta: float) -> void:
+	if _stacks.is_empty():
+		return
+	var k := 1.0 - exp(-14.0 * delta)
+	var shift: Array[float] = []
+	for gi in _stacks.size():
+		var y := 96.0 + _Pillar.H + 14.0
+		for cell in _stacks[gi]:
+			if not is_instance_valid(cell):
+				continue
+			cell.position.y = lerpf(cell.position.y, y, k)
+			y += cell.drawn_h() + 12.0
+		# 이 기둥이 원래 높이보다 얼마나 자랐는가. 아래 붙은 것들이 그만큼 내려간다.
+		var base := 96.0 + _Pillar.H + 14.0 + float(_stacks[gi].size()) * (_Cell.BASE_H + 12.0)
+		shift.append(y - base)
+	for f in _followers:
+		var n = f["node"]
+		if not is_instance_valid(n):
+			continue
+		n.position.y = lerpf(n.position.y, float(f["y"]) + shift[int(f["col"])], k)
 
 
 func _on_buy(id: String) -> void:
@@ -126,19 +174,19 @@ func _on_buy(id: String) -> void:
 func _swap_section(at: Vector2, w: float) -> void:
 	var head := _Pillar.new()
 	head.position = at
-	head.size = Vector2(w, 26)
+	head.size = Vector2(w, _Pillar.H)
 	head.title = UiText.t("cmd.swap_head", "실험용 장치")
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(head)
 
 	# 값을 머리글 옆에 박아 둔다. 누르기 전에 얼마가 드는지 모르면 그건
 	# 선택이 아니라 도박이다.
-	UiKit.label(root, Vector2(at.x + 4, at.y + 32), Vector2(w - 8, 30),
+	UiKit.label(root, Vector2(at.x + 4, at.y + _Pillar.H + 6.0), Vector2(w - 8, 30),
 		UiText.t("cmd.swap_cost", "한 번 바꿀 때마다 예산 %d.  같은 축 안에서만 바뀝니다.")
 			% Command.SWAP_COST, 10, UiKit.MUTED, true)
 
 	if run.hand.is_empty():
-		UiKit.label(root, Vector2(at.x + 4, at.y + 64), Vector2(w - 8, 18),
+		UiKit.label(root, Vector2(at.x + 4, at.y + _Pillar.H + 40.0), Vector2(w - 8, 18),
 			UiText.t("cmd.swap_none", "보유 모듈이 없습니다."), 11, UiKit.FAINT)
 		return
 
@@ -150,7 +198,7 @@ func _swap_section(at: Vector2, w: float) -> void:
 	var pages := int(ceil(owned.size() / float(per)))
 	swap_page = 0 if pages == 0 else posmod(swap_page, pages)
 
-	var y := at.y + 66.0
+	var y := at.y + _Pillar.H + 42.0
 	for cid in owned.slice(swap_page * per, swap_page * per + per):
 		var c: Dictionary = Cards.TABLE[cid]
 		var b := _Swap.new()
@@ -247,11 +295,15 @@ class _Holo extends Control:
 ## ── 분류 머리 ────────────────────────────────────────────────────────────
 ## 사선으로 자른 띠. 전투 화면 호버 판과 같은 어법이라 새로 배울 게 없다.
 class _Pillar extends Control:
+	## 분류 이름은 이 화면의 목차다. 항목 이름(13pt)과 같은 크기로 두면
+	## 목차인지 항목인지 구분이 안 된다. 한 단 위로 올린다.
+	const H: float = 38.0
+
 	var title: String = ""
 
 	func _draw() -> void:
 		var s := size
-		var cut := 10.0
+		var cut := 12.0
 		var shape := PackedVector2Array([
 			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
 			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
@@ -260,9 +312,9 @@ class _Pillar extends Control:
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
 		draw_polyline(line, Color(0.35, 0.75, 1.0, 0.6), 1.5, true)
-		draw_rect(Rect2(0, cut, 3, s.y - cut), Color(0.45, 0.85, 1.0, 0.9))
-		draw_string(UiKit.font(13), Vector2(12, 18), title,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.62, 0.90, 1.0))
+		draw_rect(Rect2(0, cut, 4, s.y - cut), Color(0.45, 0.85, 1.0, 0.9))
+		draw_string(UiKit.font(18), Vector2(14, 26), title,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.68, 0.93, 1.0))
 
 
 ## ── 강화 한 칸 ───────────────────────────────────────────────────────────
@@ -324,8 +376,7 @@ class _Cell extends Control:
 		var d: Dictionary = Command.TABLE.get(id, {})
 		var h := drawn_h()
 		var s := Vector2(size.x, h)
-		var on := _t > 0.02
-		z_index = 4 if on else 0
+		z_index = 4 if _t > 0.02 else 0
 		var shape := PackedVector2Array([
 			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
 			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),

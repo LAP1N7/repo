@@ -224,8 +224,11 @@ func _build_grid() -> void:
 
 	# 격자를 왼쪽 칸 가운데로 옮겼으므로 방향 안내도 같이 간다. 캡션이
 	# 대상에서 떨어지면 무엇을 설명하는 글인지 알 수 없다.
-	UiKit.label(grid_root, Vector2(GRID_AT.x - 100.0, 314), Vector2(460, 20),
+	# 캡션은 격자 폭에 맞춰 가운데 정렬한다. 왼쪽 끝에 걸어 두면 격자와
+	# 따로 노는 글이 된다.
+	var cap := UiKit.label(grid_root, Vector2(GRID_AT.x - 168.0, 314), Vector2(460, 20),
 		UiText.t("loadout.m03", "←  뒤         앞  →        (적은 오른쪽에서 온다)"), 11, UiKit.MUTED)
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 func _member_at(slot: int) -> int:
@@ -407,22 +410,17 @@ func _build_hand() -> void:
 	for sid in run.special_hand:
 		owned.append(sid)
 
-	var who := UiText.t("loadout.pick_unit_first", "유닛을 먼저 고르면 꽂을 수 있다.")
+	# ── 안내문을 지웠다 ─────────────────────────────────────────────────
+	# "보유 모듈 (전술 1 · 궁극기 0) · 총사 에게 장착합니다. 전술 모듈은 다음
+	# 빈 슬롯, 궁극기는 전용 칸에 들어갑니다." 한 줄이 화면 폭을 다 먹고 있었다.
+	# 같은 내용이 화면 위 부제에 이미 있고, 꽂을 수 있는지는 카드가 밝은지
+	# 어두운지로 이미 말한다. 세 번째로 또 말할 이유가 없다.
+	#
+	# 지운 자리는 여백으로 둔다. 이 화면은 이미 빽빽하다.
 	var picked := sel_member >= 0 and sel_member < run.roster.size()
 	var tid := ""
 	if picked:
 		tid = String(run.roster[sel_member]["type"])
-		var room := (run.unit_cards[sel_member] as Array).size() < RunState.SLOTS_PER_UNIT
-		var uname: String = UnitData.TABLE[tid]["name"]
-		if room:
-			who = UiText.t("loadout.equip_to", "%s 에게 꽂는다 - 카드는 다음 빈 슬롯, 특수는 특수 칸으로.") % uname
-		else:
-			who = UiText.t("loadout.equip_full", "%s 는 규칙 3칸이 다 찼다. 특수는 아직 꽂을 수 있다.") % uname
-
-	UiKit.label(hand_root, Vector2(48, HAND_Y - 26), Vector2(1100, 24),
-		UiText.t("loadout.hand_head", "손패 (카드 %d · 특수 %d)   ·   %s") % [
-			run.hand.size(), run.special_hand.size(), who], 14,
-		UiKit.TEXT if picked else UiKit.MUTED)
 
 	var n := owned.size()
 	if n == 0:

@@ -36,6 +36,12 @@ const FOOT_R: float = 27.0
 const FOOT_SQUASH: float = 0.46
 const FOOT_Y: float = 20.0
 const HP_W: float = 44.0
+
+## ── HP 게이지 눈금 ──────────────────────────────────────────────────────
+## 칸 하나가 뜻하는 HP. 칸 수가 곧 최대 HP 이므로 막대를 안 늘려도 덩치가
+## 읽힌다. SEG_MAX 를 넘으면 단위를 두 배로 키워 칸이 무늬가 되는 것을 막는다.
+const HP_PER_SEG: int = 30
+const SEG_MAX: int = 8
 const NAME_SIZE: int = 11
 const CHIP_SIZE: int = 12
 ## 라벨 한 줄 높이. 이웃과 어긋나게 놓을 때도 이 값을 쓴다.
@@ -590,11 +596,26 @@ class _Overlay extends Node2D:
 			draw_rect(Rect2(x0 + 0.5, top + 1.0, fw, 1.0),
 				Color(1, 1, 1, 0.55))
 
-		# 25% 눈금. 세 줄이면 반과 4분의 1이 동시에 읽힌다.
-		for i in 3:
-			var gx := x0 + hw * (0.25 * float(i + 1))
+		# ── 눈금은 최대 HP 를 말한다 ─────────────────────────────────────
+		# 비율 눈금(25%마다)은 "얼마나 남았나" 만 말한다. 그런데 판 위에서
+		# 실제로 묻는 것은 "저놈이 단단한가" 다 - 궁수 65 와 방패병 190 은
+		# 같은 길이 막대에 같은 눈금이 그어져 있으면 구분이 안 된다.
+		#
+		# LoL 처럼 **일정 HP 마다** 칸을 끊는다. 칸 수가 곧 덩치이므로 막대
+		# 길이를 안 늘려도 최대 HP 가 읽힌다.
+		#
+		# 30 씩 끊되, 칸이 너무 촘촘하면 눈금이 아니라 무늬가 된다. 8칸을
+		# 넘어가면 단위를 키워 칸 수를 유지한다.
+		var seg := HP_PER_SEG
+		while u.max_hp / seg > SEG_MAX:
+			seg *= 2
+		var segs: int = int(u.max_hp / seg)
+		for i in range(1, segs + 1):
+			var gx := x0 + (hw - 1.0) * (float(i) * float(seg) / float(u.max_hp))
+			if gx >= x0 + hw - 1.5:
+				break
 			draw_line(Vector2(gx, top + 1.0), Vector2(gx, top + bh - 1.0),
-				Color(0.02, 0.03, 0.05, 0.85), 1.0)
+				Color(0.02, 0.03, 0.05, 0.9), 1.0)
 
 		# 테두리. 남은 체력 색을 옅게 물려 멀리서도 상태가 읽힌다.
 		var line := PackedVector2Array(frame)
