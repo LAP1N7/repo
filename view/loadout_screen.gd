@@ -18,10 +18,14 @@ var tut: Tutorial = null
 const TILE: float = 62.0
 const GRID_AT := Vector2(48, 124)
 const RIGHT_X: float = 560.0
-## 3번째 대원 행의 바닥(138 + 128*2 + 129 = 523)보다 아래여야 한다.
-## 보유 목록 줄. 예전 572 는 화면 아래 3분의 1이 통째로 비어 보였다.
-## 대원 배치(y138~)와 손패 사이의 빈 구역을 줄여 화면을 위로 모은다.
-const HAND_Y: float = 500.0
+## ── 보유 모듈 줄 ────────────────────────────────────────────────────────
+## 화면 맨 아래를 가로로 다 쓴다. 명일방주 하단 오퍼레이터 바와 같은 자리이고,
+## 같은 이유다 - **고르는 것**은 늘 바닥에 있고 위는 판이다.
+##
+## 500 으로 올렸다가 오른쪽 모듈 슬롯 3번째 대원 행(바닥 y=534)을 카드가
+## 덮었다. 화면 아래가 비어 보인다고 올렸던 것인데, 비어 보이는 것보다
+## 가려지는 쪽이 훨씬 나쁘다. 대원 선택 칸을 키워 그 여백을 대신 채운다.
+const HAND_Y: float = 556.0
 
 ## 유닛 한 명이 차지하는 세로 높이. 헤더 28 + 슬롯 3×27 + 기본기 줄 18 + 여백.
 ## 줄이면 기본기 줄이 다음 유닛 헤더를 덮는다.
@@ -35,7 +39,7 @@ const ROSTER_Y: float = 138.0
 ##
 ## ROSTER_Y(138) + ROW_H*2 + 128 <= 542 이어야 하므로 ROW_H 는 최대 134 다.
 ## 그리고 ROW_H 는 행 바닥(128)보다 커야 행끼리 안 겹친다.
-const ROW_H: float = 134.0
+const ROW_H: float = 130.0
 const SLOT_H: float = 24.0
 const SLOT_STEP: float = 25.0
 const INNATE_DY: float = 110.0
@@ -101,7 +105,7 @@ func setup(p_run: RunState) -> void:
 	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
 	# 로딩 화면의 TIP 이 그 역할을 한다 - 유닛 버튼 아래에 태그를 달면 정보가
 	# 늘어난 만큼 화면이 빽빽해지고, 정작 고를 때 읽는 건 HP·공격력이다.
-	_head(Vector2(48, 340), UiText.t("loadout.unit_pick", "유닛 선택"))
+	_head(Vector2(48, 330), UiText.t("loadout.unit_pick", "대원 선택"))
 	var x := 48.0
 	for tid in UnitData.playable():
 		var s: Dictionary = UnitData.TABLE[tid]
@@ -109,8 +113,10 @@ func setup(p_run: RunState) -> void:
 		# 전부 같은 회색 상자로 보여서, 고르는 일이 읽는 일이 됐다. 얼굴이
 		# 있으면 고르는 일이 다시 보는 일이 된다.
 		var b := _Tile.new()
-		b.position = Vector2(x, 364)
-		b.size = Vector2(79, 104)
+		# 얼굴 칸을 세로로 키웠다. 가로는 못 늘린다 - 여섯 개가 오른쪽 모듈
+		# 슬롯(x=560) 앞에서 끝나야 한다.
+		b.position = Vector2(x, 352)
+		b.size = Vector2(82, 132)
 		b.type_id = String(tid)
 		b.label = String(s["name"])
 		b.sub = UiText.t("loadout.unit_stat", "HP%d ATK%d") % [s["hp"], s["atk"]]
@@ -395,7 +401,7 @@ func _build_hand() -> void:
 		else:
 			who = UiText.t("loadout.equip_full", "%s 는 규칙 3칸이 다 찼다. 특수는 아직 꽂을 수 있다.") % uname
 
-	UiKit.label(hand_root, Vector2(48, HAND_Y - 30), Vector2(1100, 24),
+	UiKit.label(hand_root, Vector2(48, HAND_Y - 26), Vector2(1100, 24),
 		UiText.t("loadout.hand_head", "손패 (카드 %d · 특수 %d)   ·   %s") % [
 			run.hand.size(), run.special_hand.size(), who], 14,
 		UiKit.TEXT if picked else UiKit.MUTED)

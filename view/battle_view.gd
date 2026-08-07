@@ -171,6 +171,9 @@ var lbl_result_sub: Label
 ## 하단 대원 바. 얼굴 · HP · 기여도가 여기 산다.
 var squad_root: Control
 
+## 판 아래 왼쪽의 적 개요 판.
+var brief_panel: Control
+
 ## 대원별 카드 노드. unit index -> _SquadCard
 var squad_cards: Dictionary = {}
 
@@ -737,6 +740,21 @@ func _build_ui() -> void:
 	lbl_tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lbl_status = UiKit.label(ui, Vector2(48, 80), Vector2(700, 22), "", 12, UiKit.FAINT)
 
+	# ── 적 개요는 판 아래 왼쪽에 ─────────────────────────────────────────
+	# 예전에는 제목 밑에 붉은 한 줄로 "접근 → 교전   2 페이즈   자폭" 처럼
+	# 태그를 늘어놓았다. 태그는 **이미 아는 사람에게만** 읽힌다. 처음 보는
+	# 사람에게 "자폭" 세 글자는 아무것도 알려 주지 않는다.
+	#
+	# 그래서 말로 푼다. 자리는 판 바로 아래 왼쪽이다 - 눈이 판에서 떨어질 때
+	# 가장 먼저 닿는 곳이고, 전투 중에 다시 볼 일이 있는 정보이기 때문이다.
+	brief_panel = _Brief.new()
+	# 판은 y=512 에서 끝나고 대원 바는 y=596 에서 시작한다. 그 사이 84px 가
+	# 이 판이 쓸 수 있는 전부다.
+	brief_panel.position = Vector2(40, 518)
+	brief_panel.size = Vector2(836, 74)
+	brief_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(brief_panel)
+
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
 	var cy := 596.0
 	var bx := 900.0
@@ -1228,19 +1246,17 @@ func _clear_log() -> void:
 
 func _refresh_ui() -> void:
 	var st := Stages.get_stage(run.stage_id)
-	# 페이즈 수와 지형 기믹을 제목 줄에 같이 적는다.
-	#
-	# 숨기면 시행착오 게임이 되고 공개하면 추리 게임이 된다(DESIGN 2.4). 다음
-	# 파가 온다는 걸 모르면 1페이즈를 이긴 편성이 왜 졌는지 설명이 안 되고,
-	# 그러면 플레이어가 고칠 것은 알고리즘이 아니라 운이 된다.
+	# ── 판 정보는 아래 개요판이 맡는다 ──────────────────────────────────
+	# 숨기면 시행착오 게임이 되고 공개하면 추리 게임이 된다(DESIGN 2.4).
+	# 그 원칙은 그대로인데, 태그를 제목 옆에 다닥다닥 붙이는 대신 판 아래
+	# 개요판에서 말로 푼다. "2 페이즈" 는 아는 사람만 읽는다.
 	var waves: int = Stages.waves(st).size()
-	var extra := ""
-	if waves > 1:
-		extra += UiText.t("battle.wave_tag", "     %d 페이즈") % waves
-	if not Stages.hazard(run.stage_id).is_empty():
-		extra += UiText.t("battle.hazard_tag", "     %s 있음") % 			String(Stages.hazard(run.stage_id).get("name", "지형 기믹"))
-	lbl_stage.text = UiText.t("battle.m06", "스테이지 %d/%d - %s     적 전략: %s") % [
-		run.stage_id, Stages.count(), st["name"], st["strategy_text"]] + extra
+	# 제목 줄은 "어느 판인가" 만 말한다. 무엇이 나오는지는 아래 개요판이 맡는다.
+	lbl_stage.text = UiText.t("battle.m06", "작전 단계 %d/%d · %s") % [
+		run.stage_id, Stages.count(), st["name"]]
+	if brief_panel != null:
+		(brief_panel as _Brief).body = _brief_text(st, waves)
+		brief_panel.queue_redraw()
 
 	# 마지막 스테이지에서도 보상은 받는다. 그 뒤에 런 클리어 화면으로 간다.
 	btn_next.visible = phase == Phase.RESULT and battle.result == Battle.RESULT_VICTORY
@@ -1259,6 +1275,82 @@ func _refresh_ui() -> void:
 		_:
 			btn_start.text = UiText.t("battle.start", "▶  전투 시작")
 			lbl_status.text = st["hint"]
+
+
+## 이 판이 무엇을 요구하는지 줄글로 적는다.
+##
+## 태그를 늘어놓지 않는 이유는 위 주석에 적었다. 여기서는 순서가 중요하다 -
+## **적이 무엇을 하려는가 → 몇 번에 걸쳐 오는가 → 판이 무엇을 하는가 → 무엇이
+## 섞여 있는가**. 대응을 고민하는 순서 그대로다.
+func _brief_text(st: Dictionary, waves: int) -> String:
+	var out := UiText.t("brief.strategy", "적은 %s 순으로 판단합니다.") % 		String(st.get("strategy_text", "-")).replace(" → ", ", 다음에 ")
+	if waves > 1:
+		out += " " + UiText.t("brief.waves",
+			"적은 %d 차례에 걸쳐 밀려오며, 앞 페이즈에서 잃은 체력은 그대로 이어집니다.") % waves
+	var hz := Stages.hazard(run.stage_id)
+	if not hz.is_empty():
+		out += " " + UiText.t("brief.hazard",
+			"판 자체가 공격합니다 - %s. 예고된 칸은 붉게 칠해집니다.") % 			String(hz.get("name", "지형 기믹"))
+	var tl := Stages.trait_list(run.stage_id)
+	if not tl.is_empty():
+		# 특성 설명은 "이름 - 무슨 일이 일어나는가" 형태다. 여기서는 뒤쪽만
+		# 쓴다. 이름은 개체에 마우스를 올리면 다시 나온다.
+		var parts: Array[String] = []
+		for t in tl:
+			parts.append(Traits.describe(String(t)).replace(" - ", ": "))
+		out += "
+" + UiText.t("brief.traits", "섞인 개체: ") + "   ".join(parts)
+	return out
+
+
+## 판 아래 왼쪽의 적 개요. 호버 패널과 같은 사선 어법으로 그린다.
+class _Brief extends Control:
+	var body: String = ""
+
+	func _draw() -> void:
+		if body == "":
+			return
+		var s := size
+		var cut := 14.0
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		])
+		draw_colored_polygon(shape, Color(0.085, 0.065, 0.075, 0.92))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(0.72, 0.30, 0.32, 0.75), 2.0, true)
+		# 왼쪽 색 막대. 이 판이 "적" 에 관한 것임을 색 하나로 못 박는다.
+		draw_rect(Rect2(0, cut, 4, s.y - cut), Color(0.90, 0.36, 0.36, 0.9))
+
+		# 제목 줄은 안 단다. 붉은 막대와 붉은 테두리가 이미 "적" 이라고 말하고
+		# 있고, 여기서 아낀 17px 가 글 한 줄이다.
+		var fs := UiKit.font(12)
+		var y := 18.0
+		for para in body.split("
+"):
+			for ln in _wrap(fs, para, s.x - 30.0):
+				if y > s.y - 4.0:
+					return
+				draw_string(fs, Vector2(15, y), ln,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.86, 0.88, 0.92))
+				y += 17.0
+
+	## 폭에 맞춰 줄을 나눈다. Label 을 쓰면 사선 판과 레이어가 어긋나서
+	## 테두리 위로 글자가 삐져나온다.
+	func _wrap(f: Font, text: String, max_w: float) -> Array[String]:
+		var out: Array[String] = []
+		var cur := ""
+		for word in text.split(" "):
+			var probe: String = word if cur == "" else cur + " " + word
+			if f.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x > max_w 					and cur != "":
+				out.append(cur)
+				cur = word
+			else:
+				cur = probe
+		if cur != "":
+			out.append(cur)
+		return out
 
 
 func _reset() -> void:

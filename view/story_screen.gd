@@ -18,6 +18,41 @@ signal done()
 
 const PAD := 64.0
 
+## ── 인물별 배율 보정 ─────────────────────────────────────────────────────
+## 기본 규칙은 "그림 폭을 칸 폭에 맞춘다" 이다. 인물이 프레임 폭을 꽉 채우는
+## 그림에서는 이것만으로 어깨가 맞고, 어깨가 맞으면 얼굴도 맞는다.
+##
+## 그런데 그림마다 인물이 차지하는 비율이 다르다. 악사는 프레임 오른쪽 절반이
+## 비어 있어서, 폭을 맞추면 인물이 절반 크기로 선다. 반대로 궁수는 활까지
+## 프레임을 꽉 채워서 폭을 맞추면 인물이 혼자 커진다.
+##
+## 이건 규칙 하나로는 안 잡힌다. 그림이 담고 있는 것이 매번 다르기 때문이다.
+## 그래서 사람 손으로 배율을 적고 test/portraits.gd 로 나란히 세워 확인한다.
+##
+##   k: 폭맞춤 배율에 곱한다. 1.0 이 기본.
+##   x: 칸 폭 대비 좌우 이동. 인물이 프레임 한쪽에 치우친 그림을 가운데로 민다.
+##   y: 칸 높이 대비 상하 이동. 양수면 아래로.
+const PORTRAIT_FIT: Dictionary = {
+	"archer":    {"k": 0.95, "x": 0.00, "y": 0.00},
+	"bard":      {"k": 1.56, "x": 0.00, "y": 0.00},
+	"warrior":   {"k": 1.76, "x": 0.00, "y": 0.00},
+	"assassin":  {"k": 1.02, "x": 0.00, "y": 0.00},
+	"musketeer": {"k": 0.94, "x": 0.00, "y": 0.00},
+	"shieldman": {"k": 1.04, "x": 0.00, "y": 0.00},
+	"ai":        {"k": 1.23, "x": 0.00, "y": 0.00},
+	"ai_talk":   {"k": 1.23, "x": 0.00, "y": 0.00},
+	"ai_smile":  {"k": 1.23, "x": 0.00, "y": 0.00},
+}
+
+
+## 초상 칸 하나를 만든다. 화면 밖(검수 스크립트)에서도 같은 규칙으로 세우려면
+## 이 문이 필요하다 - 규칙이 두 벌이 되면 검수한 것과 화면에 뜨는 것이 달라진다.
+static func new_portrait_box(id: String) -> Control:
+	var p := _Portrait.new()
+	p.art_id = id
+	p.clip_contents = false
+	return p
+
 var beats: Array = []
 var index: int = 0
 
@@ -328,6 +363,18 @@ class _ArtSlot extends Control:
 				if _img != null:
 					_img.queue_free()
 				_img = UiKit.image(self, Rect2(Vector2.ZERO, size), tex, "cover")
+				# ── 배경은 뒤로 물린다 ──────────────────
+				# 이 그림들은 밝고 채도가 높다. 그대로 두면 인물과 대사판이
+				# 배경 위에 얹힌 것이 아니라 **배경과 경쟁**한다. 배경이
+				# 하는 일은 "여기가 어디인가" 하나뿐이므로, 그 하나만
+				# 남기고 눈에서 물러나야 한다.
+				_img.modulate = Color(0.62, 0.66, 0.74)
+			# 아래로 갈수록 어두워지는 막. 대사판 뒤가 특히 조용해야 한다.
+			var h := size.y
+			for i in 12:
+				var a: float = 0.06 + 0.30 * pow(float(i) / 11.0, 2.0)
+				draw_rect(Rect2(0, h * float(i) / 12.0, size.x, h / 12.0 + 1.0),
+					Color(0.03, 0.04, 0.07, a))
 			return
 		if _img != null:
 			_img.queue_free()
@@ -542,6 +589,9 @@ class _Portrait extends Control:
 		var ts := Vector2(tex.get_width(), tex.get_height())
 		if ts.y <= 0.0 or ts.x <= 0.0:
 			return
-		var k: float = size.x / ts.x
+		var fit: Dictionary = PORTRAIT_FIT.get(art_id, {})
+		var k: float = size.x / ts.x * float(fit.get("k", 1.0))
 		_tr.size = ts * k
-		_tr.position = Vector2(0, size.y - _tr.size.y)
+		_tr.position = Vector2(
+			(size.x - _tr.size.x) * 0.5 + size.x * float(fit.get("x", 0.0)),
+			size.y - _tr.size.y + size.y * float(fit.get("y", 0.0)))

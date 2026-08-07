@@ -102,7 +102,7 @@
   "battle.m03": "궁 -",
   "battle.m04": "기본",
   "battle.m05": "근접 사격",
-  "battle.m06": "작전 단계 %d/%d · %s     적 알고리즘: %s",
+  "battle.m06": "작전 단계 %d/%d · %s",
   "battle.m07": "▶  동일 알고리즘으로 재시도",
   "battle.m08": "알고리즘 수정은 하단 [편성 수정] 에서 가능합니다.",
   "battle.m09": "틱 0 / %d",
@@ -237,7 +237,7 @@
   "battle.roster_dmg": "피해 %d",
   "battle.roster_heal": "회복 %d",
   "battle.squad_stat": "공 %d · 방 %d · 사거리 %d · 이동 %d",
-  "loadout.unit_stat": "HP%d 공%d",
+  "loadout.unit_stat": "HP %d · ATK %d",
   "hover.role": "역할",
   "hover.hp": "HP",
   "hover.stat": "공격 · 사거리 · 이동",
@@ -252,5 +252,10 @@
   "card.ban_n": "제외 %d",
   "title.credit": "opening video · KlingAI 3.0",
   "shop.dossier": "보유",
-  "shop.dossier_head": "보유 모듈"
+  "shop.dossier_head": "보유 모듈",
+  "brief.head": "적 개요",
+  "brief.strategy": "적은 %s 순으로 판단합니다.",
+  "brief.waves": "적은 %d 차례에 걸쳐 밀려오며, 앞 페이즈에서 잃은 체력은 그대로 이어집니다.",
+  "brief.hazard": "판 자체가 공격합니다 - %s. 예고된 칸은 붉게 칠해집니다.",
+  "brief.traits": "섞인 개체: "
 }

@@ -346,18 +346,14 @@ func _build_hand() -> void:
 	# 같은 동작이라 설명이 필요 없다.
 	var n := owned.size()
 	var tab := _Dossier.new()
-	tab.position = Vector2(1180 + 56 - _Dossier.TAB_W, SHOP_Y)
-	tab.size = Vector2(_Dossier.TAB_W, 288)
+	tab.position = Vector2(1240 - _Dossier.TAB_W, SHOP_Y - 16)
+	tab.size = Vector2(_Dossier.TAB_W, 368)
 	# 카드보다 위에 떠야 서랍이 카드에 잘리지 않는다.
 	tab.z_index = 40
 	tab.top_level = false
 	tab.count = n
 	tab.special_n = run.special_hand.size()
-	var names: Array = []
-	for cid in owned:
-		var t: Dictionary = Cards.TABLE.get(cid, Specials.TABLE.get(cid, {}))
-		names.append(String(t.get("name", cid)))
-	tab.view_names = names
+	tab.view_ids = owned.duplicate()
 	tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tab.clip_contents = false
 	hand_root.add_child(tab)
@@ -415,21 +411,34 @@ func _build_hand() -> void:
 ## 평소에는 "몇 장 들고 있다" 만 알면 되고, 무엇을 들고 있는지는 편성 화면에서
 ## 어차피 다시 본다. 그래서 기본은 닫힌 상태다 - 자주 하는 일(사기)에 넓은
 ## 자리를 주고, 드문 일(확인)은 손을 뻗어야 열리게 한다.
+##
+## 이름 위에 한 번 더 손을 올리면 카드 원본이 옆에 뜬다. 이름만으로는 "이게
+## 무슨 조건이었더라" 가 안 풀리는데, 그걸 확인하려고 편성 화면까지 갔다
+## 오게 만들면 사는 흐름이 끊긴다.
 class _Dossier extends Control:
-	const TAB_W: float = 56.0
-	const OPEN_W: float = 320.0
-	const CUT: float = 14.0
+	const TAB_W: float = 60.0
+	const OPEN_W: float = 430.0
+	const CUT: float = 16.0
+	const ROW_H: float = 34.0
+	const ROW_TOP: float = 62.0
+	const NAME_SIZE: int = 17
 
 	var count: int = 0
 	var special_n: int = 0
-	var view_names: Array = []
+	var view_ids: Array = []
 
 	var _open: float = 0.0
 	var _forced: bool = false
+	var _hot: int = -1
+	var _peek: CardNode = null
 
 	## 스크린샷 검증용. 마우스 없이 펼친 모습을 찍으려면 이 문이 필요하다.
-	func force_open() -> void:
+	func force_open(row: int = -1) -> void:
 		_forced = true
+		_hot = row
+		# 검수 스크립트는 프레임을 최대 속도로 돌려서 delta 가 아주 작다. 보간을
+		# 기다리면 반쯤 열린 상태가 찍힌다. 곧바로 다 연 상태로 둔다.
+		_open = 1.0
 
 	## 서랍이 열리면 판이 제 Control 사각형 왼쪽으로 삐져나간다. 그 위에
 	## 마우스가 올라가 있는 동안에도 열린 채여야 하므로, 판정은 rect 가 아니라
@@ -439,11 +448,47 @@ class _Dossier extends Control:
 		return Rect2(Vector2(size.x - w, 0), Vector2(w, size.y))
 
 	func _process(delta: float) -> void:
-		var want := 0.0
-		if _forced or _drawn_rect().has_point(get_local_mouse_position()):
-			want = 1.0
+		var m := get_local_mouse_position()
+		var inside := _drawn_rect().has_point(m)
+		var want: float = 1.0 if (_forced or inside) else 0.0
 		_open = lerpf(_open, want, clampf(delta * 10.0, 0.0, 1.0))
+
+		# 어느 줄에 손이 올라가 있는가. 서랍이 거의 다 열린 뒤에만 센다 -
+		# 열리는 도중에 줄이 스쳐 지나가면 카드가 깜빡거린다.
+		if not _forced:
+			_hot = -1
+			if inside and _open > 0.85 and m.x < size.x - TAB_W:
+				var r := int(floor((m.y - ROW_TOP + ROW_H * 0.5) / ROW_H))
+				if r >= 0 and r < view_ids.size():
+					_hot = r
+		_sync_peek()
 		queue_redraw()
+
+	## 짚은 줄의 카드 원본을 서랍 왼쪽에 세운다.
+	func _sync_peek() -> void:
+		var want_id := ""
+		if _hot >= 0 and _hot < view_ids.size() and _open > 0.85:
+			want_id = String(view_ids[_hot])
+		if want_id == "":
+			if _peek != null:
+				_peek.queue_free()
+				_peek = null
+			return
+		if _peek != null and _peek.card_id == want_id:
+			return
+		if _peek != null:
+			_peek.queue_free()
+		var c := CardNode.new()
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.z_index = 6
+		add_child(c)
+		c.setup(want_id, 0)
+		c.enabled = true
+		# 카드가 서랍 왼쪽에 붙되 칸 위아래를 넘지 않게 잡는다.
+		var y := clampf(ROW_TOP + float(_hot) * ROW_H - CardNode.H * 0.5,
+			0.0, maxf(0.0, size.y - CardNode.H))
+		c.place(Vector2(size.x - TAB_W - OPEN_W - CardNode.W - 12.0, y))
+		_peek = c
 
 	func _draw() -> void:
 		var s := size
@@ -453,7 +498,7 @@ class _Dossier extends Control:
 			Vector2(x0 + CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y),
 			Vector2(x0 + CUT, s.y), Vector2(x0, s.y - CUT), Vector2(x0, CUT),
 		])
-		draw_colored_polygon(shape, Color(0.075, 0.09, 0.125, 0.985))
+		draw_colored_polygon(shape, Color(0.075, 0.09, 0.125, 1.0))
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
 		draw_polyline(line, Color(0.42, 0.62, 0.80, 0.75), 2.0, true)
@@ -465,41 +510,59 @@ class _Dossier extends Control:
 			Color(0.42, 0.62, 0.80, 0.30 * _open), 1.0)
 		var label := UiText.t("shop.dossier", "보유")
 		for i in label.length():
-			draw_string(fs, Vector2(col + 21, 26.0 + float(i) * 18.0),
+			draw_string(fs, Vector2(col + 23, 26.0 + float(i) * 18.0),
 				label[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UiKit.MUTED)
-		draw_string(UiKit.font(20), Vector2(col + 16, s.y - 40), str(count),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 20, UiKit.ACCENT)
+		draw_string(UiKit.font(22), Vector2(col + 18, s.y - 40), str(count),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 22, UiKit.ACCENT)
 		if special_n > 0:
-			draw_string(fs, Vector2(col + 16, s.y - 20), "+%d" % special_n,
+			draw_string(fs, Vector2(col + 18, s.y - 20), "+%d" % special_n,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.74, 0.20))
 		# 닫힌 상태의 서류철 무늬. 가로줄 몇 개면 "안에 종이가 꽂혀 있다" 로
 		# 읽힌다. 켜진 줄 수가 들고 있는 장수다.
 		var mark := 1.0 - _open
 		if mark > 0.02:
-			for i in 8:
-				var y := 68.0 + float(i) * 20.0
-				if y > s.y - 60.0:
+			for i in 9:
+				var y := 66.0 + float(i) * 20.0
+				if y > s.y - 62.0:
 					break
 				var lit: bool = i < count
-				draw_rect(Rect2(col + 12, y, TAB_W - 24, 3), Color(0.45, 0.70, 0.92,
+				draw_rect(Rect2(col + 13, y, TAB_W - 26, 3), Color(0.45, 0.70, 0.92,
 					(0.62 if lit else 0.13) * mark))
 
 		# 펼쳐지면 꽂힌 모듈을 한 줄씩 적는다. 카드를 다시 그리기에는 좁고,
-		# 여기서 하려는 일은 "무엇을 들고 있더라" 를 훑는 것뿐이다.
+		# 여기서 하려는 일은 "무엇을 들고 있더라" 를 훑는 것이다. 더 알고 싶으면
+		# 그 줄에 손을 올린다.
 		var a: float = clampf((_open - 0.35) / 0.5, 0.0, 1.0)
 		if a <= 0.01:
 			return
-		draw_string(fs, Vector2(x0 + 18, 30),
+		draw_string(fs, Vector2(x0 + 20, 34),
 			UiText.t("shop.dossier_head", "보유 모듈"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.52, 0.68, 0.85, a))
-		for i in view_names.size():
-			var y2 := 56.0 + float(i) * 24.0
-			if y2 > s.y - 16.0:
+		var nf := UiKit.font(NAME_SIZE)
+		# 탭 기둥을 침범하면 줄 강조가 손잡이까지 덮어서 어디까지가 서랍인지
+		# 안 보인다. 내용은 기둥 왼쪽에서 끝난다.
+		var inner := OPEN_W - 40.0
+		for i in view_ids.size():
+			var y2 := ROW_TOP + float(i) * ROW_H
+			if y2 > s.y - 14.0:
 				break
-			draw_rect(Rect2(x0 + 18, y2 - 13, 3, 15), Color(0.45, 0.70, 0.92, a * 0.8))
-			draw_string(UiKit.font(13), Vector2(x0 + 28, y2), String(view_names[i]),
-				HORIZONTAL_ALIGNMENT_LEFT, int(OPEN_W - 46), 13,
-				Color(0.88, 0.92, 0.97, a))
+			var cid := String(view_ids[i])
+			var t: Dictionary = Cards.TABLE.get(cid, Specials.TABLE.get(cid, {}))
+			var hot: bool = i == _hot
+			if hot:
+				draw_rect(Rect2(x0 + 12, y2 - 22, inner, ROW_H - 4),
+					Color(0.30, 0.52, 0.72, 0.30 * a))
+			draw_rect(Rect2(x0 + 16, y2 - 19, 4, 20),
+				Color(0.45, 0.70, 0.92, a * (1.0 if hot else 0.75)))
+			draw_string(nf, Vector2(x0 + 28, y2), String(t.get("name", cid)),
+				HORIZONTAL_ALIGNMENT_LEFT, int(inner - 90.0), NAME_SIZE,
+				Color(1, 1, 1, a) if hot else Color(0.86, 0.90, 0.96, a))
+			# 축 이름을 오른쪽에 붙인다. 셋을 고루 들었는지 훑는 데 쓴다.
+			var ax := String(t.get("axis", ""))
+			if ax != "":
+				var ac := Axes.color(ax)
+				draw_string(fs, Vector2(x0 + 20 + inner - 82.0, y2 - 2), Axes.label(ax),
+					HORIZONTAL_ALIGNMENT_LEFT, 78, 11, Color(ac.r, ac.g, ac.b, a * 0.85))
 
 
 func _on_merge_toggle() -> void:

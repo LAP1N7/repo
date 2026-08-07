@@ -30,6 +30,7 @@
   "pre_1": [
     {
       "speaker": "대원 A",
+      "art": "commander_room",
       "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!",
       "portrait": "archer"
     },
@@ -57,6 +58,7 @@
   "post_1": [
     {
       "speaker": "MIRA",
+      "art": "commander_room",
       "text": "수고하셨습니다. 첫 번째 거점을 완벽하게 수복했군요.",
       "portrait": "ai_smile"
     },
@@ -78,6 +80,7 @@
   "pre_2": [
     {
       "speaker": "MIRA",
+      "art": "commander_room",
       "text": "적이 물러섭니다. 같이 기다리면 아무 일도 일어나지 않습니다.",
       "portrait": "ai"
     }
@@ -85,7 +88,8 @@
   "post_2": [
     {
       "text": "",
-      "fx": "glitch"
+      "fx": "glitch",
+      "art": "commander_room"
     },
     {
       "speaker": "MIRA",
@@ -118,6 +122,7 @@
   "pre_3": [
     {
       "speaker": "MIRA",
+      "art": "commander_room",
       "text": "방벽 뒤에 회복 담당이 있습니다.\n앞만 두들겨서는 절대 안 무너집니다.",
       "portrait": "ai"
     }
@@ -214,6 +219,7 @@
   "post_4": [
     {
       "speaker": "MIRA",
+      "art": "commander_room",
       "text": "데이터 수집률 목표치에 근접했습니다.\n마지막 단계입니다, 지휘관님.",
       "portrait": "ai",
       "music": "opening_theme"
@@ -250,6 +256,7 @@
   "post_5": [
     {
       "speaker": "MIRA",
+      "art": "commander_room",
       "text": "접근 목표 기계체 완파. 방어 구역 수복 완료.",
       "portrait": "ai"
     },
@@ -273,6 +280,7 @@
   "loop_0": [
     {
       "speaker": "MIRA",
+      "art": "commander_room",
       "text": "괜찮습니다.\n기억을 다듬고, 다시 한 번 훈련을 거치면 되니까요.",
       "portrait": "ai_smile"
     },

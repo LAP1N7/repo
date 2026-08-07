@@ -134,6 +134,20 @@ func shown_alive() -> bool:
 
 var facing: int = 1
 
+## ── 진영 색조 ────────────────────────────────────────────────────────────
+## 적 개체에 옅은 붉은 기를 입힌다.
+##
+## 판 위에 대원 셋과 적 예닐곱이 같은 화풍으로 서 있으면 한눈에 편을 못 가른다.
+## 발판 색과 HP 바로도 구분은 되지만 그건 **찾아봐야** 보이는 신호다. 몸 색은
+## 안 찾아도 보인다.
+##
+## 추격 자폭체만 핫핑크로 뺐다. 이 개체는 "내가 지목당했다" 를 알아야 대응이
+## 되는데, 다른 적과 같은 색이면 무리 속에 묻힌다.
+const TINT_ENEMY: Color = Color(1.0, 0.72, 0.70)
+const TINT_STALKER: Color = Color(1.0, 0.42, 0.86)
+
+var base_tint: Color = Color(1, 1, 1)
+
 ## 그림의 배율(부호 없는 크기). 방향을 바꿀 때 이 값에 부호만 다시 붙인다.
 var _scale_k: float = 1.0
 ## 리그를 담은 노드. 단일 그림이면 null 이고 art 를 직접 뒤집는다.
@@ -149,6 +163,9 @@ func setup(p_unit: Unit, p_font: Font) -> void:
 	unit = p_unit
 	font = p_font
 	view_dead = not p_unit.alive
+
+	if p_unit.team == Unit.TEAM_ENEMY:
+		base_tint = TINT_STALKER if p_unit.type_id == "stalker" else TINT_ENEMY
 
 	art = Sprite2D.new()
 	art.z_index = 0
@@ -252,6 +269,11 @@ func _visual_bounds(root: Node) -> Rect2:
 	for n in _all_sprites(root):
 		var tex: Texture2D = n.texture
 		if tex == null:
+			continue
+		# 숨어 있는 부품은 재지 않는다. 자폭 개체의 폭발 스프라이트는 본체보다
+		# 훨씬 커서, 같이 재면 본체가 그 크기에 맞춰 쪼그라든다. 지금 서 있는
+		# 모습이 아닌 것으로 키를 정하면 안 된다.
+		if not n.visible:
 			continue
 		var used := _opaque_rect(tex)
 		if used.size.x <= 0.0 or used.size.y <= 0.0:
@@ -444,13 +466,14 @@ func _process(delta: float) -> void:
 		chip_alpha = maxf(0.0, chip_alpha - delta * CHIP_FADE)
 	chip.modulate.a = chip_alpha
 
+	# 피격 플래시는 스프라이트를 하얗게 태워서 표현한다. 진영 색조 위에 얹는다.
+	var tone := base_tint.lerp(Color(4, 4, 4), flash)
 	if rig != null:
 		rig.visible = shown_alive()
-		rig.modulate = Color(1, 1, 1).lerp(Color(4, 4, 4), flash)
+		rig.modulate = tone
 	if art != null and art.visible:
 		art.visible = shown_alive()
-		# 피격 플래시는 스프라이트를 하얗게 태워서 표현한다.
-		art.modulate = Color(1, 1, 1).lerp(Color(4, 4, 4), flash)
+		art.modulate = tone
 	queue_redraw()
 	if overlay != null:
 		overlay.queue_redraw()

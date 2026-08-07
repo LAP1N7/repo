@@ -41,7 +41,7 @@ func _init() -> void:
 			s.setup(run)
 			for c in s.hand_root.get_children():
 				if c.has_method("force_open"):
-					c.force_open(), 8)
+					c.force_open(1), 26)
 
 	# 보조 지휘는 예산이 있어야 버튼이 살아 있는 모습을 볼 수 있다.
 	run.budget = 40
@@ -118,6 +118,22 @@ func _init() -> void:
 	print("  찍음: 13_cutin")
 	cut.queue_free()
 	await process_frame
+
+	# 기계 개체가 실제로 서는 모습. 판마다 나오는 개체가 다르므로 셋을 찍는다.
+	for spec in [[5, 140, "14_entities"], [1, 200, "14b_bomber"], [2, 460, "14c_turret"]]:
+		run.stage_id = int(spec[0])
+		var ent: BattleScreen = load("res://scenes/battle_view.tscn").instantiate()
+		root.add_child(ent)
+		ent.setup(run)
+		ent.speed = 8.0
+		ent._start_battle()
+		for _i in int(spec[1]):
+			await process_frame
+		root.get_texture().get_image().save_png("%s/%s.png" % [OUT, String(spec[2])])
+		print("  찍음: %s" % spec[2])
+		ent.queue_free()
+		await process_frame
+	run.stage_id = 1
 
 	run.on_stage_cleared(10)
 	await _shot("05_reward", load("res://scenes/reward_screen.tscn").instantiate(),
