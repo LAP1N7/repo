@@ -87,8 +87,15 @@ func setup(p_beats: Array) -> void:
 
 	# 배경 아트 자리. 화면 위쪽 3분의 2를 쓴다.
 	_art = _ArtSlot.new()
+	# ── 배경은 대사판 아래까지 ──────────────────────────────────────────
+	# 예전에는 y 56~456 만 쓰고 그 아래를 통째로 검게 뒀다. 그러면 대사판이
+	# 그림 위에 얹힌 것이 아니라 **그림이 끝난 자리에 놓인** 것이 되고,
+	# 화면이 위아래 두 동강으로 읽힌다.
+	#
+	# 배경을 바닥까지 늘리고 대사판을 반투명으로 바꾸면, 대사가 같은 공간
+	# 안에서 들리는 소리가 된다. 미연시가 오래전부터 쓰는 배치다.
 	_art.position = Vector2(PAD, 56)
-	_art.size = Vector2(1280 - PAD * 2, 400)
+	_art.size = Vector2(1280 - PAD * 2, 664 - 56)
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_art)
 
@@ -372,7 +379,9 @@ class _ArtSlot extends Control:
 			# 아래로 갈수록 어두워지는 막. 대사판 뒤가 특히 조용해야 한다.
 			var h := size.y
 			for i in 12:
-				var a: float = 0.06 + 0.30 * pow(float(i) / 11.0, 2.0)
+				# 아래로 갈수록 가파르게 어두워진다. 대사판이 반투명이라
+				# 판 뒤가 밝으면 글자가 통째로 안 읽힌다.
+				var a: float = 0.10 + 0.52 * pow(float(i) / 11.0, 2.2)
 				draw_rect(Rect2(0, h * float(i) / 12.0, size.x, h / 12.0 + 1.0),
 					Color(0.03, 0.04, 0.07, a))
 			return
@@ -399,7 +408,12 @@ class _Panel extends Control:
 			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
 			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
 		])
-		draw_colored_polygon(shape, Color(0.06, 0.07, 0.10, 0.95))
+		# ── 반투명 ───────────────────────────────────────────────────────
+		# 불투명하면 그림에 구멍이 뚫린다. 뒤가 비쳐야 인물과 같은 공간에
+		# 있는 판으로 읽힌다. 대신 위쪽을 조금 더 진하게 깔아 이름과 첫 줄이
+		# 밝은 배경 위에서도 읽히게 한다.
+		draw_colored_polygon(shape, Color(0.03, 0.04, 0.07, 0.80))
+		draw_rect(Rect2(cut, 1, s.x - cut - 1, 34), Color(0.03, 0.04, 0.07, 0.30))
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
 		draw_polyline(line, tint, 1.8, true)

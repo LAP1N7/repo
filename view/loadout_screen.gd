@@ -27,7 +27,7 @@ var tut: Tutorial = null
 ##   x  40 ~ 424   배치 격자 · 대원 선택
 ##   x 440 ~ 1240  대원 카드 3장 (254 폭, 266 간격)
 ##   y 548 ~       보유 모듈
-const TILE: float = 84.0
+const TILE: float = 66.0
 const GRID_AT := Vector2(48, 124)
 
 ## 대원 카드
@@ -37,13 +37,21 @@ const CARD_STEP: float = 266.0
 const CARD_Y: float = 116.0
 const CARD_H: float = 360.0
 
-## 대원 선택 얼굴 칸. 여섯이 x 424 앞에서 끝나야 한다.
-const PICK_Y: float = 432.0
-const PICK_W: float = 62.0
-const PICK_H: float = 92.0
-const PICK_STEP: float = 63.0
+## ── 대원 선택 ───────────────────────────────────────────────────────────
+## 3열 2행. 한 줄에 여섯을 늘어놓으면 칸 하나가 62px 까지 좁아져 얼굴이
+## 우표만 해진다. 두 줄로 접으면 같은 폭에서 칸이 두 배 가까이 커진다.
+const PICK_X: float = 48.0
+const PICK_Y: float = 366.0
+const PICK_W: float = 116.0
+const PICK_H: float = 86.0
+const PICK_STEP: Vector2 = Vector2(122.0, 92.0)
+const PICK_COLS: int = 3
 
-const HAND_Y: float = 548.0
+const HAND_Y: float = 540.0
+
+## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
+## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
+const HAND_SCALE: float = 0.85
 
 ## 카드 안쪽 세로 배치. 전부 카드 원점 기준이다.
 const IN_FACE_H: float = 110.0
@@ -115,14 +123,16 @@ func setup(p_run: RunState) -> void:
 	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
 	# 로딩 화면의 TIP 이 그 역할을 한다 - 유닛 버튼 아래에 태그를 달면 정보가
 	# 늘어난 만큼 화면이 빽빽해지고, 정작 고를 때 읽는 건 HP·공격력이다.
-	_head(Vector2(48, PICK_Y - 36), UiText.t("loadout.unit_pick", "대원 선택"))
-	var x := 48.0
+	_head(Vector2(48, PICK_Y - 26), UiText.t("loadout.unit_pick", "대원 선택"))
+	var pi := 0
 	for tid in UnitData.playable():
 		var s2: Dictionary = UnitData.TABLE[tid]
 		# 여기는 **고르는 자리**다. 능력치는 오른쪽 대원 카드가 크게 말하므로
 		# 얼굴과 이름만 둔다. 좁은 칸에 숫자까지 밀어 넣으면 둘 다 안 읽힌다.
 		var b := _Tile.new()
-		b.position = Vector2(x, PICK_Y)
+		b.position = Vector2(
+			PICK_X + float(pi % PICK_COLS) * PICK_STEP.x,
+			PICK_Y + float(pi / PICK_COLS) * PICK_STEP.y)
 		b.size = Vector2(PICK_W, PICK_H)
 		b.type_id = String(tid)
 		b.label = String(s2["name"])
@@ -134,7 +144,7 @@ func setup(p_run: RunState) -> void:
 		type_buttons[tid] = b
 		if tut != null:
 			tut.register_anchor("unit_%s" % tid, b)
-		x += PICK_STEP
+		pi += 1
 
 
 	# 손패가 바닥을 다 쓰고 규칙 슬롯이 y=520 까지 내려오므로, 경고는 헤더 옆에 둔다.
@@ -419,7 +429,7 @@ func _build_hand() -> void:
 			12, UiKit.MUTED)
 		return
 
-	var mini_w := CardNode.W * 0.72
+	var mini_w := CardNode.W * HAND_SCALE
 	var step: float = minf(mini_w + 14.0, (1160.0 - mini_w) / maxf(1.0, float(n - 1)))
 	var span := mini_w + step * (n - 1)
 	var x0 := (1280.0 - span) * 0.5
@@ -429,6 +439,7 @@ func _build_hand() -> void:
 		var id: String = owned[i]
 		var card := CardNode.new()
 		hand_root.add_child(card)
+		card.mini_scale = HAND_SCALE
 		card.setup(id, i, true, false)
 
 		# 꽂을 수 있는 것만 밝게. 특수는 직업이 맞아야 하고, 카드는 빈 슬롯이 있어야 한다.
@@ -543,8 +554,17 @@ class _Tile extends Button:
 		# 얼굴 그림 자체가 캔버스 끝까지 꽉 차게 그려져 있다(머리카락이 위
 		# 가장자리에 닿는다). 칸에 딱 붙여 놓으면 그 잘린 단면이 테두리와
 		# 만나서 "잘렸다" 로 읽힌다. 안쪽으로 한 겹 물려 여백을 만든다.
-		_clip.position = Vector2(6, 6)
-		_clip.size = Vector2(size.x - 12, size.y - band - 6)
+		# ── 이름 칸을 그림 위로 올린다 ────────────────────────────────
+		# 예전에는 그림이 이름띠 **위에서** 끝났다. 그러면 칸 안이 위아래로
+		# 나뉘어 얼굴이 앉을 자리가 그만큼 줄고, 얼굴과 이름 사이에 쓸데없는
+		# 빈 줄이 생긴다.
+		#
+		# 그림을 칸 끝까지 채우고 이름띠를 그 위에 얹는다. 얼굴은 커지고
+		# 이름은 올라온다.
+		# 이름띠가 얼굴을 조금만 물게 한다. 칸 끝까지 채우면 띠가 턱을 통째로
+		# 덮는다 - 올리라는 것이지 가리라는 것이 아니다.
+		_clip.position = Vector2(4, 4)
+		_clip.size = Vector2(size.x - 8, size.y - band + 4.0)
 		var tex := null if (empty or type_id == "") 			else UiKit.art(["portraits", "units"], type_id)
 		_tr.texture = tex
 		_tr.modulate = Color(1, 1, 1, 0.45 if disabled else 1.0)
@@ -589,7 +609,7 @@ class _TileFace extends Control:
 
 		var band: float = tile.band_h()
 		if String(tile.label) != "":
-			var ly: float = s.y - band
+			var ly: float = s.y - band - 3.0
 			draw_rect(Rect2(2, ly, s.x - 4, band - 2), Color(0, 0, 0, 0.68))
 			var fs := UiKit.font(11)
 			draw_string(fs, Vector2(0, ly + 12), String(tile.label),

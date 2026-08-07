@@ -184,6 +184,46 @@ func _init() -> void:
 		await _shot(String(tag[2]), load("res://scenes/story_screen.tscn").instantiate(),
 			func(s2): s2.setup(beats); s2.index = pick; s2._show(pick), 6)
 
+	# ── 튜토리얼 ────────────────────────────────────────────────────────
+	# 대본은 화면 위에 얹히는 물건이라, 대본만 검사해서는 말풍선이 버튼을
+	# 가리는지 알 수 없다. 화면별로 한 장씩 찍는다.
+	var tut := Tutorial.new()
+	tut.load_script()
+	tut.start()
+	var tut_run := RunState.new()
+	tut_run.fixed_seed = 7
+	tut_run.start_run(Stages.TUTORIAL_ID)
+	tut_run.fixed_offers = ["near_first", "keep_range", "guard_stance",
+		"execute", "front_line"] as Array[String]
+	tut_run.budget = 12
+	tut_run.offers.clear()
+	tut_run._fill_offers()
+
+	for spec in [[7, "shop", "18_tut_shop", "res://scenes/shop_screen.tscn"],
+			[15, "loadout", "19_tut_loadout", "res://scenes/loadout_screen.tscn"],
+			[22, "battle", "20_tut_battle", "res://scenes/battle_view.tscn"]]:
+		tut.index = int(spec[0])
+		var scr: Node = load(String(spec[3])).instantiate()
+		scr.set("tut", tut)
+		root.add_child(scr)
+		scr.call("setup", tut_run)
+		# 편성 화면은 대원이 있어야 판이 그려진다.
+		if String(spec[1]) == "loadout" and tut_run.roster.is_empty():
+			tut_run.place("archer", 0)
+			scr.call("refresh")
+		var canvas := CanvasLayer.new()
+		canvas.layer = 10
+		scr.add_child(canvas)
+		var ov := TutorialOverlay.new()
+		canvas.add_child(ov)
+		ov.setup(tut, scr)
+		for _i in 8:
+			await process_frame
+		root.get_texture().get_image().save_png("%s/%s.png" % [OUT, String(spec[2])])
+		print("  찍음: %s" % spec[2])
+		scr.queue_free()
+		await process_frame
+
 	print("=== .shots/ 에 저장 완료 ===")
 	quit(0)
 

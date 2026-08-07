@@ -139,7 +139,21 @@ func goto_help(from_title: bool) -> void:
 func start_tutorial() -> void:
 	run.start_run(Stages.TUTORIAL_ID)
 	# 대본이 특정 카드를 지목하므로 상점을 고정한다. 무작위면 대사가 헛돈다.
-	run.fixed_offers = ["engage", "keep_distance", "finisher", "pursue", "hold_ground"] as Array[String]
+	# ── 상점을 고정한다 ────────────────────────────────────────────────
+	# 대본이 "0번을 사라 · 2번을 제외하라" 처럼 자리를 지목하므로 무작위면
+	# 대사가 통째로 헛돈다.
+	#
+	# 여기 있던 다섯 개(engage / keep_distance / pursue / hold_ground)는
+	# **지금 표에 없는 이름**이었다. 축을 도입하면서 모듈 표를 갈아엎었는데
+	# 이 줄이 안 따라왔다 - 튜토리얼 상점이 통째로 빈 것이 그 때문이다.
+	#
+	# 지금 이름으로 다시 짠다. 세 축을 한 번씩 보여 주는 배치다.
+	#   0 근접 추적(TARGET 1)   - 사서 꽂는다
+	#   1 거리 유지(POSITION 3) - 사서 꽂는다. 카이팅이 여기서 나온다
+	#   2 방어 태세(DOCTRINE 2) - 제외로 버리는 시범
+	#   3 처형(TARGET 3) · 4 전열 유지(POSITION 2) - 예산이 모자라 못 산다
+	run.fixed_offers = ["near_first", "keep_range", "guard_stance",
+		"execute", "front_line"] as Array[String]
 	run.budget = 12
 	run.offers.clear()
 	run._fill_offers()

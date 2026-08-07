@@ -75,44 +75,133 @@ func _make_video() -> VideoStreamPlayer:
 ## 배경에 인물이 있는 화면이라 더 그렇다. 판을 깔면 그만큼 그림을 가린다.
 func _menu(at: Vector2, text: String, h: float) -> Button:
 	var b := Button.new()
-	b.text = text
 	b.position = at
-	b.size = Vector2(360, h)
+	b.size = Vector2(340, h + 12.0)
 	b.flat = true
 	b.focus_mode = Control.FOCUS_NONE
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var blank := StyleBoxEmpty.new()
 	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
 		b.add_theme_stylebox_override(st, blank)
-	b.add_theme_font_override("font", UiKit.title_font())
-	b.add_theme_font_size_override("font_size", 26)
-	b.add_theme_color_override("font_color", Color(0.86, 0.88, 0.94))
-	b.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	b.add_theme_color_override("font_pressed_color", UiKit.ACCENT)
 	add_child(b)
 
-	# 가리키는 줄에만 왼쪽에 짧은 막대가 선다. 글자만으로는 "지금 이것"
-	# 이라는 것이 안 보인다.
-	var mark := _MenuMark.new()
-	mark.host = b
-	mark.position = at + Vector2(-16, 0)
-	mark.size = Vector2(10, h)
-	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(mark)
+	# 글자와 판은 자식이 그린다. Button 은 제 글자를 먼저 그리고 그 위에
+	# _draw() 가 얹히므로, 판을 직접 그리면 글자가 통째로 덮인다.
+	var face := _MenuFace.new()
+	face.host = b
+	face.label = text
+	face.position = Vector2.ZERO
+	face.size = b.size
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(face)
 	return b
 
 
-## 메뉴 항목 왼쪽의 표시. 가리키고 있을 때만 보인다.
-class _MenuMark extends Control:
+## ── 메뉴 한 줄 ───────────────────────────────────────────────────────────
+## 글자만 놓여 있으면 "누를 수 있는 것" 으로 안 읽힌다. 그렇다고 회색 상자를
+## 깔면 배경 인물을 가리고 양식 입력란처럼 보인다.
+##
+## 그래서 판은 **가리킬 때만** 나온다. 왼쪽에서 오른쪽으로 옅어지는 반투명
+## 띠가 깔리고, 왼쪽에 갈매기 표시와 세로 막대가 서고, 오른쪽 끝에서 얇은
+## 선이 뻗는다. 평소에는 글자뿐이라 그림을 안 가리고, 손을 올리면 그 줄만
+## 계기판처럼 켜진다.
+class _MenuFace extends Control:
 	var host: Button
+	var label: String = ""
 
-	func _process(_d: float) -> void:
-		queue_redraw()
+	## 켜짐 정도. 0~1 사이를 부드럽게 오간다 - 딸깍 켜지면 싸구려로 보인다.
+	var _on: float = 0.0
+
+	func _process(delta: float) -> void:
+		var want: float = 1.0 if (host != null and host.is_hovered()) else 0.0
+		var prev := _on
+		_on = lerpf(_on, want, clampf(delta * 12.0, 0.0, 1.0))
+		if absf(_on - prev) > 0.001:
+			queue_redraw()
 
 	func _draw() -> void:
-		if host == null or not host.is_hovered():
-			return
-		draw_rect(Rect2(2, size.y * 0.18, 3, size.y * 0.64), UiKit.ACCENT)
+		var s := size
+		var a := _on
+		if a > 0.01:
+			# 왼쪽에서 오른쪽으로 옅어지는 띠. 한 겹씩 나눠 그린다 -
+			# 그라디언트 텍스처를 만들 것까지도 없다.
+			for i in 10:
+				var f := float(i) / 10.0
+				draw_rect(Rect2(s.x * f, 2, s.x * 0.1 + 1.0, s.y - 4),
+					Color(0.30, 0.62, 0.86, (0.22 - 0.02 * float(i)) * a))
+			# 위아래 규칙선. 밝은 프레임에서도 줄의 경계가 남는다.
+			draw_rect(Rect2(0, 1, s.x * (0.25 + 0.75 * a), 1),
+				Color(0.55, 0.85, 1.0, 0.55 * a))
+			draw_rect(Rect2(0, s.y - 2, s.x * (0.25 + 0.75 * a), 1),
+				Color(0.55, 0.85, 1.0, 0.35 * a))
+
+		# 왼쪽 표시. 세로 막대 + 갈매기. 켜질수록 오른쪽으로 조금 나온다.
+		var px := -18.0 + 4.0 * a
+		draw_rect(Rect2(px, s.y * 0.22, 3, s.y * 0.56),
+			Color(1.0, 0.78, 0.30, 0.25 + 0.75 * a))
+		if a > 0.05:
+			var cy := s.y * 0.5
+			draw_polyline(PackedVector2Array([
+				Vector2(px + 8, cy - 5), Vector2(px + 13, cy), Vector2(px + 8, cy + 5),
+			]), Color(1.0, 0.82, 0.35, a), 2.0, true)
+
+		var f2 := UiKit.title_font()
+		var col := Color(0.86, 0.88, 0.94).lerp(Color(1, 1, 1), a)
+		var at := Vector2(14.0 + 6.0 * a, s.y * 0.5 + 10.0)
+		# 배경이 밝은 프레임에서도 읽히도록 그림자를 한 겹 깐다.
+		draw_string(f2, at + Vector2(2, 2), label, HORIZONTAL_ALIGNMENT_LEFT,
+			-1, 26, Color(0, 0, 0, 0.65))
+		draw_string(f2, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, col)
+
+
+## ── 제목 로고 ────────────────────────────────────────────────────────────
+## 그림자 · 외곽선 · 본문을 겹쳐 그리고, 위아래로 규칙선을 그어 조판된 표제로
+## 만든다. 자간을 손으로 벌리는 것은 draw_string 이 자간을 안 받기 때문이다 -
+## 글자를 하나씩 놓으면 그만큼 로고타이프에 가까워진다.
+class _Logo extends Control:
+	const TITLE_SIZE: int = 58
+	const TRACK: float = 3.0
+
+	func _draw() -> void:
+		var f := UiKit.title_font()
+		var text := UiText.t("title.name", "PROJECT RECLAIM")
+		var w := _draw_tracked(f, text, Vector2(0, 62), TITLE_SIZE, TRACK, true)
+
+		# 규칙선. 표제를 위아래로 가두면 그 자체가 판처럼 읽힌다.
+		draw_rect(Rect2(0, 8, w, 2), Color(0.72, 0.86, 1.0, 0.55))
+		draw_rect(Rect2(0, 78, w, 1), Color(0.72, 0.86, 1.0, 0.30))
+		# 오른쪽 끝의 짧은 눈금 셋. 계기판 어법이다.
+		for i in 3:
+			draw_rect(Rect2(w - 30.0 + float(i) * 10.0, 78, 5, 5),
+				Color(1.0, 0.78, 0.30, 0.75 - 0.2 * float(i)))
+
+		_draw_tracked(f, UiText.t("title.name_ko", "프로젝트 리클레임"),
+			Vector2(2, 116), 22, 4.0, false)
+
+	## 글자를 하나씩 놓아 자간을 벌린다. 돌려주는 값은 전체 폭이다.
+	func _draw_tracked(f: Font, text: String, at: Vector2, fsize: int,
+			track: float, heavy: bool) -> float:
+		var x := at.x
+		for i in text.length():
+			var ch := text[i]
+			var adv: float = f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, fsize).x
+			var p := Vector2(x, at.y)
+			if heavy:
+				# 아래로 떨어지는 그림자. 배경이 밝아도 글자가 뜬다.
+				draw_string(f, p + Vector2(3, 4), ch, HORIZONTAL_ALIGNMENT_LEFT,
+					-1, fsize, Color(0, 0, 0, 0.55))
+				# 검은 외곽선. 인물의 머리칼 위에서도 윤곽이 남는다.
+				draw_string_outline(f, p, ch, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					fsize, 6, Color(0.02, 0.03, 0.05, 0.9))
+				draw_string(f, p, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize,
+					Color(1, 1, 1))
+			else:
+				draw_string_outline(f, p, ch, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					fsize, 4, Color(0.02, 0.03, 0.05, 0.85))
+				draw_string(f, p, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize,
+					Color(0.72, 0.78, 0.88))
+			x += adv + track
+		return x - at.x - track
 
 
 func setup() -> void:
@@ -154,45 +243,38 @@ func setup() -> void:
 	veil.visible = _video != null
 	add_child(veil)
 
-	# 게임 이름만 전용 서체를 쓴다. 굵고 장식적이어도 되는 유일한 자리다.
-	var t := UiKit.label(self, Vector2(TEXT_X, 120), Vector2(TEXT_W, 110),
-		UiText.t("title.name", "PROJECT RECLAIM"), 64)
-	t.add_theme_font_override("font", UiKit.title_font())
-	# 빛의계승자는 세리프라 글자 자체가 위아래로 크다. 라벨 높이를 넉넉히 주지
-	# 않으면 아래 줄과 글자가 겹친다.
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# ── 제목은 라벨이 아니라 로고다 ─────────────────────────────────────
+	# Label 로 얹으면 서체 그대로의 맨 글자라, 밝은 프레임에서 인물의 머리칼과
+	# 섞여 묻힌다. 게임의 얼굴이 배경에 지는 것은 그 자체로 실패다.
+	#
+	# 직접 그려서 세 겹을 얹는다: 아래로 떨어지는 그림자 · 검은 외곽선 ·
+	# 본문. 여기에 자간을 벌리고 위아래로 얇은 규칙선을 그으면, 같은 서체인데
+	# 조판된 로고로 읽힌다. SF·밀리터리 표제가 쓰는 오래된 방법이다.
+	var logo := _Logo.new()
+	logo.position = Vector2(TEXT_X, 112)
+	logo.size = Vector2(TEXT_W + 60, 190)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(logo)
 
-	# 한글 부제도 제목 폰트로 쓴다. 영문 제목과 한글 부제는 **같은 이름**인데
-	# 서체가 다르면 두 개의 다른 문구처럼 보인다. 같은 서체로 묶어야 한 덩어리로
-	# 읽힌다. 빛의계승자는 세리프라 한글도 획이 살아 있다.
-	var t_ko := UiKit.label(self, Vector2(TEXT_X, 226), Vector2(TEXT_W, 40),
-		UiText.t("title.name_ko", "프로젝트 리클레임"), 24, UiKit.MUTED)
-	t_ko.add_theme_font_override("font", UiKit.title_font())
-	t_ko.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-
-	var sub := UiKit.label(self, Vector2(TEXT_X, 266), Vector2(TEXT_W, 30),
-		UiText.t("title.sub", "규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러"), 17, UiKit.MUTED)
+	var sub := UiKit.label(self, Vector2(TEXT_X + 2, 306), Vector2(TEXT_W, 30),
+		UiText.t("title.sub", "규칙을 짜서 AI를 싸우게 하는 격자 오토배틀러"),
+		15, Color(0.62, 0.70, 0.82))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
-	var tag := UiKit.label(self, Vector2(TEXT_X, 296), Vector2(TEXT_W, 48),
-		UiText.t("title.tagline", "내가 조종하는 건 캐릭터가 아니라 캐릭터의 사고방식이다."),
-		15, UiKit.ACCENT, true)
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-
-	var b1 := _menu(Vector2(TEXT_X, 386), UiText.t("title.start", "작전 개시"), 30)
+	var b1 := _menu(Vector2(TEXT_X, 372), UiText.t("title.start", "작전 개시"), 30)
 	b1.pressed.connect(func():
 		sfx.play("click")
 		start_run.emit()
 	)
 
-	var b2 := _menu(Vector2(TEXT_X, 442), UiText.t("title.tutorial", "훈련 과정"), 30)
+	var b2 := _menu(Vector2(TEXT_X, 430), UiText.t("title.tutorial", "훈련 과정"), 30)
 	b2.pressed.connect(func(): start_tutorial.emit())
 
 	# ── 왜 규칙 요약 대신 스토리인가 ────────────────────────────────────
 	# 규칙 요약은 상점 화면에도 [게임 방법] 으로 있다. 같은 것을 두 군데 둘
 	# 이유가 없고, 지금 더 급한 건 대본을 고칠 때마다 다섯 판을 다시 이기지
 	# 않고 이야기만 확인하는 길이다.
-	var b3 := _menu(Vector2(TEXT_X, 498), UiText.t("title.story", "기록 열람"), 30)
+	var b3 := _menu(Vector2(TEXT_X, 488), UiText.t("title.story", "기록 열람"), 30)
 	b3.pressed.connect(func(): show_help.emit())
 
 	# 콘텐츠 개수(스테이지 5개 · 카드 18종 …)는 뺐다.

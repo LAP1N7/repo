@@ -793,6 +793,8 @@ func _build_ui() -> void:
 	brief_panel.size = Vector2(836, 74)
 	brief_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(brief_panel)
+	if tut != null:
+		tut.register_anchor("brief_panel", brief_panel)
 
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
 	var cy := 596.0
@@ -880,6 +882,8 @@ func _build_ui() -> void:
 	roster_root = _RosterPanel.new()
 	roster_root.view = self
 	roster_root.position = Vector2(ROSTER_X, 100)
+	if tut != null:
+		tut.register_anchor("roster_panel", roster_root)
 	roster_root.size = Vector2(COL_W, ROSTER_H)
 	# 네모 위에 손이 올라간 것을 알아야 하므로 마우스를 받는다.
 	roster_root.mouse_filter = Control.MOUSE_FILTER_PASS

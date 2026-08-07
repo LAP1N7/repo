@@ -108,9 +108,14 @@ func setup(p_card_id: String, p_index: int, p_mini: bool = false,
 ## 128x168 안에 조건과 행동을 각각 두 줄까지밖에 못 담아서, 긴 설명은
 ## "직전 틱에 아군이 적..." 처럼 잘렸다. 살 물건의 설명이 잘려 있으면
 ## 무엇을 사는지 모르는 채로 사게 된다. 펼치면 잘림이 사라진다.
+## 미니 카드의 배율. 화면마다 카드가 하는 일이 달라서 크기도 달라야 한다.
+## 상점은 스무 장을 훑는 자리라 작게, 편성은 이미 산 것을 꽂는 자리라 크게.
+var mini_scale: float = 0.72
+
+
 func card_size() -> Vector2:
 	if mini:
-		return Vector2(W, H) * (1.0 if _expanded else 0.72)
+		return Vector2(W, H) * (1.0 if _expanded else mini_scale)
 	return Vector2(W, H) * (EXPAND if _expanded else 1.0)
 
 
@@ -190,7 +195,7 @@ func _process(delta: float) -> void:
 	# 안 그러면 카드가 오른쪽 아래로 자라나 이웃을 덮는다.
 	var grow := Vector2.ZERO
 	if _expanded:
-		grow = (Vector2(W, H) - Vector2(W, H) * 0.72) * -0.5
+		grow = (Vector2(W, H) - Vector2(W, H) * mini_scale) * -0.5
 	position = base_pos + grow + Vector2(0.0, _lift + sway)
 	rotation = base_rot + _tilt
 	scale = Vector2(_scale, _scale)

@@ -113,6 +113,8 @@ func setup(p_run: RunState) -> void:
 		sfx.play("click")
 		command.emit()
 	)
+	if tut != null:
+		tut.register_anchor("shop_command", btn_command)
 
 	lbl_hint = UiKit.label(bar, Vector2(40, BAR_Y + 62), Vector2(1000, 22),
 		"", 12, UiKit.MUTED)
