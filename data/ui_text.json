@@ -33,15 +33,15 @@
   "shop.budget": "예산  %d",
   "shop.budget_surcharge": "  (+%d)",
   "shop.reroll": "재검색  (-%d)",
-  "shop.refine": "알고리즘 정제  (정제권 %d)",
-  "shop.merge": "모듈 통합  (%d개 가능)",
+  "shop.refine": "알고리즘 정제  (%d)",
+  "shop.merge": "모듈 합성  (%d)",
   "shop.stage_label": "작전 단계",
   "shop.enemy_strategy": "적 알고리즘:  %s",
   "shop.help": "교전 규정",
   "shop.next": "편성 단계로  ▶",
   "shop.hand_head": "보유 모듈  (전술 %d · 궁극기 %d)",
-  "shop.hand_refining": "     폐기할 모듈을 선택하십시오 (정제권 %d)",
-  "shop.hand_merging": "     동일 모듈 2개를 통합해 등급을 올립니다",
+  "shop.hand_refining": "버릴 모듈을 누르십시오 (정제권 %d)",
+  "shop.hand_merging": "같은 모듈 2장을 1장으로 합쳐 한 단계 올립니다",
   "shop.note_poor": "예산 부족 (%d)",
   "shop.note_discard": "선택 시 폐기",
   "shop.note_merge": "통합 -%d",
@@ -250,5 +250,7 @@
   "hover.firing": "%s 을(를) 때리는 중",
   "hover.closing": "%s 에게 접근 중",
   "card.ban_n": "제외 %d",
-  "title.credit": "opening video · KlingAI 3.0"
+  "title.credit": "opening video · KlingAI 3.0",
+  "shop.dossier": "보유",
+  "shop.dossier_head": "보유 모듈"
 }

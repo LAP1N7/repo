@@ -13,13 +13,13 @@ signal command()
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다. 없으면 전부 무시된다.
 var tut: Tutorial = null
 
-const SHOP_Y: float = 156.0
+const SHOP_Y: float = 206.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
-const HAND_Y: float = 500.0
+const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 374.0
+const BAR_Y: float = 440.0
 
 var run: RunState
 
@@ -92,33 +92,33 @@ func setup(p_run: RunState) -> void:
 
 	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다.
 	# 카드 아래 여백을 넉넉히 둬야 호버로 카드가 떠오를 때 버튼과 안 겹친다.
-	btn_reroll = UiKit.button(bar, Vector2(40, BAR_Y), Vector2(190, 38), "", 14)
+	btn_reroll = _slab(bar, Vector2(40, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
 	btn_reroll.pressed.connect(_on_reroll)
 
-	btn_refine = UiKit.button(bar, Vector2(240, BAR_Y), Vector2(210, 38), "", 14)
+	btn_refine = _slab(bar, Vector2(288, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
 	btn_refine.pressed.connect(_on_refine_toggle)
 
 	# 합성은 축 개편에서 빠졌다. 자리를 되살릴 계획(환전·교환)이 있으므로
 	# 노드는 남기고 보이지만 않게 한다. 지우면 배치를 다시 잡아야 한다.
-	btn_merge = UiKit.button(bar, Vector2(460, BAR_Y), Vector2(210, 38), "", 14)
+	btn_merge = _slab(bar, Vector2(784, BAR_Y), Vector2(236, 54), "", UiKit.GOOD)
 	btn_merge.pressed.connect(_on_merge_toggle)
 	btn_merge.visible = false
 	btn_merge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# 보조 지휘는 정제 옆이다. 셋 다 "예산을 어디에 쓸까" 라서, 재검색·정제와
 	# 나란히 놓여야 같은 저울에 올려놓고 고르게 된다.
-	btn_command = UiKit.button(bar, Vector2(460, BAR_Y), Vector2(210, 38),
-		UiText.t("shop.command", "보조 지휘  →"), 14)
-	btn_command.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
-	btn_command.pressed.connect(func(): command.emit())
+	btn_command = _slab(bar, Vector2(536, BAR_Y), Vector2(236, 54),
+		UiText.t("shop.command", "보조 지휘  →"), Color(0.55, 0.88, 1.0))
+	btn_command.pressed.connect(func():
+		sfx.play("click")
+		command.emit()
+	)
 
-	lbl_hint = UiKit.label(bar, Vector2(40, BAR_Y + 46), Vector2(1200, 22),
+	lbl_hint = UiKit.label(bar, Vector2(40, BAR_Y + 62), Vector2(1000, 22),
 		"", 12, UiKit.MUTED)
 
-	var b_help := UiKit.button(self, Vector2(880, 630), Vector2(140, 36), UiText.t("shop.help", "게임 방법"), 14)
-	b_help.pressed.connect(func(): help.emit())
-
-	btn_next = UiKit.button(self, Vector2(1040, 650), Vector2(200, 44), UiText.t("shop.next", "편성하러 가기  →"), 16)
+	btn_next = _slab(self, Vector2(960, 636), Vector2(280, 60),
+		UiText.t("shop.next", "편성 단계로  ▶"), UiKit.ACCENT, 19)
 	btn_next.pressed.connect(func():
 		if tut != null:
 			tut.notify_action("next")
@@ -144,8 +144,8 @@ func refresh() -> void:
 	# 지금 몇 장인지를 한 곳에서도 말해 줘야 "쓸까 말까" 를 결정할 수 있다.
 	lbl_hint.text = UiText.t("shop.hint",
 		"카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 정제권을 1장 쓴다 (%d장)") 		% run.refine_tokens
-	btn_reroll.text = UiText.t("shop.reroll", "리롤  (-%d)") % run.reroll_cost()
 	btn_reroll.disabled = not run.can_reroll()
+	btn_reroll.set_label(UiText.t("shop.reroll", "재검색  (-%d)") % run.reroll_cost())
 
 	# ── 다음 판이 어떤 판인지 한 줄로 다 말한다 ──────────────────────────
 	# 편성을 짜기 전에 알아야 할 것은 "이 판이 무엇을 요구하는가" 하나다.
@@ -166,9 +166,10 @@ func refresh() -> void:
 	# 정제권이 없으면 정제 모드로 들어갈 수 없다.
 	if run.refine_tokens <= 0:
 		refining = false
-	btn_refine.text = UiText.t("shop.refine", "덱 정제  (정제권 %d)") % run.refine_tokens
 	btn_refine.disabled = run.refine_tokens <= 0 		or (run.hand.is_empty() and run.special_hand.is_empty())
-	btn_refine.modulate = UiKit.BAD if refining else Color(1, 1, 1)
+	btn_refine.set_label(
+		UiText.t("shop.refine", "알고리즘 정제  (%d)") % run.refine_tokens,
+		UiKit.BAD if refining else UiKit.TEXT)
 
 	# 합성 가능한 카드가 하나라도 있어야 켜진다.
 	var mergeable := 0
@@ -177,9 +178,10 @@ func refresh() -> void:
 			mergeable += 1
 	if mergeable == 0:
 		merging = false
-	btn_merge.text = UiText.t("shop.merge", "카드 합성  (%d장 가능)") % mergeable
 	btn_merge.disabled = mergeable == 0
-	btn_merge.modulate = UiKit.GOOD if merging else Color(1, 1, 1)
+	btn_merge.set_label(
+		UiText.t("shop.merge", "모듈 합성  (%d)") % mergeable,
+		Color(1, 1, 1) if merging else UiKit.GOOD)
 
 	_build_shop()
 	_build_hand()
@@ -244,6 +246,85 @@ func _build_shop() -> void:
 
 
 ## 손패는 발라트로처럼 부채꼴로 겹쳐 깐다. 장수가 늘면 자동으로 더 겹친다.
+## ── 사선으로 깎은 큰 버튼 ────────────────────────────────────────────────
+## 명일방주 계열의 조작 단추는 크고 각졌다. 작은 회색 상자를 여러 개 늘어놓으면
+## 무엇이 중요한지 알 수 없고, 무엇보다 **누를 것이 있다는 사실 자체**가 눈에
+## 안 들어온다.
+##
+## 전투 화면에서 대원 얼굴을 호버하면 뜨는 판과 같은 어법이다 - 왼쪽 위와
+## 오른쪽 아래를 깎고, 왼쪽에 색 막대를 세운다. 화면끼리 같은 모양을 쓰면
+## 하나의 물건으로 읽힌다.
+func _slab(parent: Node, at: Vector2, sz: Vector2, text: String,
+		tint: Color, fsize: int = 15) -> Button:
+	var b := _Slab.new()
+	b.position = at
+	b.size = sz
+	b.tint = tint
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	var blank := StyleBoxEmpty.new()
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, blank)
+	parent.add_child(b)
+
+	# ── 글자는 자식 노드로 ───────────────────────────────────────────────
+	# Button 이 제 글자를 먼저 그리고 그 위에 _draw() 가 얹힌다. 그래서 판을
+	# 직접 그리면 글자가 통째로 덮인다 - 편성 얼굴 타일에서 겪은 것과 같다.
+	var l := Label.new()
+	l.text = text
+	l.size = sz
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.add_theme_font_override("font", UiKit.font(fsize))
+	l.add_theme_font_size_override("font_size", fsize)
+	l.add_theme_color_override("font_color", tint)
+	b.add_child(l)
+	b.label = l
+	return b
+
+
+class _Slab extends Button:
+	var tint: Color = UiKit.TEXT
+	var label: Label
+
+	## 글자와 색을 한 번에 바꾼다. text 속성을 직접 건드리면 자식 라벨과
+	## 어긋나므로 이 함수만 쓴다.
+	func set_label(t: String, col: Color = Color(0, 0, 0, 0)) -> void:
+		if label == null:
+			return
+		label.text = t
+		if col.a > 0.0:
+			tint = col
+		label.add_theme_color_override("font_color",
+			Color(0.42, 0.44, 0.50) if disabled else tint)
+		queue_redraw()
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	const CUT: float = 13.0
+
+	func _draw() -> void:
+		var s := size
+		var on := is_hovered() and not disabled
+		var shape := PackedVector2Array([
+			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
+			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
+		])
+		var body := Color(0.12, 0.135, 0.17) if not disabled else Color(0.075, 0.08, 0.10)
+		if on:
+			body = Color(0.17, 0.19, 0.24)
+		draw_colored_polygon(shape, body)
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		var a: float = 0.20 if disabled else (0.95 if on else 0.55)
+		draw_polyline(line, Color(tint.r, tint.g, tint.b, a), 2.0, true)
+		# 왼쪽 색 막대. 글자를 안 읽어도 무슨 종류의 단추인지 색으로 갈린다.
+		if not disabled:
+			draw_rect(Rect2(0, CUT, 4, s.y - CUT), Color(tint.r, tint.g, tint.b, a))
+
+
 func _build_hand() -> void:
 	for c in hand_root.get_children():
 		c.queue_free()
@@ -256,18 +337,46 @@ func _build_hand() -> void:
 	for sid in run.special_hand:
 		owned.append(sid)
 
-	var head := UiText.t("shop.hand_head", "손패  (카드 %d · 특수 %d)") % [run.hand.size(), run.special_hand.size()]
+	# ── 보유 모듈은 오른쪽 서류첩에 꽂아 둔다 ────────────────────────────
+	# 화면 아래 절반을 손패가 통째로 쓰고 있었다. 그런데 이 화면에서 하는 일은
+	# **사는 것**이고, 산 것을 다시 보는 일은 그보다 훨씬 드물다. 드문 것이
+	# 넓은 자리를 차지하면 잦은 것이 좁아진다.
+	#
+	# 옆에 세워 두고, 손을 올리면 펼쳐진다. 서류첩에서 서류를 꺼내 보는 것과
+	# 같은 동작이라 설명이 필요 없다.
+	var n := owned.size()
+	var tab := _Dossier.new()
+	tab.position = Vector2(1180 + 56 - _Dossier.TAB_W, SHOP_Y)
+	tab.size = Vector2(_Dossier.TAB_W, 288)
+	# 카드보다 위에 떠야 서랍이 카드에 잘리지 않는다.
+	tab.z_index = 40
+	tab.top_level = false
+	tab.count = n
+	tab.special_n = run.special_hand.size()
+	var names: Array = []
+	for cid in owned:
+		var t: Dictionary = Cards.TABLE.get(cid, Specials.TABLE.get(cid, {}))
+		names.append(String(t.get("name", cid)))
+	tab.view_names = names
+	tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tab.clip_contents = false
+	hand_root.add_child(tab)
+
 	var head_col := UiKit.TEXT
+	var head := ""
 	if refining:
-		head += UiText.t("shop.hand_refining", "     <- 버릴 카드를 누른다 (정제권 %d)") % run.refine_tokens
+		head = UiText.t("shop.hand_refining", "버릴 모듈을 누르십시오 (정제권 %d)") % run.refine_tokens
 		head_col = UiKit.BAD
 	elif merging:
-		head += UiText.t("shop.hand_merging", "     <- 같은 카드 2장을 1장으로 합쳐 한 단계 올린다")
+		head = UiText.t("shop.hand_merging", "같은 모듈 2장을 1장으로 합쳐 한 단계 올립니다")
 		head_col = UiKit.GOOD
-	UiKit.label(hand_root, Vector2(40, HAND_Y - 34), Vector2(760, 24), head, 17, head_col)
+	if head != "":
+		UiKit.label(hand_root, Vector2(40, HAND_Y - 34), Vector2(900, 24), head, 15, head_col)
 
-	var n := owned.size()
 	if n == 0:
+		return
+	# 평소에는 서류첩만 보인다. 펼쳐야 할 이유가 있을 때만 카드를 깐다.
+	if not (refining or merging):
 		return
 
 	var mini_w := CardNode.W * 0.72
@@ -298,6 +407,99 @@ func _build_hand() -> void:
 		# 가운데가 높고 양끝이 낮은 아치
 		var arc := absf(offset) * 3.0
 		card.place(Vector2(x0 + i * step, HAND_Y + arc), offset * 0.02)
+
+
+## ── 보유 모듈 서류첩 ─────────────────────────────────────────────────────
+## 오른쪽에 세워 둔 세로 탭. 손을 올리면 왼쪽으로 서랍이 밀려 나온다.
+##
+## 평소에는 "몇 장 들고 있다" 만 알면 되고, 무엇을 들고 있는지는 편성 화면에서
+## 어차피 다시 본다. 그래서 기본은 닫힌 상태다 - 자주 하는 일(사기)에 넓은
+## 자리를 주고, 드문 일(확인)은 손을 뻗어야 열리게 한다.
+class _Dossier extends Control:
+	const TAB_W: float = 56.0
+	const OPEN_W: float = 320.0
+	const CUT: float = 14.0
+
+	var count: int = 0
+	var special_n: int = 0
+	var view_names: Array = []
+
+	var _open: float = 0.0
+	var _forced: bool = false
+
+	## 스크린샷 검증용. 마우스 없이 펼친 모습을 찍으려면 이 문이 필요하다.
+	func force_open() -> void:
+		_forced = true
+
+	## 서랍이 열리면 판이 제 Control 사각형 왼쪽으로 삐져나간다. 그 위에
+	## 마우스가 올라가 있는 동안에도 열린 채여야 하므로, 판정은 rect 가 아니라
+	## 실제로 그려진 넓이로 한다.
+	func _drawn_rect() -> Rect2:
+		var w := TAB_W + _open * OPEN_W
+		return Rect2(Vector2(size.x - w, 0), Vector2(w, size.y))
+
+	func _process(delta: float) -> void:
+		var want := 0.0
+		if _forced or _drawn_rect().has_point(get_local_mouse_position()):
+			want = 1.0
+		_open = lerpf(_open, want, clampf(delta * 10.0, 0.0, 1.0))
+		queue_redraw()
+
+	func _draw() -> void:
+		var s := size
+		var r := _drawn_rect()
+		var x0 := r.position.x
+		var shape := PackedVector2Array([
+			Vector2(x0 + CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y),
+			Vector2(x0 + CUT, s.y), Vector2(x0, s.y - CUT), Vector2(x0, CUT),
+		])
+		draw_colored_polygon(shape, Color(0.075, 0.09, 0.125, 0.985))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(0.42, 0.62, 0.80, 0.75), 2.0, true)
+
+		var fs := UiKit.font(12)
+		# 탭 기둥. 열려도 이 칸은 그대로 남아서 "여기가 손잡이" 를 유지한다.
+		var col := s.x - TAB_W
+		draw_line(Vector2(col, 6), Vector2(col, s.y - 6),
+			Color(0.42, 0.62, 0.80, 0.30 * _open), 1.0)
+		var label := UiText.t("shop.dossier", "보유")
+		for i in label.length():
+			draw_string(fs, Vector2(col + 21, 26.0 + float(i) * 18.0),
+				label[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UiKit.MUTED)
+		draw_string(UiKit.font(20), Vector2(col + 16, s.y - 40), str(count),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 20, UiKit.ACCENT)
+		if special_n > 0:
+			draw_string(fs, Vector2(col + 16, s.y - 20), "+%d" % special_n,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.74, 0.20))
+		# 닫힌 상태의 서류철 무늬. 가로줄 몇 개면 "안에 종이가 꽂혀 있다" 로
+		# 읽힌다. 켜진 줄 수가 들고 있는 장수다.
+		var mark := 1.0 - _open
+		if mark > 0.02:
+			for i in 8:
+				var y := 68.0 + float(i) * 20.0
+				if y > s.y - 60.0:
+					break
+				var lit: bool = i < count
+				draw_rect(Rect2(col + 12, y, TAB_W - 24, 3), Color(0.45, 0.70, 0.92,
+					(0.62 if lit else 0.13) * mark))
+
+		# 펼쳐지면 꽂힌 모듈을 한 줄씩 적는다. 카드를 다시 그리기에는 좁고,
+		# 여기서 하려는 일은 "무엇을 들고 있더라" 를 훑는 것뿐이다.
+		var a: float = clampf((_open - 0.35) / 0.5, 0.0, 1.0)
+		if a <= 0.01:
+			return
+		draw_string(fs, Vector2(x0 + 18, 30),
+			UiText.t("shop.dossier_head", "보유 모듈"),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.52, 0.68, 0.85, a))
+		for i in view_names.size():
+			var y2 := 56.0 + float(i) * 24.0
+			if y2 > s.y - 16.0:
+				break
+			draw_rect(Rect2(x0 + 18, y2 - 13, 3, 15), Color(0.45, 0.70, 0.92, a * 0.8))
+			draw_string(UiKit.font(13), Vector2(x0 + 28, y2), String(view_names[i]),
+				HORIZONTAL_ALIGNMENT_LEFT, int(OPEN_W - 46), 13,
+				Color(0.88, 0.92, 0.97, a))
 
 
 func _on_merge_toggle() -> void:

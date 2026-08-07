@@ -91,8 +91,8 @@ func setup(p_beats: Array) -> void:
 	# 얼굴만 크게 잡으면 누가 말하는지는 알아도 **어떤 인물인지**가 안 남는다.
 	# 컷인이 반신을 세로로 길게 보여 주는 것과 같은 이유로, 여기서도 인물을
 	# 통째로 세운다. 아래는 대사판이 가리므로 잘려도 좋다.
-	_portrait.position = Vector2(PAD + 4, 74)
-	_portrait.size = Vector2(430, 560)
+	_portrait.position = Vector2(PAD + 4, 52)
+	_portrait.size = Vector2(400, 600)
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait.visible = false
 	add_child(_portrait)
@@ -530,15 +530,18 @@ class _Portrait extends Control:
 		_tr.texture = tex
 		if tex == null:
 			return
-		# ── 인물을 통째로 세운다 ─────────────────────────────────────────
-		# 가로·세로 중 **작은 쪽**에 맞춘다. 세로만 맞추면 가로로 넘쳐 좌우가
-		# 잘리고, 그러면 활이나 무기처럼 옆으로 뻗은 것이 통째로 사라진다.
-		# 인물이 누구인지는 실루엣이 말하는데 그 실루엣이 잘리면 의미가 없다.
+		# ── 폭을 맞춘다 ──────────────────────────────────────────────────
+		# 세로에 맞추면 그림마다 키가 제각각이 된다. 어떤 그림은 전신이고
+		# (궁수 827x1177) 어떤 그림은 흉상이라(전사 1200x787), 같은 높이로
+		# 그리면 흉상의 얼굴이 전신의 두 배로 나온다.
+		#
+		# 이 그림들은 공통적으로 인물이 프레임 **폭**을 거의 채운다. 그래서
+		# 폭을 맞추면 어깨 너비가 맞고, 어깨가 맞으면 얼굴도 맞는다.
+		# 세로는 자유롭게 두고 발치를 대사판에 붙인다 - 흉상은 짧게, 전신은
+		# 길게 서면 그게 자연스럽다.
 		var ts := Vector2(tex.get_width(), tex.get_height())
 		if ts.y <= 0.0 or ts.x <= 0.0:
 			return
-		var k: float = minf(size.x / ts.x, size.y / ts.y)
+		var k: float = size.x / ts.x
 		_tr.size = ts * k
-		# 가로는 가운데, 세로는 바닥에 세운다 - 발치가 대사판에 닿아야
-		# 인물이 화면에 서 있는 것으로 읽힌다.
-		_tr.position = Vector2((size.x - _tr.size.x) * 0.5, size.y - _tr.size.y)
+		_tr.position = Vector2(0, size.y - _tr.size.y)

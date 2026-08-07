@@ -30,12 +30,21 @@ func _init() -> void:
 	await _shot("01_title", load("res://scenes/title_screen.tscn").instantiate(),
 		func(s): s.setup(), 30)
 
+	# 서류첩은 든 것이 있어야 꽂힌 모습이 보인다.
+	run.hand.append_array(["near_first", "backline", "keep_range", "front_line", "taunt"])
 	await _shot("02_shop", load("res://scenes/shop_screen.tscn").instantiate(),
 		func(s): s.setup(run))
 
+	# 서류첩을 펼친 모습. 마우스를 못 쓰니 열림값을 직접 밀어 넣는다.
+	await _shot("02b_dossier", load("res://scenes/shop_screen.tscn").instantiate(),
+		func(s):
+			s.setup(run)
+			for c in s.hand_root.get_children():
+				if c.has_method("force_open"):
+					c.force_open(), 8)
+
 	# 보조 지휘는 예산이 있어야 버튼이 살아 있는 모습을 볼 수 있다.
 	run.budget = 40
-	run.hand.append_array(["near_first", "backline", "keep_range", "front_line", "taunt"])
 	await _shot("09_command", load("res://scenes/command_screen.tscn").instantiate(),
 		func(s): s.setup(run))
 
