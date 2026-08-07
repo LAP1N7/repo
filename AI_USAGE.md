@@ -13,7 +13,7 @@ Godot 4.7.1 · GDScript · 웹(WebAssembly) 빌드
 세 가지만 지켰다.
 
 - **실제로 쓴 것만 적는다.** 써 보고 안 쓴 도구는 적지 않았다.
-- **추측해서 채우지 않는다.** 확인이 안 된 항목은 빈칸으로 남겼다.
+- **추측해서 채우지 않는다.** 확인되지 않은 항목은 확인될 때까지 비워 뒀다.
 - **과장하지 않는다.** 수치는 저장소에서 직접 센 값이다.
 
 ---
@@ -301,13 +301,17 @@ TARGET(누구를 쫓는가) → POSITION(어디에 서는가) → DOCTRINE(언�
 | 폰트 | 던파 비트비트체 / v2 | 넥슨 | SIL OFL 1.1 |
 | 폰트 | Pretendard 1.3.9 | orioncactus | SIL OFL 1.1 |
 | 폰트 | 둥근모꼴 | 둥근모꼴 프로젝트 | SIL OFL 1.1 |
-| 배경음 | `opening_theme` | PaulYudin / Pixabay | Pixabay Content License |
-| 배경음 | (외 3종) | Pixabay 외 | `CREDITS.md` 참조 |
-| 효과음 | 7종 | 제작자 직접 제작 | 본인 저작 |
-| 효과음 | 일부 | Pixabay | Pixabay Content License |
+| 배경음 | 4종 (`opening_theme` `ost2` `boss_theme` `story_stage4`) | Pixabay (`opening_theme`은 PaulYudin) | Pixabay Content License |
+| 효과음 | 7종 (`step` `attack_melee` `attack_ranged` `click` `special` `defeat` `opening`) | 제작자 직접 제작 | 본인 저작 |
+| 효과음 | 2종 (`typing` `beep`) | Pixabay | Pixabay Content License |
 | 효과음 | 6종 | **외부 저작물 아님** — 실행 시점에 코드가 파형을 합성 | — |
 | 아트 | 82장 | NovelAI 생성 + 직접 후처리 | — |
 | 영상 | 타이틀 루프 1편 | Kling AI 생성 + 직접 편집 | — |
+
+**Pixabay Content License** — 상업적 이용 가능, 출처 표기 의무 없음, 개별
+판매·재배포 형태의 이용만 금지. 표기 의무는 없으나 공모전 유의사항에 따라
+명시한다. 원본 mp3 에서 저장 형식만 바꿨고(22.05kHz 모노 wav) 편곡·편집은
+하지 않았다.
 
 **합성 효과음에 대해**: `hit` `heal` `defend` `buy` `victory` `death` 6종은
 파일이 아니다. `core/sfx.gd` 가 실행 시점에 사인파·구형파·필터드 노이즈로

@@ -18,7 +18,7 @@
 | 플레이 영상 30~60초 | 미착수 | 구성안은 `SUBMISSION.md` §2 |
 | 게임 소개 PDF | **원고 완료** | `GAME_OVERVIEW.md` → 영상 링크만 채우고 변환 |
 | AI 활용 기술 PDF | **원고 완료** | `AI_USAGE.md` → 부록 A~E 에 대표 프롬프트 포함 |
-| 외부 에셋 출처 5줄 | 미착수 | `CREDITS.md` 의 **(출처 확인 필요)** — 제출 전 필수 |
+| 외부 에셋 출처·라이선스 | **완료** | `CREDITS.md` — 음악·효과음 전부 Pixabay 표기 |
 
 `.gitignore` 에서 `*.import` 를 빼야 한다. Godot 4 의 `.import` 는 리소스 UID 를
 들고 있어서 빠지면 클론했을 때 씬 참조가 어긋날 수 있다.

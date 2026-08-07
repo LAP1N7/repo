@@ -41,8 +41,8 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 | `special.wav` | 제작자 직접 제작 | 본인 저작 | 궁극기 발동 · 카드 합성 |
 | `defeat.wav` | 제작자 직접 제작 | 본인 저작 | 패배 |
 | `opening.wav` | 제작자 직접 제작 | 본인 저작 | 타이틀 진입 |
-| `typing.wav` | **(출처 확인 필요)** | **(확인 필요)** | 스토리 타건음 |
-| `beep.wav` | **(출처 확인 필요)** | **(확인 필요)** | 스토리 연출 · BSOD 로그 |
+| `typing.wav` | Pixabay | Pixabay Content License | 스토리 타건음 |
+| `beep.wav` | Pixabay | Pixabay Content License | 스토리 연출 · BSOD 로그 |
 
 **나머지 6종(`hit` `heal` `defend` `buy` `victory` `death`)은 외부 에셋이 아니다.**
 `core/sfx.gd` 가 실행 시점에 파형을 직접 합성한다(사인·구형파·필터드 노이즈).
@@ -53,23 +53,28 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 
 ## 배경음악
 
+전부 **Pixabay** 무료 음원이다. 원본은 mp3 이고, 저장 형식만 바꿨다
+(22.05kHz 모노 wav → 임포터 QOA 압축). 편곡·편집은 하지 않았다.
+
 | 파일 | 쓰는 곳 | 출처 | 라이선스 |
 |---|---|---|---|
 | `opening_theme.wav` | 타이틀 · 1~2 스테이지 | PaulYudin (Pixabay) | Pixabay Content License |
-| `ost2.wav` | 3~4 스테이지 | **(출처 확인 필요)** | **(확인 필요)** |
-| `boss_theme.wav` | 5 스테이지 | **(출처 확인 필요)** | **(확인 필요)** |
-| `story_stage4.wav` | ACT 4 스토리 | **(출처 확인 필요)** | **(확인 필요)** |
+| `ost2.wav` | 3~4 스테이지 | Pixabay | Pixabay Content License |
+| `boss_theme.wav` | 5 스테이지 | Pixabay | Pixabay Content License |
+| `story_stage4.wav` | ACT 4 스토리 | Pixabay | Pixabay Content License |
 
 > Say 'thanks' to **PaulYudin**! This helps keep the creative spirit going!
 >
-> 원본: Pixabay 무료 음악 (`paulyudin-game-game-music-573991.mp3`)
->
-> 저장 형식만 바꿨습니다(mp3 → 22.05kHz 모노 wav, 임포터 QOA 압축).
-> 웹 빌드가 소리를 Sample 경로로 내보내는데 스트리밍 음원(mp3·ogg)은 그
-> 경로에서 **소리 없이 죽는다.** 편곡·편집은 하지 않았습니다.
+> `opening_theme` 원본: `paulyudin-game-game-music-573991.mp3`
 
-> **채울 것** — 나머지 3종의 출처와 라이선스. 제출 전에 반드시 확인한다.
-> 공모전 유의사항이 외부 에셋의 출처·라이선스 명시를 요구한다.
+**왜 wav 인가** — 웹 빌드는 소리를 Sample 경로로 내보내는데
+(`audio/general/default_playback_type.web = 1`), 스트리밍 음원(mp3·ogg)은 그
+경로에서 **소리 없이 죽는다.** 데스크톱에서는 멀쩡해서 계측할 때마다 "정상"
+이 찍혔다. 음악도 효과음과 같은 종류의 자원(wav)으로 만들어야 웹에서 난다.
+
+**Pixabay Content License 요약** — 상업적 이용 가능, 출처 표기 의무 없음,
+개별 판매·재배포 형태의 이용만 금지. 표기 의무는 없으나 공모전 유의사항에
+따라 명시한다.
 
 ## 아트
 

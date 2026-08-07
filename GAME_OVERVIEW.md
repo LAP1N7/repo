@@ -260,8 +260,9 @@ DOCTRINE  언제 무엇을 하는가
 
 - Godot Engine 4.7.1 — MIT
 - 폰트 4종 — 전부 SIL Open Font License 1.1
-- 배경음 — Pixabay Content License
-- 효과음 — 일부 직접 제작 / 일부 Pixabay / 6종은 실행 시점에 코드가 합성
-  (외부 저작물 아님)
+- 배경음 4종 — Pixabay / Pixabay Content License
+- 효과음 7종 — 제작자 직접 제작
+- 효과음 2종 — Pixabay / Pixabay Content License
+- 효과음 6종 — 실행 시점에 코드가 파형을 합성 (**외부 저작물 아님**)
 - 아트 — NovelAI 생성 후 Clip Studio Paint에서 직접 후처리 및 파츠 분리
 - 타이틀 영상 — Kling AI 생성 후 직접 편집
