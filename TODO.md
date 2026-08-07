@@ -12,14 +12,25 @@
 | git 저장소 생성 + 커밋 기록 | **완료** | 초기 커밋 164파일 |
 | `web/` → `docs/` 이름 변경 | **완료** | 익스포트 프리셋도 `docs/index.html` 로 |
 | 웹 셸 로딩 화면 (PROJECT RECLAIM + TIP) | **완료** | `build_web.ps1` 로 빌드 |
-| GitHub 원격 저장소 + push | 미착수 | **사용자 계정 필요** |
-| GitHub Pages 켜기 | 미착수 | Settings → Pages → main / docs |
+| GitHub 원격 저장소 + push | **완료** | `github.com/LAP1N7/repo` (master) |
+| GitHub Pages 켜기 | **완료** | https://lap1n7.github.io/repo/ · master / docs |
 | 플레이 영상 30~60초 | 미착수 | 구성안은 `SUBMISSION.md` §2 |
 | 게임 소개 PDF | 초안 완료 | `SUBMISSION.md` §3 → 링크 채우고 변환 |
 | AI 활용 기술 PDF | 초안 완료 | `SUBMISSION.md` §4 → **프롬프트 내역 보강 필요** |
 
 `.gitignore` 에서 `*.import` 를 빼야 한다. Godot 4 의 `.import` 는 리소스 UID 를
 들고 있어서 빠지면 클론했을 때 씬 참조가 어긋날 수 있다.
+
+### 웹 배포 메모
+
+- **스레드를 끈 채로 내보낸다** (`variant/thread_support=false`). 켜면 브라우저가
+  SharedArrayBuffer 를 요구하고, 그러면 COOP/COEP 헤더가 필요한데 GitHub Pages 는
+  헤더를 못 준다. 서비스워커 우회는 첫 로드가 한 번 더 돌아서 느리다.
+- `docs/.nojekyll` 이 있어야 한다. Jekyll 은 밑줄로 시작하는 파일을 배포에서 뺀다.
+- 음악은 반드시 `.wav`. 웹은 `default_playback_type.web = 1`(Sample) 이라 스트리밍
+  음원(mp3·ogg)이 **소리 없이 죽는다.** 데스크톱에서는 멀쩡해서 안 잡힌다.
+- 배포 확인: `curl -sI https://lap1n7.github.io/repo/index.pck` 가 200 이고
+  Content-Length 가 로컬 `docs/index.pck` 와 같아야 한다.
 
 ---
 
