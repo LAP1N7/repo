@@ -16,6 +16,11 @@ extends Control
 
 const PORTRAIT_W := 420.0
 const BUBBLE_W := 560.0
+
+## 말풍선 세로 구성. 이름줄(38) + 본문 + 발판(버튼·힌트 줄).
+## 발판을 본문 **위에 얹지 말 것** - 마지막 줄이 버튼에 잘린다.
+const TEXT_TOP := 38.0
+const FOOT_H := 46.0
 const PAD := 22.0
 
 ## 대사가 지정할 수 있는 자리와, 그 자리에서 쓸 말풍선 폭.
@@ -194,15 +199,22 @@ func _layout(side: String) -> void:
 	# 확정하고 실제로 렌더된 높이를 받아 쓴다.
 	# get_content_height() 는 RichTextLabel 에만 있다. Label 은 접힌 뒤의 줄 수를
 	# get_line_count() 로 알려주므로 그걸 쓴다.
+	# ── 아래 한 줄은 통째로 [계속] 자리다 ────────────────────────────────
+	# 예전에는 본문 칸을 bh-56 까지 늘려 놓고 그 위에 버튼을 얹었다. 그래서
+	# **마지막 줄이 버튼에 잘렸다** - 세 줄짜리 대사에서 세 번째 줄의 아래
+	# 절반이 사라졌다. 화면에는 글이 있는데 읽을 수가 없는 상태다.
+	#
+	# 본문 높이를 먼저 확정하고, 그 아래에 버튼 줄을 **더한다.** 겹칠 수가
+	# 없는 순서다.
 	_lbl_text.size = Vector2(bw - 36, 10)
-	# 62 로는 마지막 줄과 [계속] 힌트가 겹쳤다. 이름 38 + 본문 + 힌트 22 + 여백 12.
-	var bh := 72.0 + maxf(24.0, _lbl_text.get_line_count() * _lbl_text.get_line_height())
+	var text_h := maxf(24.0, _lbl_text.get_line_count() * _lbl_text.get_line_height())
+	var bh := TEXT_TOP + text_h + FOOT_H
 
 	_bubble.size = Vector2(bw, bh)
 	_bubble.position = _pick_bubble_pos(bw, bh, place, left)
-	_lbl_text.size = Vector2(bw - 36, bh - 56)
-	# 오른쪽은 [계속] 버튼 자리다. 힌트는 왼쪽에 두고 폭도 그만큼 줄인다.
-	_lbl_hint.position = Vector2(18, bh - 22)
+	_lbl_text.size = Vector2(bw - 36, text_h)
+	# 힌트는 왼쪽, 버튼은 오른쪽. 둘이 같은 줄을 나눠 쓴다.
+	_lbl_hint.position = Vector2(18, bh - 28)
 	_lbl_hint.size = Vector2(bw - 180, 20)
 	_btn_next.position = Vector2(bw - 140, bh - 40)
 

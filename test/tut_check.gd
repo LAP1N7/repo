@@ -55,7 +55,7 @@ func _init() -> void:
 		seen[id] = true
 		_ok(String(st.get("text", "")) != "", "%s 에 대사가 있다" % id)
 		var scr := String(st.get("screen", "any"))
-		_ok(scr in ["tutorial", "shop", "loadout", "battle", "any"],
+		_ok(scr in ["tutorial", "shop", "command", "loadout", "battle", "any"],
 			"%s 의 screen 이 유효하다 (%s)" % [id, scr])
 		var adv := String(st.get("advance", "click"))
 		_ok(adv == "click" or adv.begins_with("action:"),

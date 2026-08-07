@@ -47,6 +47,17 @@ func _init() -> void:
 				if c.has_method("force_open"):
 					c.force_open(1), 26)
 
+	# 적 배치판의 호버. 마우스를 못 쓰니 값을 직접 넣는다.
+	await _shot("02d_preview", load("res://scenes/shop_screen.tscn").instantiate(),
+		func(s):
+			s.setup(run)
+			for c in s.preview_root.get_children():
+				if c.get("entries") != null and (c.entries as Array).size() > 0:
+					c.set_process(false)
+					c._hot = 0
+					c.queue_redraw()
+					break, 8)
+
 	# 궁극기 분류. 축이 없는 물건이라 표시가 비지 않는지 확인한다.
 	await _shot("02c_dossier_ult", load("res://scenes/shop_screen.tscn").instantiate(),
 		func(s):

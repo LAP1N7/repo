@@ -13,22 +13,29 @@ signal command()
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다. 없으면 전부 무시된다.
 var tut: Tutorial = null
 
-const SHOP_Y: float = 206.0
+const SHOP_Y: float = 132.0
+
+## ── 적 배치 미리보기 ────────────────────────────────────────────────────
+## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
+## 페이즈가 문제로 남는다.
+const PREVIEW_WAVES: int = 2
+const PREVIEW_Y: float = 452.0
+const PREVIEW_W: float = 276.0
+const PREVIEW_H: float = 224.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
-const HAND_Y: float = 560.0
+const HAND_Y: float = 470.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 440.0
+const BAR_Y: float = 348.0
 
 var run: RunState
 
 var lbl_budget: Label
 var lbl_note: Label
-## 이 판에 나오는 적 구성. 대응 모듈을 고를 근거다.
-var lbl_roster: Label
+## 아래쪽 적 배치판. 무엇이 어디에 서는지를 사는 자리에서 보여 준다.
+var preview_root: Control
 var lbl_hint: Label
-var lbl_strategy: Label
 var btn_reroll: Button
 var btn_refine: Button
 var btn_merge: Button
@@ -73,14 +80,17 @@ func setup(p_run: RunState) -> void:
 	#
 	# 대신 그 자리를 적 정보에 준다. 적 알고리즘은 숨기지 않고 그대로 공개한다 -
 	# 숨기면 시행착오 게임이 되고, 공개하면 추리 게임이 된다. (DESIGN 2.4)
-	lbl_strategy = UiKit.label(self, Vector2(40, 90), Vector2(1000, 22), "", 13, UiKit.BAD)
-	lbl_roster = UiKit.label(self, Vector2(40, 112), Vector2(1100, 20), "", 12,
-		Color(0.92, 0.62, 0.58))
-	lbl_note = UiKit.label(self, Vector2(40, 134), Vector2(900, 22), "", 13, UiKit.MUTED)
+	# 적 정보는 더 이상 글줄이 아니다. 아래 배치판이 통째로 맡는다 -
+	# "접근 → 교전 / 자폭 개체 2" 같은 요약은 이미 아는 사람에게만 읽힌다.
+	lbl_note = UiKit.label(self, Vector2(40, 96), Vector2(900, 22), "", 13, UiKit.MUTED)
 
 	shop_root = Control.new()
 	shop_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shop_root)
+
+	preview_root = Control.new()
+	preview_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(preview_root)
 
 	hand_root = Control.new()
 	hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -155,25 +165,13 @@ func refresh() -> void:
 
 	# ── 다음 판이 어떤 판인지 한 줄로 다 말한다 ──────────────────────────
 	# 편성을 짜기 전에 알아야 할 것은 "이 판이 무엇을 요구하는가" 하나다.
-	# 적 알고리즘 · 페이즈 수 · 지형 기믹 · 등장 특성을 한 줄에 모은다.
-	# 나눠 놓으면 읽는 순서가 정해지지 않아서 결국 아무도 안 읽는다.
-	var st := Stages.get_stage(run.stage_id)
-	var line := UiText.t("shop.enemy_strategy", "적 전략:  %s") % st["strategy_text"]
-	var waves: int = Stages.waves(st).size()
-	if waves > 1:
-		line += UiText.t("shop.waves", "     %d 페이즈") % waves
-	var hz := Stages.hazard(run.stage_id)
-	if not hz.is_empty():
-		line += UiText.t("shop.hazard", "     %s") % String(hz.get("name", ""))
-	for t in Stages.trait_list(run.stage_id):
-		line += "     " + Traits.describe(t).split(" - ")[0]
-	lbl_strategy.text = line
-	# ── 무엇이 오는지 ────────────────────────────────────────────────────
-	# 여기가 모듈을 사는 자리다. 그런데 사는 시점에 적 구성을 모르면 [지원
-	# 차단]·[사수 사냥]·[방패 격파] 같은 대응 모듈은 전부 도박이 된다.
-	# 공개하면 그 자리에서 답이 보이고, 그게 이 게임이 판마다 새 답을 요구하는
-	# 방식이다.
-	lbl_roster.text = UiText.t("shop.enemy_roster", "적 구성:  %s") % 		Stages.enemy_summary(run.stage_id)
+	# ── 적 정보는 글줄이 아니라 배치판이 맡는다 ─────────────────────────
+	# "적 전략: 접근 → 교전   2 페이즈   자폭" 한 줄이 제목 밑에 붙어 있었다.
+	# 태그를 늘어놓은 글은 **이미 아는 사람에게만** 읽히고, 아는 사람에게도
+	# 정작 필요한 것(무엇이 어디에 서는가)은 안 알려 준다.
+	#
+	# 아래 배치판이 격자 그대로 보여 주고, 개체에 손을 올리면 그 개체가 꽂고
+	# 있는 모듈까지 편다. 전투 화면의 [적 개요] 는 줄글로 그대로 남아 있다.
 
 	# 정제권이 없으면 정제 모드로 들어갈 수 없다.
 	if run.refine_tokens <= 0:
@@ -197,6 +195,7 @@ func refresh() -> void:
 
 	_build_shop()
 	_build_hand()
+	_build_preview()
 
 	var n := run.hand.size() + run.special_hand.size()
 	if n == 0:
@@ -361,8 +360,8 @@ func _build_hand() -> void:
 	# rect 는 서랍을 다 편 크기로 잡는다. 안 그러면 펼쳐진 부분의 클릭·휠이
 	# Control 밖이라 이벤트가 오지 않는다. 닫혀 있을 때 뒤를 안 먹는 것은
 	# _has_point 가 막는다.
-	tab.position = Vector2(1240 - _Dossier.TAB_W - _Dossier.OPEN_W, SHOP_Y - 16)
-	tab.size = Vector2(_Dossier.TAB_W + _Dossier.OPEN_W, 368)
+	tab.position = Vector2(1240 - _Dossier.TAB_W - _Dossier.OPEN_W, SHOP_Y - 10)
+	tab.size = Vector2(_Dossier.TAB_W + _Dossier.OPEN_W, 300)
 	# 카드보다 위에 떠야 서랍이 카드에 잘리지 않는다.
 	tab.z_index = 40
 	tab.top_level = false
@@ -738,6 +737,56 @@ class _Dossier extends Control:
 				Color(0.55, 0.75, 0.95, 0.9 * a))
 
 
+## ── 적 배치 미리보기 ────────────────────────────────────────────────────
+## 무엇이 어디에 서는지를 **사는 자리에서** 보여 준다.
+##
+## 예전에는 "적 구성: 자폭 개체 2 · 추격 자폭체 1" 같은 글줄이었다. 그건 이미
+## 아는 사람에게만 읽힌다 - 처음 보는 사람에게 이름 셋은 아무것도 아니고,
+## 아는 사람에게도 **어디에 서는지**는 안 알려 준다. 후열을 끊을지 전열을
+## 부술지는 자리를 봐야 정할 수 있다.
+##
+## 3페이즈는 안 보여 준다. 판을 전부 공개하면 편성이 한 번에 끝나고, 그러면
+## 페이즈가 "한 판 안의 두 번째 문제" 가 아니라 그냥 예습 대상이 된다.
+## 두 파까지 보여 주는 것은 계획을 세우기에 충분하고, 마지막 한 파를 남기는
+## 것은 그 계획이 틀릴 여지를 남긴다.
+func _build_preview() -> void:
+	for c in preview_root.get_children():
+		c.queue_free()
+
+	var st := Stages.get_stage(run.stage_id)
+	var waves: Array = Stages.waves(st)
+	var shown: int = mini(waves.size(), PREVIEW_WAVES)
+
+	UiKit.label(preview_root, Vector2(40, PREVIEW_Y - 26), Vector2(600, 22),
+		UiText.t("shop.preview_head", "적 배치  -  개체에 마우스를 올리면 알고리즘이 보입니다"),
+		13, UiKit.MUTED)
+
+	var x := 40.0
+	for w in shown:
+		var b := _Preview.new()
+		b.position = Vector2(x, PREVIEW_Y)
+		b.size = Vector2(PREVIEW_W, PREVIEW_H)
+		b.wave = w
+		b.entries = waves[w]
+		b.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		preview_root.add_child(b)
+		x += PREVIEW_W + 18.0
+
+	# 남은 파는 자리만 남긴다. 아예 안 그리면 "이게 전부" 로 읽힌다.
+	for w in range(shown, waves.size()):
+		var h := _Preview.new()
+		h.position = Vector2(x, PREVIEW_Y)
+		h.size = Vector2(PREVIEW_W, PREVIEW_H)
+		h.wave = w
+		h.entries = []
+		h.hidden_wave = true
+		h.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		preview_root.add_child(h)
+		x += PREVIEW_W + 18.0
+
+
 func _on_merge_toggle() -> void:
 	merging = not merging
 	if merging:
@@ -787,3 +836,161 @@ func _on_reroll() -> void:
 	if run.reroll():
 		sfx.play("click")
 		refresh()
+
+
+## ── 한 페이즈의 배치판 ───────────────────────────────────────────────────
+## 실제 격자를 그대로 줄여 그린다. 좌표를 바꿔 그리면 "여기가 뒤" 라는 감각이
+## 전투 화면과 어긋나서, 여기서 세운 계획이 판 위에서 안 맞는다.
+##
+## 개체에 마우스를 올리면 전투 화면과 같은 사선 판이 뜬다. 능력치뿐 아니라
+## **그 개체가 꽂고 있는 모듈**까지 적는다 - 적 알고리즘을 공개한다는 원칙
+## (DESIGN 2.4)은 "무엇이 오는가" 가 아니라 "무엇을 하려 하는가" 까지다.
+class _Preview extends Control:
+	const CUT: float = 12.0
+	const CELL: float = 30.0
+	const TOP: float = 30.0
+
+	var wave: int = 0
+	var title: String = ""
+	var entries: Array = []
+	var hidden_wave: bool = false
+
+	var _hot: int = -1
+
+	func _process(_d: float) -> void:
+		var was := _hot
+		_hot = -1
+		if not hidden_wave:
+			var m := get_local_mouse_position()
+			for i in entries.size():
+				if _cell_rect(entries[i]).grow(2.0).has_point(m):
+					_hot = i
+					break
+		if was != _hot:
+			queue_redraw()
+
+	## 격자 원점. 8x6 을 칸 폭에 맞춰 가운데로 넣는다.
+	func _origin() -> Vector2:
+		return Vector2((size.x - Grid.W * CELL) * 0.5, TOP)
+
+	func _cell_rect(e) -> Rect2:
+		var p: Vector2i = (e as Dictionary)["pos"]
+		return Rect2(_origin() + Vector2(p.x * CELL, p.y * CELL),
+			Vector2(CELL, CELL))
+
+	func _draw() -> void:
+		# 속내 판은 버튼 바 위로 뻗는다. 그냥 두면 버튼과 안내문이 그 위에
+		# 그려져서 글자가 뒤엉킨다 - 짚는 동안만 위로 올린다.
+		#
+		# _process 가 아니라 여기서 올려야 한다. 검수 스크립트는 _process 를
+		# 끄고 값을 직접 넣으므로, _process 안에 두면 그 경로에서만 조용히
+		# 안 걸린다.
+		z_index = 30 if _hot >= 0 else 0
+
+		var s := size
+		var shape := PackedVector2Array([
+			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
+			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
+		])
+		draw_colored_polygon(shape, Color(0.055, 0.065, 0.09, 0.95))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(0.55, 0.28, 0.30, 0.75), 1.4, true)
+		draw_rect(Rect2(0, CUT, 3, s.y - CUT), Color(0.90, 0.36, 0.36, 0.85))
+		draw_string(UiKit.font(12), Vector2(14, 20), title,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.90, 0.55, 0.52))
+
+		var o := _origin()
+		# 진영 바탕. 왼쪽이 우리, 오른쪽이 적 - 전투 화면과 같은 방향이다.
+		for p in Grid.PLAYER_SLOTS:
+			draw_rect(Rect2(o + Vector2(p.x * CELL, p.y * CELL), Vector2(CELL, CELL)),
+				Color(0.22, 0.44, 0.66, 0.16))
+		for p in Grid.ENEMY_SLOTS:
+			draw_rect(Rect2(o + Vector2(p.x * CELL, p.y * CELL), Vector2(CELL, CELL)),
+				Color(0.66, 0.26, 0.28, 0.14))
+		for x in Grid.W + 1:
+			draw_line(o + Vector2(x * CELL, 0), o + Vector2(x * CELL, Grid.H * CELL),
+				Color(0.30, 0.34, 0.42, 0.5), 1.0)
+		for y in Grid.H + 1:
+			draw_line(o + Vector2(0, y * CELL), o + Vector2(Grid.W * CELL, y * CELL),
+				Color(0.30, 0.34, 0.42, 0.5), 1.0)
+
+		if hidden_wave:
+			# 미공개. 자리는 남기되 안을 안 보여 준다 - 아예 없으면 "이게
+			# 전부" 로 읽히고, 다 보여 주면 편성이 한 번에 끝난다.
+			draw_string(UiKit.font(13), Vector2(0, s.y * 0.55),
+				UiText.t("shop.preview_hidden", "미공개"),
+				HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, Color(0.5, 0.5, 0.56))
+			return
+
+		var fs := UiKit.font(9)
+		for i in entries.size():
+			var e: Dictionary = entries[i]
+			var tid := String(e["type"])
+			var d: Dictionary = UnitData.TABLE.get(tid, {})
+			var col: Color = d.get("color", Color(0.8, 0.4, 0.4))
+			var r := _cell_rect(e)
+			draw_rect(r.grow(-3.0), Color(col.r, col.g, col.b, 0.30 if i != _hot else 0.62))
+			draw_rect(r.grow(-3.0), Color(col.r, col.g, col.b,
+				1.0 if i == _hot else 0.7), false, 1.0)
+			# 이름 첫 글자. 칸이 30px 라 이름은 안 들어가고, 색과 자리로
+			# 구분한 뒤 자세한 것은 호버가 말한다.
+			var nm := String(d.get("name", tid))
+			draw_string(fs, Vector2(r.position.x, r.position.y + 20), nm.substr(0, 1),
+				HORIZONTAL_ALIGNMENT_CENTER, int(CELL), 12, Color(1, 1, 1, 0.92))
+
+		if _hot >= 0:
+			_draw_info(entries[_hot])
+
+	## 짚은 개체의 속내. 능력치 · 특성 · 꽂힌 모듈 · 기본 판단.
+	func _draw_info(e: Dictionary) -> void:
+		var tid := String(e["type"])
+		var d: Dictionary = UnitData.TABLE.get(tid, {})
+		var rows: Array = []
+		rows.append([UiText.t("hover.hp", "HP"), "%d" % int(d.get("hp", 0)), UiKit.TEXT])
+		rows.append([UiText.t("hover.stat", "ATK · RNG · MOV"),
+			"%d · %d · %d" % [int(d.get("atk", 0)), int(d.get("range", 1)),
+				int(d.get("move", 1))], UiKit.TEXT])
+		for t in e.get("traits", []):
+			# 전문은 판을 넘친다. 여기서는 이름만 - 무슨 일이 일어나는지는
+			# 전투 화면의 개체 호버가 전문으로 말한다.
+			rows.append([UiText.t("hover.trait", "특성"),
+				Traits.describe(String(t)).split(" - ")[0], Color(1.0, 0.62, 0.30)])
+		var mods: Array = e.get("cards", [])
+		for k in mods.size():
+			var c: Dictionary = Cards.TABLE.get(String(mods[k]), {})
+			rows.append(["%d." % (k + 1),
+				"%s · %s" % [c.get("name", mods[k]), c.get("text", "")],
+				Axes.color(String(c.get("axis", "")))])
+		if mods.is_empty():
+			rows.append([UiText.t("shop.preview_nomod", "모듈"),
+				UiText.t("shop.preview_bare", "없음 - 기본기만"), UiKit.FAINT])
+		rows.append([UiText.t("hover.ai", "기본 판단"), Innates.describe(tid), UiKit.FAINT])
+
+		var fs := UiKit.font(10)
+		var w := 352.0
+		var h: float = 32.0 + float(rows.size()) * 15.0
+		# 판 위로 띄운다. 아래로 내리면 화면 밖으로 나간다.
+		# 판 위로 띄우되 오른쪽으로 조금 밀어, 짚고 있는 칸을 손이 가리지 않게 한다.
+		var at := Vector2(size.x - 8.0, -h - 6.0)
+		if position.x + at.x + w > 1240.0:
+			at.x = 8.0 - w + size.x
+		var shape := PackedVector2Array([
+			at + Vector2(10, 0), at + Vector2(w, 0), at + Vector2(w, h - 10),
+			at + Vector2(w - 10, h), at + Vector2(0, h), at + Vector2(0, 10),
+		])
+		draw_colored_polygon(shape, Color(0.04, 0.05, 0.07, 0.98))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		var col: Color = d.get("color", Color(0.8, 0.4, 0.4))
+		draw_polyline(line, Color(col.r, col.g, col.b, 0.95), 1.6, true)
+		draw_string(UiKit.font(13), at + Vector2(12, 20), String(d.get("name", tid)),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+
+		var y := 38.0
+		for r in rows:
+			draw_string(fs, at + Vector2(12, y), String(r[0]),
+				HORIZONTAL_ALIGNMENT_LEFT, 88, 9, UiKit.FAINT)
+			draw_string(fs, at + Vector2(104, y), String(r[1]),
+				HORIZONTAL_ALIGNMENT_LEFT, int(w - 116), 10, r[2])
+			y += 15.0
