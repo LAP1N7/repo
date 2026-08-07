@@ -354,8 +354,25 @@ func _build_hand() -> void:
 	tab.count = n
 	tab.special_n = run.special_hand.size()
 	tab.view_ids = owned.duplicate()
-	tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 휠 스크롤과 분류 탭 클릭을 받아야 한다. IGNORE 면 서랍이 아무 입력도
+	# 못 받는다.
+	tab.mouse_filter = Control.MOUSE_FILTER_STOP
 	tab.clip_contents = false
+
+	# ── 뒤를 덮는 판 ────────────────────────────────────────────────────
+	# 서랍이 열리면 그 아래 상점 카드가 마우스를 먹고 튀어 오른다. 카드가
+	# 판 위로 떠오르니 무엇이 앞인지 알 수 없고, 잘못 누르면 사 버린다.
+	# 어둡게 덮고 입력도 막는다. 탭보다 먼저 붙여야 탭이 위에 남는다.
+	var shield := ColorRect.new()
+	shield.color = Color(0.02, 0.03, 0.05, 0.62)
+	shield.position = Vector2.ZERO
+	shield.size = Vector2(1280, 720)
+	shield.z_index = 30
+	shield.visible = false
+	shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hand_root.add_child(shield)
+	tab.shield = shield
+
 	hand_root.add_child(tab)
 
 	var head_col := UiKit.TEXT
@@ -415,30 +432,69 @@ func _build_hand() -> void:
 ## 이름 위에 한 번 더 손을 올리면 카드 원본이 옆에 뜬다. 이름만으로는 "이게
 ## 무슨 조건이었더라" 가 안 풀리는데, 그걸 확인하려고 편성 화면까지 갔다
 ## 오게 만들면 사는 흐름이 끊긴다.
+##
+## ── 열려 있는 동안 뒤는 잠근다 ──────────────────────────────────────────
+## 서랍이 상점 카드 위를 덮는데, 그 아래 카드가 마우스를 먹고 튀어 올랐다.
+## 판 위로 카드가 떠오르니 무엇이 앞인지 알 수 없고, 잘못 누르면 사 버린다.
+## 열려 있는 동안은 뒤를 어둡게 덮고 입력도 막는다.
 class _Dossier extends Control:
 	const TAB_W: float = 60.0
 	const OPEN_W: float = 430.0
 	const CUT: float = 16.0
 	const ROW_H: float = 34.0
-	const ROW_TOP: float = 62.0
+	const ROW_TOP: float = 96.0
 	const NAME_SIZE: int = 17
+	const TAB_H: float = 30.0
+
+	## 분류 탭. 순서는 판단 순서(표적 -> 위치 -> 교전)와 같다.
+	const FILTERS: Array = ["all", Axes.TARGET, Axes.POSITION, Axes.DOCTRINE, "ult"]
 
 	var count: int = 0
 	var special_n: int = 0
 	var view_ids: Array = []
 
+	## 서랍이 열렸을 때 뒤를 덮는 판. 화면 전체를 먹는다.
+	var shield: Control = null
+
 	var _open: float = 0.0
 	var _forced: bool = false
 	var _hot: int = -1
 	var _peek: CardNode = null
+	var _filter: int = 0
+	var _scroll: float = 0.0
+	var _hot_tab: int = -1
 
 	## 스크린샷 검증용. 마우스 없이 펼친 모습을 찍으려면 이 문이 필요하다.
-	func force_open(row: int = -1) -> void:
+	func force_open(row: int = -1, filter: int = 0) -> void:
 		_forced = true
 		_hot = row
+		_filter = filter
 		# 검수 스크립트는 프레임을 최대 속도로 돌려서 delta 가 아주 작다. 보간을
 		# 기다리면 반쯤 열린 상태가 찍힌다. 곧바로 다 연 상태로 둔다.
 		_open = 1.0
+
+	## 지금 분류에 걸리는 것만. 표시도 스크롤도 전부 이 목록 기준이다.
+	func shown() -> Array:
+		var f: String = String(FILTERS[_filter])
+		if f == "all":
+			return view_ids
+		var out: Array = []
+		for cid in view_ids:
+			var id := String(cid)
+			if f == "ult":
+				if RunState.is_special(id):
+					out.append(id)
+			elif not RunState.is_special(id) \
+					and String(Cards.TABLE.get(id, {}).get("axis", "")) == f:
+				out.append(id)
+		return out
+
+	## 한 번에 보이는 줄 수.
+	func rows_fit() -> int:
+		return maxi(1, int((size.y - ROW_TOP - 8.0) / ROW_H))
+
+	func max_scroll() -> float:
+		return maxf(0.0, float(shown().size() - rows_fit()))
 
 	## 서랍이 열리면 판이 제 Control 사각형 왼쪽으로 삐져나간다. 그 위에
 	## 마우스가 올라가 있는 동안에도 열린 채여야 하므로, 판정은 rect 가 아니라
@@ -447,28 +503,65 @@ class _Dossier extends Control:
 		var w := TAB_W + _open * OPEN_W
 		return Rect2(Vector2(size.x - w, 0), Vector2(w, size.y))
 
+	func _gui_input(e: InputEvent) -> void:
+		if _open < 0.5:
+			return
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+			var mb := e as InputEventMouseButton
+			match mb.button_index:
+				MOUSE_BUTTON_WHEEL_DOWN:
+					_scroll = minf(max_scroll(), _scroll + 1.0)
+					accept_event()
+				MOUSE_BUTTON_WHEEL_UP:
+					_scroll = maxf(0.0, _scroll - 1.0)
+					accept_event()
+				MOUSE_BUTTON_LEFT:
+					var t := _tab_at(mb.position)
+					if t >= 0:
+						_filter = t
+						_scroll = 0.0
+						accept_event()
+
+	## 좌표가 어느 분류 탭 위인가. -1 이면 어느 쪽도 아니다.
+	func _tab_at(m: Vector2) -> int:
+		var x0 := _drawn_rect().position.x
+		if m.y < 46.0 or m.y > 46.0 + TAB_H:
+			return -1
+		var tw := (OPEN_W - 36.0) / float(FILTERS.size())
+		var i := int((m.x - (x0 + 18.0)) / tw)
+		return i if i >= 0 and i < FILTERS.size() else -1
+
 	func _process(delta: float) -> void:
 		var m := get_local_mouse_position()
 		var inside := _drawn_rect().has_point(m)
 		var want: float = 1.0 if (_forced or inside) else 0.0
 		_open = lerpf(_open, want, clampf(delta * 10.0, 0.0, 1.0))
+		if shield != null and is_instance_valid(shield):
+			shield.visible = _open > 0.02
+			shield.modulate.a = clampf(_open * 1.2, 0.0, 1.0)
+			shield.mouse_filter = Control.MOUSE_FILTER_STOP if _open > 0.35 \
+				else Control.MOUSE_FILTER_IGNORE
+
+		_scroll = clampf(_scroll, 0.0, max_scroll())
+		_hot_tab = _tab_at(m) if inside and _open > 0.85 else -1
 
 		# 어느 줄에 손이 올라가 있는가. 서랍이 거의 다 열린 뒤에만 센다 -
 		# 열리는 도중에 줄이 스쳐 지나가면 카드가 깜빡거린다.
 		if not _forced:
 			_hot = -1
-			if inside and _open > 0.85 and m.x < size.x - TAB_W:
-				var r := int(floor((m.y - ROW_TOP + ROW_H * 0.5) / ROW_H))
-				if r >= 0 and r < view_ids.size():
+			if inside and _open > 0.85 and m.x < size.x - TAB_W and m.y >= ROW_TOP - 20.0:
+				var r := int(floor((m.y - ROW_TOP + ROW_H * 0.5) / ROW_H)) + int(_scroll)
+				if r >= 0 and r < shown().size():
 					_hot = r
 		_sync_peek()
 		queue_redraw()
 
 	## 짚은 줄의 카드 원본을 서랍 왼쪽에 세운다.
 	func _sync_peek() -> void:
+		var list := shown()
 		var want_id := ""
-		if _hot >= 0 and _hot < view_ids.size() and _open > 0.85:
-			want_id = String(view_ids[_hot])
+		if _hot >= 0 and _hot < list.size() and _open > 0.85:
+			want_id = String(list[_hot])
 		if want_id == "":
 			if _peek != null:
 				_peek.queue_free()
@@ -485,7 +578,7 @@ class _Dossier extends Control:
 		c.setup(want_id, 0)
 		c.enabled = true
 		# 카드가 서랍 왼쪽에 붙되 칸 위아래를 넘지 않게 잡는다.
-		var y := clampf(ROW_TOP + float(_hot) * ROW_H - CardNode.H * 0.5,
+		var y := clampf(ROW_TOP + (float(_hot) - _scroll) * ROW_H - CardNode.H * 0.5,
 			0.0, maxf(0.0, size.y - CardNode.H))
 		c.place(Vector2(size.x - TAB_W - OPEN_W - CardNode.W - 12.0, y))
 		_peek = c
@@ -529,40 +622,102 @@ class _Dossier extends Control:
 				draw_rect(Rect2(col + 13, y, TAB_W - 26, 3), Color(0.45, 0.70, 0.92,
 					(0.62 if lit else 0.13) * mark))
 
-		# 펼쳐지면 꽂힌 모듈을 한 줄씩 적는다. 카드를 다시 그리기에는 좁고,
-		# 여기서 하려는 일은 "무엇을 들고 있더라" 를 훑는 것이다. 더 알고 싶으면
-		# 그 줄에 손을 올린다.
 		var a: float = clampf((_open - 0.35) / 0.5, 0.0, 1.0)
 		if a <= 0.01:
 			return
-		draw_string(fs, Vector2(x0 + 20, 34),
+		var list := shown()
+		draw_string(fs, Vector2(x0 + 20, 30),
 			UiText.t("shop.dossier_head", "보유 모듈"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.52, 0.68, 0.85, a))
-		var nf := UiKit.font(NAME_SIZE)
+
+		# ── 분류 탭 ──────────────────────────────────────────────────────
+		# 아홉 장이 넘어가면 이름만 늘어놓아서는 "위치 모듈이 몇 장이더라" 가
+		# 안 잡힌다. 축이 곧 이 게임의 문법이므로 축으로 가른다.
+		var tw := (OPEN_W - 36.0) / float(FILTERS.size())
+		for i in FILTERS.size():
+			var f := String(FILTERS[i])
+			var tx := x0 + 18.0 + float(i) * tw
+			var on: bool = i == _filter
+			var tc: Color = UiKit.MUTED
+			var nm := UiText.t("shop.filter_all", "전체")
+			if f == "ult":
+				tc = Color(1.0, 0.74, 0.20)
+				nm = "ULT"
+			elif f != "all":
+				tc = Axes.color(f)
+				nm = Axes.label(f)
+			if on:
+				draw_rect(Rect2(tx, 46, tw - 4, TAB_H),
+					Color(tc.r, tc.g, tc.b, 0.22 * a))
+			elif i == _hot_tab:
+				draw_rect(Rect2(tx, 46, tw - 4, TAB_H), Color(1, 1, 1, 0.07 * a))
+			draw_rect(Rect2(tx, 46 + TAB_H - 2, tw - 4, 2),
+				Color(tc.r, tc.g, tc.b, (0.95 if on else 0.20) * a))
+			draw_string(fs, Vector2(tx, 46 + 20), nm,
+				HORIZONTAL_ALIGNMENT_CENTER, int(tw - 4), 11,
+				Color(tc.r, tc.g, tc.b, a) if on else Color(0.62, 0.68, 0.76, a))
+
 		# 탭 기둥을 침범하면 줄 강조가 손잡이까지 덮어서 어디까지가 서랍인지
 		# 안 보인다. 내용은 기둥 왼쪽에서 끝난다.
 		var inner := OPEN_W - 40.0
-		for i in view_ids.size():
-			var y2 := ROW_TOP + float(i) * ROW_H
-			if y2 > s.y - 14.0:
+		if list.is_empty():
+			draw_string(fs, Vector2(x0 + 28, ROW_TOP),
+				UiText.t("shop.dossier_none", "이 분류에는 없습니다"),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.55, 0.58, 0.65, a))
+			return
+
+		var nf := UiKit.font(NAME_SIZE)
+		var first := int(_scroll)
+		var fit := rows_fit()
+		for k in fit:
+			var i2 := first + k
+			if i2 >= list.size():
 				break
-			var cid := String(view_ids[i])
-			var t: Dictionary = Cards.TABLE.get(cid, Specials.TABLE.get(cid, {}))
-			var hot: bool = i == _hot
+			var y2 := ROW_TOP + float(k) * ROW_H
+			var cid := String(list[i2])
+			var sp := RunState.is_special(cid)
+			var t: Dictionary = Specials.TABLE.get(cid, {}) if sp \
+				else Cards.TABLE.get(cid, {})
+			var hot: bool = i2 == _hot
 			if hot:
 				draw_rect(Rect2(x0 + 12, y2 - 22, inner, ROW_H - 4),
 					Color(0.30, 0.52, 0.72, 0.30 * a))
+			var bar: Color = Color(1.0, 0.74, 0.20) if sp else Color(0.45, 0.70, 0.92)
 			draw_rect(Rect2(x0 + 16, y2 - 19, 4, 20),
-				Color(0.45, 0.70, 0.92, a * (1.0 if hot else 0.75)))
+				Color(bar.r, bar.g, bar.b, a * (1.0 if hot else 0.75)))
 			draw_string(nf, Vector2(x0 + 28, y2), String(t.get("name", cid)),
-				HORIZONTAL_ALIGNMENT_LEFT, int(inner - 90.0), NAME_SIZE,
+				HORIZONTAL_ALIGNMENT_LEFT, int(inner - 96.0), NAME_SIZE,
 				Color(1, 1, 1, a) if hot else Color(0.86, 0.90, 0.96, a))
-			# 축 이름을 오른쪽에 붙인다. 셋을 고루 들었는지 훑는 데 쓴다.
-			var ax := String(t.get("axis", ""))
-			if ax != "":
-				var ac := Axes.color(ax)
-				draw_string(fs, Vector2(x0 + 20 + inner - 82.0, y2 - 2), Axes.label(ax),
-					HORIZONTAL_ALIGNMENT_LEFT, 78, 11, Color(ac.r, ac.g, ac.b, a * 0.85))
+			# 오른쪽에 종류를 붙인다. 셋을 고루 들었는지 훑는 데 쓴다.
+			# 궁극기는 축이 없다 - 축 칸을 비워 두면 "분류를 못 받은 것" 처럼
+			# 보이므로 ULTIMATE 라고 적는다.
+			var tag := ""
+			var tc2: Color = UiKit.MUTED
+			if sp:
+				tag = "ULTIMATE"
+				tc2 = Color(1.0, 0.74, 0.20)
+			else:
+				var ax := String(t.get("axis", ""))
+				if ax != "":
+					tag = Axes.label(ax)
+					tc2 = Axes.color(ax)
+			if tag != "":
+				draw_string(fs, Vector2(x0 + 20 + inner - 100.0, y2 - 2), tag,
+					HORIZONTAL_ALIGNMENT_LEFT, 96, 11,
+					Color(tc2.r, tc2.g, tc2.b, a * 0.9))
+
+		# ── 스크롤 막대 ──────────────────────────────────────────────────
+		# 있어야 "아래에 더 있다" 가 보인다. 없으면 잘린 것과 구분이 안 된다.
+		var ms := max_scroll()
+		if ms > 0.0:
+			var track := Rect2(x0 + inner + 24.0, ROW_TOP - 18.0, 4.0,
+				float(fit) * ROW_H)
+			draw_rect(track, Color(0.30, 0.36, 0.44, 0.5 * a))
+			var frac := float(fit) / float(list.size())
+			var th := track.size.y * frac
+			var ty := track.position.y + (track.size.y - th) * (_scroll / ms)
+			draw_rect(Rect2(track.position.x, ty, track.size.x, th),
+				Color(0.55, 0.75, 0.95, 0.9 * a))
 
 
 func _on_merge_toggle() -> void:

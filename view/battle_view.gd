@@ -641,18 +641,37 @@ func _draw_hover(c: CanvasItem) -> void:
 		rows.append([UiText.t("hover.ai", "기본 판단"),
 			Innates.describe(u.type_id), UiKit.FAINT])
 
+	# ── 폭에는 상한이 있다 ──────────────────────────────────────────────
+	# 특성 설명("자폭 - 붙으면 3틱 뒤 폭발. 주위 3x3 에 15 피해") 하나가
+	# 400px 를 넘어서, 판이 오른쪽 전황판 밑으로 파고들었다. 전황판은 별도
+	# CanvasLayer 라 항상 위에 있으므로 글자가 그대로 잘려 보였다.
+	#
+	# 판을 넓히는 대신 줄을 접는다. 넓히면 결국 어딘가는 넘친다.
 	var fs := UiKit.font(11)
-	var w := 300.0
+	const VAL_X: float = 96.0
+	const VAL_W: float = 300.0
+	var lines: Array = []
 	for r in rows:
-		w = maxf(w, 96.0 + fs.get_string_size(String(r[1]),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 20.0)
-	var h: float = 34.0 + rows.size() * 17.0
+		var parts := _wrap_value(fs, String(r[1]), VAL_W)
+		for i in parts.size():
+			lines.append([String(r[0]) if i == 0 else "", parts[i], r[2]])
+	var w := VAL_X + VAL_W + 20.0
+	var h: float = 34.0 + lines.size() * 17.0
 
-	# 칸 오른쪽에 붙인다. 화면 밖으로 나가면 왼쪽으로 넘긴다.
-	var at := BOARD_ORIGIN + Vector2(u.pos.x * TILE_W + TILE_W + 8.0,
-		u.pos.y * TILE_H)
-	if at.x + w > 1272.0:
-		at.x = BOARD_ORIGIN.x + u.pos.x * TILE_W - w - 8.0
+	# ── 판은 짚은 칸 위로 ────────────────────────────────────────────────
+	# 칸 위쪽에 붙인다. 아래로 늘어뜨리면 **판이 아직 안 본 칸을 가린다** -
+	# 자폭체가 어디까지 왔는지 보려고 마우스를 올렸는데 그 판이 다음 칸을
+	# 덮어 버린다. 위쪽은 이미 지나온 자리라 가려도 손해가 없다.
+	var cell := BOARD_ORIGIN + Vector2(u.pos.x * TILE_W, u.pos.y * TILE_H)
+	var at := Vector2(cell.x + TILE_W + 8.0, cell.y - h + TILE_H)
+	# 오른쪽 한계는 화면 끝이 아니라 **전황판 왼쪽**이다. 전황판은 별도
+	# CanvasLayer 라 이 판보다 항상 위에 그려진다 - 넘어가면 잘린다.
+	if at.x + w > ROSTER_X - 12.0:
+		at.x = cell.x - w - 8.0
+	at.x = clampf(at.x, 8.0, ROSTER_X - 12.0 - w)
+	# 위로 넘치면 그때만 아래로 내린다.
+	if at.y < 8.0:
+		at.y = cell.y
 	at.y = clampf(at.y, 8.0, 712.0 - h)
 
 	var neon: Color = u.color
@@ -674,12 +693,32 @@ func _draw_hover(c: CanvasItem) -> void:
 		UiKit.BAD if u.team == Unit.TEAM_ENEMY else UiKit.TEAM_P)
 
 	var y := 40.0
-	for r in rows:
-		c.draw_string(fs, at + Vector2(14, y), String(r[0]),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)
-		c.draw_string(fs, at + Vector2(96, y), String(r[1]),
+	for r in lines:
+		if String(r[0]) != "":
+			c.draw_string(fs, at + Vector2(14, y), String(r[0]),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)
+		c.draw_string(fs, at + Vector2(VAL_X, y), String(r[1]),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, r[2])
 		y += 17.0
+
+
+## 값 한 줄을 폭에 맞춰 접는다. 띄어쓰기가 없으면 글자 단위로 자른다 -
+## 한국어는 어절이 길어서 어절 단위로만 접으면 한 어절이 폭을 넘긴다.
+func _wrap_value(f: Font, text: String, max_w: float) -> Array:
+	if f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x <= max_w:
+		return [text]
+	var out: Array = []
+	var cur := ""
+	for word in text.split(" "):
+		var probe: String = word if cur == "" else cur + " " + word
+		if f.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x > max_w 				and cur != "":
+			out.append(cur)
+			cur = word
+		else:
+			cur = probe
+	if cur != "":
+		out.append(cur)
+	return out
 
 
 ## 그 대원이 **지금 화면에서 서 있는** 자리.

@@ -30,8 +30,12 @@ func _init() -> void:
 	await _shot("01_title", load("res://scenes/title_screen.tscn").instantiate(),
 		func(s): s.setup(), 30)
 
-	# 서류첩은 든 것이 있어야 꽂힌 모습이 보인다.
-	run.hand.append_array(["near_first", "backline", "keep_range", "front_line", "taunt"])
+	# 서류첩은 든 것이 있어야 꽂힌 모습이 보인다. 스크롤과 분류를 확인하려면
+	# 한 화면에 안 들어갈 만큼 들려야 한다.
+	run.hand.append_array(["near_first", "backline", "keep_range", "front_line",
+		"taunt", "guard_stance", "escort", "crack_wall", "far_in_range",
+		"fall_back", "behind_guard", "execute", "assault"])
+	run.special_hand.append("last_guard")
 	await _shot("02_shop", load("res://scenes/shop_screen.tscn").instantiate(),
 		func(s): s.setup(run))
 
@@ -42,6 +46,14 @@ func _init() -> void:
 			for c in s.hand_root.get_children():
 				if c.has_method("force_open"):
 					c.force_open(1), 26)
+
+	# 궁극기 분류. 축이 없는 물건이라 표시가 비지 않는지 확인한다.
+	await _shot("02c_dossier_ult", load("res://scenes/shop_screen.tscn").instantiate(),
+		func(s):
+			s.setup(run)
+			for c in s.hand_root.get_children():
+				if c.has_method("force_open"):
+					c.force_open(0, 4), 26)
 
 	# 보조 지휘는 예산이 있어야 버튼이 살아 있는 모습을 볼 수 있다.
 	run.budget = 40

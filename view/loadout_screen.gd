@@ -520,7 +520,7 @@ class _Tile extends Button:
 		# 작게 줘도 192x192 로 되돌아가서, 75px 칸 안에 192px 그림의 왼쪽 위
 		# 귀퉁이만 보인다.
 		_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_tr.stretch_mode = TextureRect.STRETCH_SCALE
+		_tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_clip.add_child(_tr)
 
@@ -534,8 +534,11 @@ class _Tile extends Button:
 		if _clip == null:
 			return
 		var band := band_h()
-		_clip.position = Vector2(2, 2)
-		_clip.size = Vector2(size.x - 4, size.y - band - 2)
+		# 얼굴 그림 자체가 캔버스 끝까지 꽉 차게 그려져 있다(머리카락이 위
+		# 가장자리에 닿는다). 칸에 딱 붙여 놓으면 그 잘린 단면이 테두리와
+		# 만나서 "잘렸다" 로 읽힌다. 안쪽으로 한 겹 물려 여백을 만든다.
+		_clip.position = Vector2(6, 6)
+		_clip.size = Vector2(size.x - 12, size.y - band - 8)
 		var tex := null if (empty or type_id == "") 			else UiKit.art(["portraits", "units"], type_id)
 		_tr.texture = tex
 		_tr.modulate = Color(1, 1, 1, 0.45 if disabled else 1.0)
@@ -587,8 +590,10 @@ class _TileFace extends Control:
 				HORIZONTAL_ALIGNMENT_CENTER, s.x, 12,
 				UiKit.FAINT if tile.disabled else UiKit.TEXT)
 			if String(tile.sub) != "":
-				draw_string(fs, Vector2(0, ly + 23), String(tile.sub),
-					HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UiKit.FAINT)
+				# 사선 모서리가 오른쪽 아래를 잘라 먹는다. 숫자 줄을 칸 폭
+				# 그대로 가운데 맞추면 끝자리가 그 잘림에 걸린다.
+				draw_string(fs, Vector2(5, ly + 23), String(tile.sub),
+					HORIZONTAL_ALIGNMENT_CENTER, s.x - 10, 9, UiKit.FAINT)
 
 		var line := PackedVector2Array(tile.shape(s))
 		line.append(line[0])

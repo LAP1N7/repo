@@ -257,5 +257,7 @@
   "brief.strategy": "적은 %s 순으로 판단합니다.",
   "brief.waves": "적은 %d 차례에 걸쳐 밀려오며, 앞 페이즈에서 잃은 체력은 그대로 이어집니다.",
   "brief.hazard": "판 자체가 공격합니다 - %s. 예고된 칸은 붉게 칠해집니다.",
-  "brief.traits": "섞인 개체: "
+  "brief.traits": "섞인 개체: ",
+  "shop.dossier_none": "이 분류에는 없습니다",
+  "shop.filter_all": "전체"
 }
