@@ -38,29 +38,68 @@ func _init() -> void:
 	print("  변화  : 그 모듈이 없었을 때와 **다른 행동**을 한 횟수")
 	print("  판    : 측정에 쓴 전투 수\n")
 
+	var base := _winrate("")
 	var rows: Array = []
 	for cid in Cards.shop_order():
-		rows.append(_measure(String(cid)))
+		var r := _measure(String(cid))
+		r["win"] = _winrate(String(cid))
+		r["delta"] = int(r["win"]) - base
+		rows.append(r)
 
-	rows.sort_custom(func(a, b): return int(a["change"]) < int(b["change"]))
+	rows.sort_custom(func(a, b): return int(a["delta"]) < int(b["delta"]))
 
-	print("%-14s %-9s %-12s %6s %6s" % ["id", "축", "이름", "발동", "변화"])
-	print("  " + "-".repeat(56))
+	print("  기준(모듈 없음) 승리 %d / %d판
+" % [base, COMPS.size() * STAGES.size()])
+	print("%-14s %-9s %-12s %6s %6s %5s %6s" % ["id", "축", "이름", "발동", "변화",
+		"승", "증감"])
+	print("  " + "-".repeat(70))
 	for r in rows:
 		var mark := "   "
 		if int(r["fire"]) == 0:
 			mark = "!! "
 		elif int(r["change"]) == 0:
 			mark = " ! "
-		elif int(r["change"]) < 5:
-			mark = " ? "
-		print("%s%-12s %-9s %-12s %6d %6d" % [mark, r["id"], r["axis"], r["name"],
-			r["fire"], r["change"]])
+		elif int(r["delta"]) < 0:
+			mark = " - "
+		elif int(r["delta"]) == 0:
+			mark = " . "
+		print("%s%-12s %-9s %-12s %6d %6d %5d %+6d" % [mark, r["id"], r["axis"],
+			r["name"], r["fire"], r["change"], r["win"], r["delta"]])
 
-	print("\n  !! 발동 자체가 없다 - 조건이 사실상 안 걸린다")
-	print("   ! 발동은 하는데 행동이 안 바뀐다 - 이름만 뜨는 모듈")
-	print("   ? 변화가 5회 미만 - 아주 좁은 상황에서만 일한다")
+	print("
+  !! 발동 자체가 없다   ! 행동이 안 바뀐다   - 꽂으면 오히려 진다   . 꽂으나 마나")
 	quit(0)
+
+
+## ── 이 모듈이 이기게 해 주는가 ──────────────────────────────────────────
+## 발동과 변화는 "일을 하는가" 만 말한다. 일을 열심히 하고도 지게 만드는
+## 모듈이 있다 - 판단을 멈추는 것들이 특히 그렇다.
+const COMPS: Array = [
+	["warrior", "archer", "bard"],
+	["shieldman", "musketeer", "bard"],
+	["warrior", "assassin", "archer"],
+	["shieldman", "archer", "archer"],
+]
+
+
+func _winrate(cid: String) -> int:
+	var wins := 0
+	for comp in COMPS:
+		for stage in STAGES:
+			var party: Array = []
+			for i in 3:
+				party.append({
+					"type": String(comp[i]), "slot": SLOTS[i],
+					"cards": [] if cid == "" else [cid],
+					"special": "", "special_first": false, "card_levels": {},
+					"upgrade": 2, "cmd": {},
+				})
+			var b := Battle.new()
+			b.setup(stage, party)
+			b.run()
+			if b.result == Battle.RESULT_VICTORY:
+				wins += 1
+	return wins
 
 
 ## 한 모듈을 넣은 편성과 뺀 편성을 나란히 돌려 비교한다.

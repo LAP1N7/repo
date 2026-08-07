@@ -365,9 +365,9 @@ const TABLE: Dictionary = {
 		"cost": 2,
 		"name": "부상 후퇴",
 		"cond": "self_hp_below",
-		"cond_arg": 50,
+		"cond_arg": 30,
 		"stance": "avoid_near",
-		"text": "자신 HP < 50% → 적이 1칸 이내면 물러난다",
+		"text": "자신 HP < 30% → 적이 1칸 이내면 물러난다",
 	},
 	"wary_step": {
 		"axis": "doctrine",
@@ -376,9 +376,9 @@ const TABLE: Dictionary = {
 		"cost": 3,
 		"name": "경계 후퇴",
 		"cond": "self_hp_below",
-		"cond_arg": 50,
+		"cond_arg": 30,
 		"stance": "avoid_mid",
-		"text": "자신 HP < 50% → 적이 2칸 이내면 물러난다",
+		"text": "자신 HP < 30% → 적이 2칸 이내면 물러난다",
 	},
 	"evade": {
 		"axis": "doctrine",

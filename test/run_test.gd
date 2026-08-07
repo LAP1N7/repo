@@ -724,9 +724,15 @@ func test_shadowing() -> void:
 		"이동 카드는 아래를 가리지 않는다 (실행 불가 시 양보)")
 
 	# 조건 문턱 비교 — 넓은 조건이 좁은 조건을 가린다
-	# 같은 교전 축이고 위가 더 넓은 조건(50% > 40%)이면 아래는 절대 안 걸린다.
-	ok(not Shadow.shadowed_slots(["fall_back", "berserk"], 1).is_empty(),
+	# 같은 교전 축이고 위가 더 넓은 조건이면 아래는 절대 안 걸린다.
+	#
+	# 짝을 바꿨다. [부상 후퇴]·[경계 후퇴] 문턱을 50 -> 30 으로 내리고
+	# [광전] 을 40 -> 45 로 올리면서 넓고 좁은 쪽이 뒤바뀌었다. 이제
+	# 광전(45)이 부상 후퇴(30)를 가린다.
+	ok(not Shadow.shadowed_slots(["berserk", "fall_back"], 1).is_empty(),
 		"넓은 HP 조건이 좁은 HP 조건을 가린다 (같은 축)")
+	ok(Shadow.shadowed_slots(["fall_back", "berserk"], 1).is_empty(),
+		"좁은 조건이 위에 있으면 아래는 안 가린다")
 	ok(Shadow.implies("self_hp_below", 25, "self_hp_below", 50),
 		"HP<25% 는 HP<50% 에 포함된다")
 	ok(not Shadow.implies("self_hp_below", 50, "self_hp_below", 25),

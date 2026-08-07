@@ -125,6 +125,11 @@ func setup(p_run: RunState) -> void:
 		UiText.t("shop.command", "보조 지휘  →"), Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func():
 		sfx.play("click")
+		# 튜토리얼이 이 버튼을 가리키고 있다면, **누른 것 자체가** 다음
+		# 대사로 넘어가는 조건이다. 안 알리면 화면만 바뀌고 대본은 상점
+		# 대사에 멈춰 있어서, 보조 지휘 화면에서는 아무것도 안 뜬다.
+		if tut != null:
+			tut.notify_action("command")
 		command.emit()
 	)
 	if tut != null:
