@@ -186,7 +186,14 @@ func _layout(side: String) -> void:
 	# 전투 중에는 초상을 접는다. 폭 420 짜리 전신이 서 있으면 규칙 패널이든
 	# 전투 로그든 통째로 가리는데, 정작 그 틱에 뭐가 왜 터졌는지를 읽으라고
 	# 하는 대사다. 말할 사람 이름은 말풍선에 이미 붙어 있다.
-	_portrait.visible = bool(tut.current().get("portrait", true))
+	# ── 가리켜야 할 때는 초상을 접는다 ───────────────────────────────────
+	# MIRA 전신이 420px 를 먹는다. 대본이 [편성 단계로]·[교전 개시] 를
+	# 가리키는데 정작 그 버튼이 초상 뒤에 있으면, 시키는 것을 누를 수가 없다.
+	#
+	# 같은 그림을 서른 번 볼 이유도 없다. 말을 거는 대목(앵커 없는 대사)에만
+	# 세우고, 무언가를 가리키는 순간에는 비킨다.
+	var has_anchor := tut.anchor_name() != ""
+	_portrait.visible = bool(tut.current().get("portrait", true)) and not has_anchor
 	_portrait.size = Vector2(PORTRAIT_W, h)
 	_portrait.position = Vector2(20.0 if left else 1280.0 - PORTRAIT_W - 20.0, 0)
 	_portrait.flip_h = not left
@@ -249,6 +256,14 @@ func _pick_bubble_pos(bw: float, bh: float, place: String, left: bool) -> Vector
 
 		# 전부 안 되면 앵커에서 먼 쪽 구석으로 뺀다.
 		return Vector2(cx, margin if a.get_center().y > 360.0 else 720.0 - bh - margin)
+
+	# ── 앵커가 없으면 아래로 ─────────────────────────────────────────────
+	# place 도 앵커도 없는 대사는 좌우 가운데에 떴다. 그 자리가 마침 대원
+	# 카드와 배치판이 있는 곳이라 설명하려는 대상을 말풍선이 덮었다.
+	# 아래는 늘 비어 있고, 읽는 눈이 화면을 위에서 아래로 훑는 순서와도 맞는다.
+	if place == "" and target == null:
+		return Vector2(clampf(margin, margin, 1280.0 - bw - margin),
+			720.0 - bh - margin)
 
 	if PLACES.has(place):
 		var v: Vector2 = PLACES[place]

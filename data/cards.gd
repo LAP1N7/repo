@@ -470,6 +470,65 @@ const TABLE: Dictionary = {
 	},
 
 	# ── PASSIVE · 상시 ────────────────────────────────
+	# ── 판을 읽는 교전 수칙 ──────────────────────────────────────────────
+	# 교전 축은 "멈춘다/물러난다/막는다" 뿐이라 딜을 안 넣고, 그래서 실측 승률이
+	# 전부 마이너스였다(TODO.md). 능력치 보상을 붙이면 전술이 아니라 강화가
+	# 되므로, 대신 **읽을 수 있는 것**을 늘렸다.
+	#
+	# 넷 다 하는 일은 이미 있는 행동이다. 새로운 것은 **언제 하느냐** 다.
+	"press_on": {
+		"axis": "doctrine",
+		"tag": "charge",
+		"tier": 2,
+		"cost": 3,
+		"name": "압박",
+		"cond": "target_hp_below",
+		"cond_arg": 30,
+		"stance": "close_in",
+		"text": "표적 HP < 30% → 물러나지 않고 이동 +1로 붙는다",
+	},
+	"focus_last": {
+		"axis": "doctrine",
+		"tag": "charge",
+		"tier": 2,
+		"cost": 3,
+		"name": "잔적 소탕",
+		"cond": "enemies_left_at_most",
+		"cond_arg": 1,
+		"stance": "close_in",
+		"text": "적이 1명 남으면 → 물러나지 않고 이동 +1로 붙는다",
+	},
+	"last_stand": {
+		"axis": "doctrine",
+		"tag": "charge",
+		"tier": 3,
+		"cost": 4,
+		"name": "결사",
+		"cond": "allies_left_at_most",
+		"cond_arg": 1,
+		"stance": "close_in",
+		"text": "아군이 나 하나면 → 물러나지 않고 이동 +1로 붙는다",
+	},
+	# ── 방어가 아니라 유인이다 ───────────────────────────────────────────
+	# 처음에는 "내 진영 안이면 제자리에서 방어" 로 짰다. 실측 -4 였고, 붙었을
+	# 때만으로 좁혀도 -1 이었다. 막는 행동은 그 틱의 딜을 통째로 버리는데
+	# 이 게임에는 정체 패배와 틱 상한이 있어서 그 거래가 성립하지 않는다.
+	#
+	# 같은 조건에 **행동을 안 뺏는 판단**을 붙였다. 위협 수칙은 행동 자리를
+	# 차지하지 않으므로(rules._pick_doctrine 참조) 손해가 날 수가 없고,
+	# "제 진영을 지키는 대원이 침입자를 받는다" 는 그림도 그대로 산다.
+	"home_guard": {
+		"axis": "doctrine",
+		"tag": "threat",
+		"tier": 2,
+		"cost": 2,
+		"name": "수비 태세",
+		"cond": "in_home_zone",
+		"cond_arg": 0,
+		"stance": "taunt",
+		"text": "내 진영 안이면 → 위협도를 크게 올린다",
+	},
+
 	"scatter": {
 		"axis": "passive",
 		"tag": "none",

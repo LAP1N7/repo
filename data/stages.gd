@@ -394,6 +394,20 @@ static func trait_list(stage_id: int) -> Array[String]:
 ##
 ## 무엇이 오는지 알면 대응 모듈을 고르는 것이 곧 전략이 된다. 그게 이 게임이
 ## 스테이지마다 새 답을 요구하는 방식이다.
+## ── 적도 강화된다 ───────────────────────────────────────────────────────
+## 지휘관은 판을 넘길 때마다 강화·보조 지휘로 세진다. 적이 그대로면 뒤로 갈수록
+## 판이 쉬워지고, 그러면 앞에서 짠 편성을 그대로 밀어도 통한다 - 새 답을 찾을
+## 이유가 없어진다.
+##
+## 3판부터 적도 같이 오른다. 값은 대원 강화와 같은 단계 척도다
+## (RunState.UPGRADE_STEP_PCT 를 그만큼 곱한다).
+const ENEMY_UPGRADE: Dictionary = {3: 1, 4: 1, 5: 1}
+
+
+static func enemy_upgrade(stage_id: int) -> int:
+	return int(ENEMY_UPGRADE.get(stage_id, 0))
+
+
 static func enemy_summary(stage_id: int) -> String:
 	var count: Dictionary = {}
 	var order: Array[String] = []

@@ -333,8 +333,16 @@ func hp_percent_below(pct: int) -> bool:
 	return hp * 100 < max_hp * pct
 
 
+## 압박 증폭(%). 전투가 매 틱 채워 준다. 오래 끌수록 모두가 아프게 맞는다.
+var pressure_pct: int = 0
+
+
 func take_damage(amount: int, from: Unit) -> int:
 	var dealt: int = amount
+	# 압박은 제일 먼저 얹는다. 방어·감쇄 뒤에 얹으면 두꺼운 대원에게만
+	# 효과가 남아서, "오래 끌면 양쪽 다 죽는다" 가 성립하지 않는다.
+	if pressure_pct > 0:
+		dealt = maxi(1, dealt * (100 + pressure_pct) / 100)
 	# 인내 교리: 받는 피해 -15%. 방어 계산보다 **먼저** 건다.
 	# 나중에 걸면 방어 중일 때 정수 나눗셈 때문에 거의 사라진다.
 	var soak := Doctrines.amount(doctrines, "damage_taken_pct") + passive_taken_pct

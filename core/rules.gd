@@ -301,6 +301,27 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		"avoid_boost":
 			return _retreat(unit, state, bonus + 1)
 
+		# ── 붙어서 끝낸다 ────────────────────────────────────────────────
+		# 능력치를 안 준다. 하는 일은 둘이다 - 물러나는 판단을 이 틱에만 끄고,
+		# 한 칸 더 간다.
+		#
+		# "안 물러난다" 만으로는 실측에서 -4 였다. 원거리 대원이 카이팅을
+		# 잃기만 하고 얻는 게 없었기 때문이다. 이 축이 값을 하려면 **끝내는
+		# 속도**로 갚아야 한다 - 한 칸을 더 가는 것은 능력치가 아니라 판단의
+		# 결과라 강화가 아니다.
+		"close_in":
+			if target != null and Grid.manhattan(unit.pos, target.pos) > unit.atk_range:
+				return _approach(unit, state, target, bonus + 1, "압박")
+
+		# ── 진영을 지킨다 ────────────────────────────────────────────────
+		# 적이 코앞일 때만 막는다. 조건 없이 막으면 제 진영에서 영영 안 나와
+		# 정체로 진다 - 실측 0승이었다.
+		"hold_ground":
+			# 붙었을 때만. 2칸까지 넓히면 원거리 대원이 쏠 수 있는 거리에서
+			# 막고 앉아 딜을 통째로 버린다 - 실측 -2 였다.
+			if near_d <= 1:
+				return _rule(unit, "진영 사수", "defend", unit, 0, 0)
+
 	# 표적이 없어도 자리는 지킨다.
 	#
 	# 예전에는 여기서 빈 손으로 돌아갔는데, 그러면 전투 로그에 "행동 없음" 만
@@ -356,8 +377,8 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			# 원거리는 적이 코앞이면 한 칸 물러나며 쏠 자리를 만든다.
 			# 이게 기본 AI 의 flee_within 이다. 태세가 추격이면 안 물러난다.
 			var flee := int(ai["flee_within"])
-			# [광전] 은 물러나지 않는다. 추격 자세도 마찬가지다.
-			if stance == "engage" or stand == "chase":
+			# [광전]·[압박]은 물러나지 않는다. 추격 자세도 마찬가지다.
+			if stance == "engage" or stance == "close_in" or stand == "chase":
 				flee = 0
 			if flee > 0 and dist <= flee:
 				var near := resolve_target(unit, "nearest_enemy", state, "")
@@ -756,6 +777,37 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 			# 지금 노리고 있는 표적의 HP. 파이프라인이 _ctx_target 을 채워 준다.
 			# 표적이 아직 안 정해진 경로에서 불리면 성립하지 않는다.
 			return _ctx_target != null and _ctx_target.hp_percent_below(arg)
+
+		# ── 여기서부터: 판을 읽는 조건들 ─────────────────────────────────
+		# 교전 축이 약한 이유는 하는 일이 전부 "멈춘다/물러난다/막는다" 여서
+		# 딜을 안 넣기 때문이다(TODO.md 측정 참조). 그렇다고 교전에 능력치
+		# 보상을 붙이면 그건 전술이 아니라 강화가 된다.
+		#
+		# 대신 **볼 수 있는 것**을 늘린다. 지금 이 축이 읽는 것은 자기 HP·
+		# 거리·틱뿐이라, "판이 어떻게 돌아가는가" 를 조건으로 쓸 수가 없다.
+		# 조건이 늘면 같은 행동(추격·집중·방어)도 언제 하느냐가 달라진다.
+
+		"target_hp_above":
+			# 표적이 아직 멀쩡한가. target_hp_below 의 거울이다.
+			return _ctx_target != null and not _ctx_target.hp_percent_below(arg)
+
+		"enemies_left_at_most":
+			# 적이 몇 남았는가. 마지막 하나를 다 같이 끝내는 판단이 여기서 나온다.
+			return state.living_enemies_of(unit).size() <= arg
+
+		"allies_left_at_most":
+			# 우리가 몇 남았는가. 자기 자신을 포함해서 센다 - "혼자 남았다" 가
+			# 1 로 읽혀야 대본을 쓸 때 헷갈리지 않는다.
+			return state.living_allies_of(unit).size() <= arg
+
+		"in_home_zone":
+			# 제 진영 안에 있는가. 좌표를 직접 조건으로 쓰는 유일한 자리다.
+			#
+			# 진영은 x 로 가른다 - 아군은 x<=2, 적은 x>=5 에서 시작한다.
+			# 격자 한가운데(x 3~4)는 어느 쪽 진영도 아니다.
+			if unit.team == Unit.TEAM_PLAYER:
+				return unit.pos.x <= 2
+			return unit.pos.x >= 5
 
 		"never":
 			# 패시브 궁극기의 자리 표시. 규칙 엔진은 이걸 절대 고르지 않는다.

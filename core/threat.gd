@@ -24,7 +24,17 @@ class_name Threat
 const BASE: int = 10
 const PER_TILE: int = -2       ## 가까울수록 위협
 const RECENT_HIT: int = 6      ## 직전 틱에 그 적을 때렸다
-const WOUNDED: int = 4         ## HP 30% 이하 - 마무리하러 온다
+
+## ── 다친 것은 위협이 아니다 ─────────────────────────────────────────────
+## HP 30% 이하면 +4 를 주고 있었다. "마무리하러 온다" 는 뜻이었는데, 그러면
+## **내가 아무것도 안 했는데 어그로가 끌린다.**
+##
+## 위협도는 지휘관이 설계하는 값이어야 한다. 앞에 서고, 때리고, 도발하는 것은
+## 전부 내가 고른 행동이다. 그런데 "맞아서 피가 없다" 는 내가 고른 것이 아니고,
+## 그 결과로 더 맞으면 한 번 밀리기 시작한 판은 되돌릴 방법이 없다.
+##
+## 뺐다. 남은 항목은 전부 **한 일**이다 - 거리(어디에 섰나) · 최근 타격
+## (누구를 쳤나) · 누적 피해/회복(얼마나 일했나) · 태세(무엇을 선언했나).
 
 ## 태세가 붙이는 보정. core/rules.gd 가 unit.threat_mod 에 채운다.
 const TAUNT: int = 35
@@ -56,8 +66,6 @@ static func score(chooser: Unit, candidate: Unit) -> int:
 	n += Grid.manhattan(chooser.pos, candidate.pos) * PER_TILE
 	if candidate.last_target != null and candidate.last_target.index == chooser.index:
 		n += RECENT_HIT
-	if candidate.hp_percent_below(30):
-		n += WOUNDED
 	n += candidate.threat_mod
 	# 개체 특성이 상시로 얹는 값. 유인 신호기가 여기로 들어온다.
 	n += candidate.threat_base

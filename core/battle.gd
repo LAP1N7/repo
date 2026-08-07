@@ -130,7 +130,8 @@ func _spawn_wave(n: int) -> void:
 		var u := Unit.create(
 			idx, String(e["type"]), Unit.TEAM_ENEMY,
 			_free_enemy_cell(e["pos"]), e["cards"],
-			String(e.get("special", "")), 0,
+			String(e.get("special", "")),
+			int(e.get("upgrade", Stages.enemy_upgrade(stage_id))),
 			bool(e.get("special_first", false))
 		)
 		u.apply_traits(e.get("traits", []))
@@ -474,6 +475,29 @@ func act_order() -> Array:
 	return out
 
 
+## ── 압박 ────────────────────────────────────────────────────────────────
+## 긴 판은 정체 규칙(무피해 N틱)으로 잡는다. 그런데 **서로 조금씩 때리면서**
+## 끝나지 않는 판은 그 그물에 안 걸린다 - 피해가 계속 나므로 정체가 아니고,
+## 틱 상한에 닿을 때까지 지루하게 이어진다.
+##
+## 시간이 갈수록 모두가 더 아프게 맞는다. 아군에게도 똑같이 걸리므로 이건
+## 난이도가 아니라 **마감**이다 - 오래 끌면 양쪽 다 죽는다.
+##
+## 계단으로 올린다. 선형으로 조금씩 올리면 언제 위험해지는지가 안 보인다.
+##   30틱 +1%   경고
+##   40틱 +5%   눈에 띈다
+##   50틱 +10%  이제 정말 끝내야 한다
+const PRESSURE: Array = [[50, 10], [40, 5], [30, 1]]
+
+
+## 지금 틱의 피해 증폭(%). 0 이면 없음.
+func pressure_pct() -> int:
+	for step_def in PRESSURE:
+		if tick >= int(step_def[0]):
+			return int(step_def[1])
+	return 0
+
+
 func step() -> bool:
 	if result != RESULT_ONGOING:
 		return false
@@ -501,6 +525,11 @@ func step() -> bool:
 		u.atk_range = u.atk_range_base + u.range_bonus
 		# 개체 특성이 만드는 보정. 감독기가 죽으면 그 틱부터 사라진다.
 		u.trait_atk_pct = Traits.attack_pct(u, self)
+
+	# 압박을 이번 틱 값으로 채운다. 유닛이 스스로 알 수 없는 값이라 전투가 준다.
+	var press := pressure_pct()
+	for u in units:
+		u.pressure_pct = press
 
 	_emit({ "type": "tick_begin", "tick": tick })
 
