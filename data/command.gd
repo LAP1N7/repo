@@ -132,4 +132,4 @@ static func ids_in(group: String) -> Array[String]:
 ##
 ## 축을 넘어가면 안 된다. 표적을 위치로 바꿀 수 있으면 축의 의미가 사라진다.
 ## 축 안에서만 도니까 "표적 교리를 다듬는다" 가 된다.
-const SWAP_COST: int = 3
+const SWAP_COST: int = 1

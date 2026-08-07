@@ -15,47 +15,44 @@ signal back()
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다.
 var tut: Tutorial = null
 
-const TILE: float = 62.0
-## 배치 격자. 제목·대원 선택과 같은 왼쪽 선에 맞춘다.
+## ── 화면 구획 ───────────────────────────────────────────────────────────
+## 왼쪽은 **어디에 세울까**, 오른쪽은 **어떻게 판단하게 할까** 다. 질문이 다르니
+## 자리도 갈라야 한다. 예전에는 오른쪽 판이 가로로 길게 누워 왼쪽 얼굴 칸과
+## 겹쳤고, 세 대원이 세로로 쌓이면서 손패까지 밀고 내려갔다.
 ##
-## 가운데로 옮겨 봤는데, 이 화면의 왼쪽 칸은 제목 -> 격자 -> 대원 선택이
-## 위에서 아래로 읽히는 한 덩어리다. 가운데 것 하나만 들여쓰면 그 줄기가 끊긴다.
+## 니케의 캐릭터 카드처럼 대원 하나를 **세로 카드 한 장**으로 세운다. 셋이
+## 나란히 서면 우선순위 세 벌을 한눈에 비교할 수 있고, 그게 이 게임에서
+## 편성 화면이 존재하는 이유다.
+##
+##   x  40 ~ 424   배치 격자 · 대원 선택
+##   x 440 ~ 1240  대원 카드 3장 (254 폭, 266 간격)
+##   y 548 ~       보유 모듈
+const TILE: float = 84.0
 const GRID_AT := Vector2(48, 124)
-const RIGHT_X: float = 560.0
-## ── 보유 모듈 줄 ────────────────────────────────────────────────────────
-## 화면 맨 아래를 가로로 다 쓴다. 명일방주 하단 오퍼레이터 바와 같은 자리이고,
-## 같은 이유다 - **고르는 것**은 늘 바닥에 있고 위는 판이다.
-##
-## 500 으로 올렸다가 오른쪽 모듈 슬롯 3번째 대원 행(바닥 y=534)을 카드가
-## 덮었다. 화면 아래가 비어 보인다고 올렸던 것인데, 비어 보이는 것보다
-## 가려지는 쪽이 훨씬 나쁘다. 대원 선택 칸을 키워 그 여백을 대신 채운다.
-## 얼굴 칸이 y=352 에서 시작해 100 높이로 끝나면 452 다. 거기서 여백 한 뼘만
-## 두고 바로 잇는다 - 사이가 비면 화면이 두 동강 난 것처럼 보인다.
-const HAND_Y: float = 530.0
 
-## 유닛 한 명이 차지하는 세로 높이. 헤더 28 + 슬롯 3×27 + 기본기 줄 18 + 여백.
-## 줄이면 기본기 줄이 다음 유닛 헤더를 덮는다.
-## 오른쪽 모듈 슬롯 3인분이 손패 위에서 끝나야 한다.
-##   ROSTER_Y + ROW_H*2 + 128(행 바닥) <= HAND_Y - 26(손패 머리)
-##   124 + 260 + 128 = 512 <= 504 ... 이 아니라 512 이므로 행 바닥이 머리와
-##   8px 겹친다. 머리글은 x=48 에서 시작하고 슬롯은 x=560 부터라 가로로는
-##   안 만난다.
-const ROSTER_Y: float = 124.0
-## ── 행 내부 간격 ────────────────────────────────────────────────────────
-## 대원 3명이 보유 목록(HAND_Y-30 = 542) 위에 다 들어가야 한다.
-##
-##   행 시작        y
-##   슬롯 3칸       y+30, y+55, y+80   (높이 24)
-##   기본 알고리즘   y+110              (높이 18)  -> 행 바닥 y+128
-##
-## ROSTER_Y(138) + ROW_H*2 + 128 <= 542 이어야 하므로 ROW_H 는 최대 134 다.
-## 그리고 ROW_H 는 행 바닥(128)보다 커야 행끼리 안 겹친다.
-## 판 하나가 담아야 하는 것: 머리줄(28) + 슬롯 3칸(30~104) + 기본기 줄.
-## 기본기 줄이 판 밖으로 삐져나가면 판으로 감싼 의미가 없다.
-const ROW_H: float = 140.0
-const SLOT_H: float = 24.0
-const SLOT_STEP: float = 25.0
-const INNATE_DY: float = 106.0
+## 대원 카드
+const CARD_X: float = 440.0
+const CARD_W: float = 254.0
+const CARD_STEP: float = 266.0
+const CARD_Y: float = 116.0
+const CARD_H: float = 360.0
+
+## 대원 선택 얼굴 칸. 여섯이 x 424 앞에서 끝나야 한다.
+const PICK_Y: float = 432.0
+const PICK_W: float = 62.0
+const PICK_H: float = 92.0
+const PICK_STEP: float = 63.0
+
+const HAND_Y: float = 548.0
+
+## 카드 안쪽 세로 배치. 전부 카드 원점 기준이다.
+const IN_FACE_H: float = 110.0
+const IN_NAME_Y: float = 118.0
+const IN_STAT_Y: float = 142.0
+const IN_SLOT_Y: float = 162.0
+const IN_SLOT_H: float = 34.0
+const IN_ULT_Y: float = 272.0
+const IN_INNATE_Y: float = 306.0
 
 var run: RunState
 
@@ -118,32 +115,26 @@ func setup(p_run: RunState) -> void:
 	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
 	# 로딩 화면의 TIP 이 그 역할을 한다 - 유닛 버튼 아래에 태그를 달면 정보가
 	# 늘어난 만큼 화면이 빽빽해지고, 정작 고를 때 읽는 건 HP·공격력이다.
-	_head(Vector2(48, 344), UiText.t("loadout.unit_pick", "대원 선택"))
+	_head(Vector2(48, PICK_Y - 36), UiText.t("loadout.unit_pick", "대원 선택"))
 	var x := 48.0
 	for tid in UnitData.playable():
-		var s: Dictionary = UnitData.TABLE[tid]
-		# 얼굴을 세운 카드다. 이름과 숫자만 있던 버튼은 여섯 개가 나란히 놓이면
-		# 전부 같은 회색 상자로 보여서, 고르는 일이 읽는 일이 됐다. 얼굴이
-		# 있으면 고르는 일이 다시 보는 일이 된다.
+		var s2: Dictionary = UnitData.TABLE[tid]
+		# 여기는 **고르는 자리**다. 능력치는 오른쪽 대원 카드가 크게 말하므로
+		# 얼굴과 이름만 둔다. 좁은 칸에 숫자까지 밀어 넣으면 둘 다 안 읽힌다.
 		var b := _Tile.new()
-		# 얼굴 칸을 세로로 키웠다. 가로는 못 늘린다 - 여섯 개가 오른쪽 모듈
-		# 슬롯(x=560) 앞에서 끝나야 한다.
-		# 그림은 정사각이라 칸 폭이 곧 그림 높이다. 칸을 그보다 높이 잡으면
-		# 그림 아래에 빈 띠가 남고, 이름 칸이 그 아래에서 시작하니 "그림이
-		# 끝난 선" 과 "글이 시작하는 선" 이 어긋난다. 칸 높이를 그림 높이 +
-		# 이름띠로 딱 맞춘다.
-		b.position = Vector2(x, 366)
-		b.size = Vector2(82, 82 - 12 + 30)
+		b.position = Vector2(x, PICK_Y)
+		b.size = Vector2(PICK_W, PICK_H)
 		b.type_id = String(tid)
-		b.label = String(s["name"])
-		b.sub = UiText.t("loadout.unit_stat", "HP%d ATK%d") % [s["hp"], s["atk"]]
-		b.tint = s["color"]
+		b.label = String(s2["name"])
+		b.tint = s2["color"]
+		b.tooltip_text = UiText.t("loadout.unit_stat", "HP %d · ATK %d") % [
+			s2["hp"], s2["atk"]]
 		add_child(b)
 		b.pressed.connect(_on_type_pressed.bind(String(tid)))
 		type_buttons[tid] = b
 		if tut != null:
 			tut.register_anchor("unit_%s" % tid, b)
-		x += 84.0
+		x += PICK_STEP
 
 
 	# 손패가 바닥을 다 쓰고 규칙 슬롯이 y=520 까지 내려오므로, 경고는 헤더 옆에 둔다.
@@ -225,7 +216,8 @@ func _build_grid() -> void:
 
 	# 격자를 왼쪽 칸 가운데로 옮겼으므로 방향 안내도 같이 간다. 캡션이
 	# 대상에서 떨어지면 무엇을 설명하는 글인지 알 수 없다.
-	UiKit.label(grid_root, Vector2(GRID_AT.x, 314), Vector2(460, 20),
+	UiKit.label(grid_root, Vector2(GRID_AT.x, GRID_AT.y + TILE * 3.0 + 6.0),
+		Vector2(460, 20),
 		UiText.t("loadout.m03", "←  뒤         앞  →        (적은 오른쪽에서 온다)"), 11, UiKit.MUTED)
 
 
@@ -267,147 +259,131 @@ func _build_roster() -> void:
 	for c in roster_root.get_children():
 		c.queue_free()
 
-	UiKit.label(roster_root, Vector2(RIGHT_X, 82), Vector2(700, 22),
-		UiText.t("loadout.slots_head", "규칙 슬롯 - 위에서부터 처음 맞는 규칙 하나가 실행된다"), 15, UiKit.MUTED)
+	UiKit.label(roster_root, Vector2(CARD_X, 82), Vector2(700, 22),
+		UiText.t("loadout.slots_head", "규칙 슬롯 - 위에서부터 처음 맞는 규칙 하나가 실행된다"),
+		14, UiKit.MUTED)
 
 	if run.roster.is_empty():
-		UiKit.label(roster_root, Vector2(RIGHT_X, 112), Vector2(600, 22),
+		UiKit.label(roster_root, Vector2(CARD_X, CARD_Y + 20), Vector2(600, 22),
 			UiText.t("loadout.no_unit", "아직 배치된 유닛이 없다. 왼쪽에서 유닛을 고르고 빈 칸을 눌러라."),
 			13, UiKit.MUTED)
 		return
 
-	# 기본 AI 는 직업마다 다르므로 범례로 한 번에 못 적는다. 대원 줄마다 붙인다.
-	UiKit.label(roster_root, Vector2(RIGHT_X, 104), Vector2(700, 18),
-		UiText.t("loadout.base_hint",
-			"대원은 모듈이 없어도 자기 직업의 일을 합니다. 모듈은 그 판단을 수정합니다."),
-		10, UiKit.FAINT)
-
 	for i in run.roster.size():
-		var y := ROSTER_Y + i * ROW_H
-		var tid: String = run.roster[i]["type"]
-		var s: Dictionary = UnitData.TABLE[tid]
+		_unit_card(i, Vector2(CARD_X + float(i) * CARD_STEP, CARD_Y))
 
-		# ── 대원마다 판 하나 ────────────────────────────────────────────
-		# 슬롯·기본기·특수 칸이 배경 없이 떠 있어서, 어디까지가 한 대원의
-		# 것인지 줄 간격으로만 짐작해야 했다. 셋을 판으로 감싸면 "이 덩어리가
-		# 이 대원" 이 한 번에 읽힌다.
-		#
-		# 고른 대원은 테두리에 그 대원 고유색을 두른다. 왼쪽 배치판에서 고른
-		# 얼굴과 오른쪽 이 판이 같은 색으로 묶여야, 지금 무엇을 만지고 있는지
-		# 눈으로 이어진다.
-		var card := _SlotCard.new()
-		card.position = Vector2(RIGHT_X - 12, y - 10)
-		card.size = Vector2(660, 134)
-		card.tint = s["color"]
-		card.selected = sel_member == i
-		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		roster_root.add_child(card)
 
-		var pick := UiKit.button(roster_root, Vector2(RIGHT_X, y), Vector2(140, 28),
-			String(s["name"]), 14)
-		pick.modulate = UiKit.ACCENT if sel_member == i else Color(1, 1, 1)
-		pick.tooltip_text = UiText.t("loadout.m04", "이 유닛에게 카드를 꽂는다")
-		pick.pressed.connect(func(): sel_member = i; refresh())
+## 대원 하나를 세로 카드 한 장으로 세운다.
+##
+## 위에서부터 얼굴 · 이름 · 능력치 · 슬롯 3칸 · 궁극기 · 기본기. 읽는 순서가
+## 곧 "이 대원이 무엇이고, 무엇을 하게 될 것인가" 의 순서다.
+func _unit_card(i: int, at: Vector2) -> void:
+	var tid: String = run.roster[i]["type"]
+	var s: Dictionary = UnitData.TABLE[tid]
+	var picked: bool = sel_member == i
 
-		UiKit.label(roster_root, Vector2(RIGHT_X + 150, y + 6), Vector2(280, 20),
-			UiText.t("loadout.m05", "HP %d · ATK %d · RNG %d · MOV %d") % [
-				s["hp"], s["atk"], s["range"], s["move"]], 11, UiKit.MUTED)
+	var card := _UnitCard.new()
+	card.position = at
+	card.size = Vector2(CARD_W, CARD_H)
+	card.tint = s["color"]
+	card.selected = picked
+	card.type_id = tid
+	card.unit_name = String(s["name"])
+	card.stat = UiText.t("loadout.m05", "HP %d · ATK %d · RNG %d · MOV %d") % [
+		s["hp"], s["atk"], s["range"], s["move"]]
+	card.tooltip_text = UiText.t("loadout.m04", "이 유닛에게 카드를 꽂는다")
+	card.pressed.connect(func(): sel_member = i; refresh())
+	roster_root.add_child(card)
 
-		# 특수 슬롯은 규칙 3칸과 별개다. 그래서 규칙 목록 안이 아니라 헤더 줄에 둔다.
-		var sid: String = String(run.unit_special[i])
-		var sb_text := UiText.t("loadout.m06", "특수: 없음")
-		if sid != "":
-			sb_text = UiText.t("loadout.m07", "특수: %s") % Specials.TABLE[sid]["name"]
-		var sb := UiKit.button(roster_root, Vector2(RIGHT_X + 380, y), Vector2(160, 28),
-			sb_text, 12)
-		sb.modulate = UiKit.ACCENT if sid != "" else Color(0.62, 0.64, 0.72)
-		if sid != "":
-			sb.tooltip_text = "%s
-누르면 손패로 돌아온다" % Specials.TABLE[sid]["text"]
-			sb.pressed.connect(func(): run.unequip_special(i); refresh())
-		else:
-			var own_sid := Specials.for_unit(String(tid))
-			sb.tooltip_text = UiText.t("loadout.m08", "이 유닛 전용: %s (손패에 있어야 꽂을 수 있다)") % (
-				Specials.TABLE[own_sid]["name"] if own_sid != "" else UiText.t("loadout.m09", "없음"))
-			sb.disabled = true
+	# ── 슬롯 3칸 ────────────────────────────────────────────────────────
+	var slots: Array = run.unit_cards[i]
+	var rows: Dictionary = {}
+	for k in RunState.SLOTS_PER_UNIT:
+		var by := at.y + IN_SLOT_Y + float(k) * IN_SLOT_H
+		if k >= slots.size():
+			var e := UiKit.label(roster_root, Vector2(at.x + 14, by + 6),
+				Vector2(CARD_W - 28, 20),
+				UiText.t("loadout.m15", "%d.  비어 있음") % (k + 1), 11, UiKit.LINE)
+			e.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			continue
 
-		# 특수를 전술보다 먼저 볼지. 이 순서 자체가 전략이라 플레이어가 정한다.
-		# 무조건 최우선으로 두면 특수가 준비된 동안 슬롯 1~3 이 통째로 무시된다.
-		var first: bool = bool(run.unit_special_first[i])
-		var fb := UiKit.button(roster_root, Vector2(RIGHT_X + 546, y), Vector2(86, 28),
-			UiText.t("loadout.m10", "전술 먼저") if not first else UiText.t("loadout.m11", "특수 먼저"), 11, 3)
-		fb.disabled = sid == ""
-		fb.modulate = UiKit.ACCENT if first else Color(0.72, 0.74, 0.82)
-		fb.tooltip_text = "특수를 규칙 슬롯보다 먼저 볼지 정한다.
-'특수 먼저' 면 준비된 동안 슬롯 1~3 이 무시된다."
-		fb.pressed.connect(func(): run.toggle_special_first(i); refresh())
+		var c: Dictionary = Cards.TABLE[slots[k]]
+		var ax := String(c.get("axis", ""))
+		var row := _SlotRow.new()
+		row.position = Vector2(at.x + 10, by)
+		row.size = Vector2(CARD_W - 20 - 46, IN_SLOT_H - 4)
+		row.idx = k
+		row.title = String(c["name"])
+		row.body = String(c["text"])
+		row.tint = Axes.color(ax) if ax != "" else UiKit.MUTED
+		row.axis_label = Axes.label(ax) if ax != "" else ""
+		row.tooltip_text = "%s\n%s" % [c["text"],
+			UiText.t("loadout.m12", "누르면 손패로 돌아온다")]
+		row.pressed.connect(func(): run.unequip(i, k); refresh())
+		roster_root.add_child(row)
+		rows[k] = row
 
-		var slots: Array = run.unit_cards[i]
-		var slot_buttons_row: Dictionary = {}
-		for k in RunState.SLOTS_PER_UNIT:
-			var by := y + 30.0 + k * SLOT_STEP
-			if k < slots.size():
-				var c: Dictionary = Cards.TABLE[slots[k]]
-				# 축 표시. 슬롯 왼쪽에 영문 축 라벨과 축 색 막대를 세운다.
-				# 무슨 종류의 모듈이 어느 칸에 있는지가 목록만 봐도 읽혀야 한다.
-				var ax := String(c.get("axis", ""))
-				if ax != "":
-					var bar := ColorRect.new()
-					bar.color = Axes.color(ax)
-					bar.position = Vector2(RIGHT_X + 4, by + 2)
-					bar.size = Vector2(3, SLOT_H - 4)
-					bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					roster_root.add_child(bar)
-					var al := UiKit.label(roster_root, Vector2(RIGHT_X + 12, by + 4),
-						Vector2(72, 14), Axes.label(ax), 9, Axes.color(ax))
-					al.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bx := at.x + CARD_W - 54.0
+		var up := UiKit.button(roster_root, Vector2(bx, by), Vector2(22, 26), "▲", 10, 2)
+		up.disabled = k == 0
+		up.tooltip_text = UiText.t("loadout.m13", "우선순위를 올린다")
+		up.pressed.connect(func(): run.move_slot(i, k, -1); refresh())
+		var dn := UiKit.button(roster_root, Vector2(bx + 24, by), Vector2(22, 26), "▼", 10, 2)
+		dn.disabled = k >= slots.size() - 1
+		dn.tooltip_text = UiText.t("loadout.m14", "우선순위를 내린다")
+		dn.pressed.connect(func(): run.move_slot(i, k, 1); refresh())
 
-				var b := UiKit.button(roster_root, Vector2(RIGHT_X + 86, by), Vector2(486, SLOT_H),
-					"%d.  %s  ·  %s" % [k + 1, c["name"], c["text"]], 12)
-				b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-				b.tooltip_text = UiText.t("loadout.m12", "누르면 손패로 돌아온다")
-				b.pressed.connect(func(): run.unequip(i, k); refresh())
-				slot_buttons_row[k] = b
+	# 위 슬롯에 가려 절대 발동하지 못하는 카드. 전투를 돌려 보고 나서 깨닫게
+	# 하면 안 된다.
+	var dead := Shadow.shadowed_slots(slots, int(s["range"]))
+	for k2 in dead:
+		if rows.has(k2):
+			(rows[k2] as _SlotRow).dead = true
 
-				var up := UiKit.button(roster_root, Vector2(RIGHT_X + 576, by), Vector2(28, SLOT_H), "▲", 11, 2)
-				up.disabled = k == 0
-				up.tooltip_text = UiText.t("loadout.m13", "우선순위를 올린다")
-				up.pressed.connect(func(): run.move_slot(i, k, -1); refresh())
+	# ── 궁극기 · 순서 ───────────────────────────────────────────────────
+	var sid: String = String(run.unit_special[i])
+	var sb_text := UiText.t("loadout.m06", "특수: 없음")
+	if sid != "":
+		sb_text = UiText.t("loadout.m07", "특수: %s") % Specials.TABLE[sid]["name"]
+	var sb := UiKit.button(roster_root, Vector2(at.x + 10, at.y + IN_ULT_Y),
+		Vector2(148, 26), sb_text, 11)
+	sb.modulate = UiKit.ACCENT if sid != "" else Color(0.62, 0.64, 0.72)
+	if sid != "":
+		sb.tooltip_text = "%s\n%s" % [Specials.TABLE[sid]["text"],
+			UiText.t("loadout.m12", "누르면 손패로 돌아온다")]
+		sb.pressed.connect(func(): run.unequip_special(i); refresh())
+	else:
+		var own_sid := Specials.for_unit(String(tid))
+		sb.tooltip_text = UiText.t("loadout.m08", "이 유닛 전용: %s (손패에 있어야 꽂을 수 있다)") % (
+			Specials.TABLE[own_sid]["name"] if own_sid != "" else UiText.t("loadout.m09", "없음"))
+		sb.disabled = true
 
-				var dn := UiKit.button(roster_root, Vector2(RIGHT_X + 606, by), Vector2(28, SLOT_H), "▼", 11, 2)
-				dn.disabled = k >= slots.size() - 1
-				dn.tooltip_text = UiText.t("loadout.m14", "우선순위를 내린다")
-				dn.pressed.connect(func(): run.move_slot(i, k, 1); refresh())
-			else:
-				var e := UiKit.label(roster_root, Vector2(RIGHT_X + 16, by + 4), Vector2(400, 22),
-					UiText.t("loadout.m15", "%d.  비어 있음") % (k + 1), 12, UiKit.LINE)
-				e.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var first: bool = bool(run.unit_special_first[i])
+	var fb := UiKit.button(roster_root, Vector2(at.x + 162, at.y + IN_ULT_Y),
+		Vector2(82, 26),
+		UiText.t("loadout.m10", "전술 먼저") if not first else UiText.t("loadout.m11", "특수 먼저"),
+		10, 3)
+	fb.disabled = sid == ""
+	fb.modulate = UiKit.ACCENT if first else Color(0.72, 0.74, 0.82)
+	fb.tooltip_text = UiText.t("loadout.first_hint",
+		"특수를 규칙 슬롯보다 먼저 볼지 정합니다. '특수 먼저' 면 준비된 동안 슬롯 1~3 이 무시됩니다.")
+	fb.pressed.connect(func(): run.toggle_special_first(i); refresh())
 
-		# 위 슬롯에 가려 절대 발동하지 못하는 카드를 표시한다.
-		# 이걸 전투를 돌려 보고 나서 깨닫게 하면 안 된다.
-		var dead := Shadow.shadowed_slots(slots, int(s["range"]))
-		for k2 in dead:
-			if slot_buttons_row.has(k2):
-				var row: Button = slot_buttons_row[k2]
-				row.modulate = Color(1.0, 0.45, 0.42)
-		if not dead.is_empty():
-			var note := Shadow.warnings(slots, int(s["range"]))[0]
-			var wl := UiKit.label(roster_root, Vector2(RIGHT_X + 12, y + INNATE_DY - 8),
-				Vector2(660, 18), "[!] " + note, 10, UiKit.BAD)
-			wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# ── 기본기 ──────────────────────────────────────────────────────────
+	# "모듈 셋이 전부 어긋나면 여기로 떨어진다" 는 관계가 화면에 그대로 보여야
+	# 한다. 그래서 슬롯 **바로 아래**에 붙인다.
+	var own_text := Innates.describe(tid)
+	var txt := UiText.t("loadout.m16", "기본기 ↓  ")
+	txt += own_text if own_text != "" else UiText.t("loadout.m17", "(없음)")
+	var il := UiKit.label(roster_root, Vector2(at.x + 12, at.y + IN_INNATE_Y),
+		Vector2(CARD_W - 24, 40), txt, 9, UiKit.FAINT, true)
+	il.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-		# 직업 고유 기본기를 슬롯 바로 아래에 회색으로 붙인다.
-		# "카드 3장이 전부 어긋나면 여기로 떨어진다" 는 관계가 화면에 그대로 보여야 한다.
-		var own_text := Innates.describe(tid)
-		var iy := y + INNATE_DY
-		var txt := UiText.t("loadout.m16", "기본기 ↓  ")
-		if own_text == "":
-			txt += UiText.t("loadout.m17", "(없음)")
-		else:
-			txt += own_text
-		var il := UiKit.label(roster_root, Vector2(RIGHT_X + 16, iy), Vector2(640, 18),
-			txt, 10, UiKit.FAINT)
-		il.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not dead.is_empty():
+		var note := Shadow.warnings(slots, int(s["range"]))[0]
+		var wl := UiKit.label(roster_root, Vector2(at.x + 12, at.y + CARD_H - 24),
+			Vector2(CARD_W - 24, 20), "[!] " + note, 9, UiKit.BAD)
+		wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 # ── 손패 ─────────────────────────────────────────────────────────────────
@@ -444,7 +420,7 @@ func _build_hand() -> void:
 		return
 
 	var mini_w := CardNode.W * 0.72
-	var step: float = minf(mini_w + 14.0, (1150.0 - mini_w) / maxf(1.0, float(n - 1)))
+	var step: float = minf(mini_w + 14.0, (1160.0 - mini_w) / maxf(1.0, float(n - 1)))
 	var span := mini_w + step * (n - 1)
 	var x0 := (1280.0 - span) * 0.5
 	var mid := (n - 1) * 0.5
@@ -635,36 +611,157 @@ class _TileFace extends Control:
 			draw_rect(Rect2(0, tile.CUT, 4, s.y - tile.CUT), t)
 
 
-## ── 대원별 모듈 판 ───────────────────────────────────────────────────────
-## 니케의 캐릭터 카드처럼, 왼쪽에 굵은 색 띠를 세우고 오른쪽 아래를 사선으로
-## 자른다. 색은 대원 고유색이라 배치판의 얼굴 테두리와 같은 색으로 묶인다.
+## ── 대원 카드 ────────────────────────────────────────────────────────────
+## 니케의 캐릭터 카드 어법이다. 얼굴을 위에 크게 두고 이름띠로 끊은 뒤, 그 아래
+## 판단 규칙을 쌓는다. 고른 대원은 그 대원 고유색으로 테두리·왼쪽 띠·바탕이
+## 물든다 - 왼쪽 배치판 얼굴 테두리와 같은 색이라 눈으로 이어진다.
 ##
-## 고르지 않은 대원은 띠와 테두리를 흐리게 둔다. 전부 같은 세기로 두르면
-## 판 셋이 똑같이 소리쳐서 결국 아무것도 강조가 안 된다.
-class _SlotCard extends Control:
+## 카드 전체가 버튼이다. 이름 옆의 작은 버튼을 찾아 누르게 하면, 정작 크게
+## 그려 놓은 얼굴이 아무 일도 안 하는 그림이 된다.
+class _UnitCard extends Button:
 	const CUT: float = 16.0
 
 	var tint: Color = Color(0.6, 0.6, 0.6)
 	var selected: bool = false
+	var type_id: String = ""
+	var unit_name: String = ""
+	var stat: String = ""
 
-	func _draw() -> void:
-		var s := size
-		var shape := PackedVector2Array([
+	var _clip: Control
+	var _tr: TextureRect
+	var _ov: Control
+
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		var blank := StyleBoxEmpty.new()
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			add_theme_stylebox_override(st, blank)
+
+		# 얼굴은 노드로 붙인다. _draw() 안의 draw_texture_rect 는 이 프로젝트에서
+		# 회색 사각형이 된다(네 번 겪었다). 자르는 일은 감싸는 Control 이 한다.
+		_clip = Control.new()
+		_clip.clip_contents = true
+		_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_clip.position = Vector2(3, 3)
+		_clip.size = Vector2(size.x - 6, LoadoutScreen.IN_FACE_H)
+		add_child(_clip)
+		_tr = TextureRect.new()
+		_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tr.texture = UiKit.art(["portraits", "units"], type_id)
+		# ── 얼굴은 통째로 ────────────────────────────────────────────
+		# 폭에 맞춰 채워 봤더니 정수리와 턱이 잘려 눈만 남았다. 이 초상들은
+		# 이미 얼굴로 꽉 찬 정사각이라, 더 확대할 여지가 없다.
+		#
+		# 칸 높이에 맞추고 살짝만 키운다(1.15). 좌우에 남는 여백은 카드가
+		# 세로로 긴 데서 오는 것이고, 그 여백이 있어야 이름띠의 사선이 보인다.
+		var k := _clip.size.y * 1.15
+		_tr.size = Vector2(k, k)
+		_tr.position = Vector2((_clip.size.x - k) * 0.5, -k * 0.06)
+		_clip.add_child(_tr)
+
+		# 이름띠·테두리는 얼굴 위에 떠야 하므로 별도 노드다.
+		_ov = _UnitCardFace.new()
+		_ov.set("card", self)
+		_ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ov.position = Vector2.ZERO
+		_ov.size = size
+		add_child(_ov)
+
+	func shape(s: Vector2) -> PackedVector2Array:
+		return PackedVector2Array([
 			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
 			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
 		])
-		draw_colored_polygon(shape,
-			Color(0.085, 0.10, 0.135, 0.95) if selected else Color(0.065, 0.075, 0.10, 0.9))
-		var line := PackedVector2Array(shape)
-		line.append(shape[0])
-		draw_polyline(line,
-			Color(tint.r, tint.g, tint.b, 0.95 if selected else 0.22),
-			2.0 if selected else 1.0, true)
-		# 왼쪽 색 띠. 고른 대원만 굵고 진하다.
-		var bw: float = 5.0 if selected else 3.0
-		draw_rect(Rect2(0, CUT, bw, s.y - CUT),
-			Color(tint.r, tint.g, tint.b, 0.95 if selected else 0.30))
+
+	func _draw() -> void:
+		var s := size
+		draw_colored_polygon(shape(s),
+			Color(0.085, 0.10, 0.135) if selected else Color(0.062, 0.072, 0.095))
 		if selected:
-			# 고른 판에만 옅은 색을 깔아 준다. 테두리만으로는 셋 중 어느
-			# 것인지 훑을 때 안 걸린다.
-			draw_colored_polygon(shape, Color(tint.r, tint.g, tint.b, 0.07))
+			draw_colored_polygon(shape(s), Color(tint.r, tint.g, tint.b, 0.06))
+		if _ov != null:
+			_ov.queue_redraw()
+
+
+## 대원 카드의 이름띠 · 능력치 · 테두리.
+class _UnitCardFace extends Control:
+	var card
+
+	func _draw() -> void:
+		if card == null:
+			return
+		var s := size
+		var t: Color = card.tint
+		var on: bool = card.selected
+		var hot: bool = card.is_hovered()
+
+		# 얼굴 아래를 사선 띠로 끊는다. 이름이 그림 위에 그냥 얹히면 배경에
+		# 묻히고, 네모 띠를 두르면 이 화면의 다른 판들과 어법이 어긋난다.
+		var fy: float = LoadoutScreen.IN_FACE_H
+		# 띠는 얼굴 **아래**에서 시작한다. 얼굴 위로 올라오면 턱이 잘린다.
+		var band := PackedVector2Array([
+			Vector2(3, fy + 2), Vector2(s.x - 3, fy - 8),
+			Vector2(s.x - 3, fy + 32), Vector2(3, fy + 32),
+		])
+		draw_colored_polygon(band, Color(0.03, 0.035, 0.05, 0.92))
+		draw_line(Vector2(3, fy + 2), Vector2(s.x - 3, fy - 8),
+			Color(t.r, t.g, t.b, 0.9), 2.0)
+
+		draw_string(UiKit.font(16), Vector2(14, LoadoutScreen.IN_NAME_Y + 14),
+			String(card.unit_name), HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 28), 16,
+			Color(1, 1, 1) if on else Color(0.88, 0.90, 0.95))
+		draw_string(UiKit.font(9), Vector2(14, LoadoutScreen.IN_STAT_Y + 10),
+			String(card.stat), HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 28), 9,
+			Color(t.r, t.g, t.b, 0.95))
+
+		var line := PackedVector2Array(card.shape(s))
+		line.append(line[0])
+		draw_polyline(line,
+			Color(t.r, t.g, t.b, 1.0 if on else (0.6 if hot else 0.26)),
+			2.0 if on else 1.0, true)
+		# 왼쪽 색 띠. 고른 대원만 굵고 진하다.
+		draw_rect(Rect2(0, card.CUT, 5.0 if on else 3.0, s.y - card.CUT),
+			Color(t.r, t.g, t.b, 0.95 if on else 0.30))
+
+
+## ── 모듈 슬롯 한 줄 ──────────────────────────────────────────────────────
+## 축 색 막대 · 순번 · 이름 · 설명. 좁은 카드 안이라 버튼 대신 직접 그린다 -
+## Button 은 제 글자를 먼저 그리고 그 위에 _draw() 가 얹히기 때문이다.
+class _SlotRow extends Button:
+	var idx: int = 0
+	var title: String = ""
+	var body: String = ""
+	var axis_label: String = ""
+	var tint: Color = Color(0.6, 0.6, 0.6)
+	var dead: bool = false
+
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		var blank := StyleBoxEmpty.new()
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			add_theme_stylebox_override(st, blank)
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var s := size
+		var hot := is_hovered()
+		draw_rect(Rect2(0, 0, s.x, s.y), Color(0.10, 0.12, 0.16, 0.9 if hot else 0.55))
+		draw_rect(Rect2(0, 0, 3, s.y), Color(tint.r, tint.g, tint.b, 0.95))
+		var name_col: Color = UiKit.BAD if dead else (
+			Color(1, 1, 1) if hot else Color(0.88, 0.91, 0.96))
+		draw_string(UiKit.font(11), Vector2(10, 13),
+			"%d. %s" % [idx + 1, title], HORIZONTAL_ALIGNMENT_LEFT,
+			int(s.x - 56), 11, name_col)
+		if axis_label != "":
+			draw_string(UiKit.font(8), Vector2(s.x - 48, 12), axis_label,
+				HORIZONTAL_ALIGNMENT_RIGHT, 44, 8,
+				Color(tint.r, tint.g, tint.b, 0.9))
+		draw_string(UiKit.font(9), Vector2(10, 25), body,
+			HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 14), 9,
+			UiKit.BAD if dead else UiKit.FAINT)

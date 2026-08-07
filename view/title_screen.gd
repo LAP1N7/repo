@@ -47,11 +47,19 @@ func _make_video() -> VideoStreamPlayer:
 	v.expand = true
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.modulate = Color(1, 1, 1, VIDEO_ALPHA)
-	# 인물이 화면 한가운데라, 오른쪽으로 밀어 왼쪽에 글 자리를 비운다.
-	# 위아래는 잘려도 좋다 - 인물의 얼굴과 상반신만 살면 된다.
-	var w := VIDEO_H * VIDEO_ASPECT
-	v.position = Vector2(1280.0 - w, 0.0)
-	v.size = Vector2(w, VIDEO_H)
+	# ── 가로를 꽉 채운다 ────────────────────────────────────────────────
+	# 세로에 맞추면 폭이 1160 이라 왼쪽 120px 가 맨바닥으로 남는다. 그 위에
+	# 검은 천을 덮어 가리고 있었는데, 천의 그라디언트 끝과 영상의 왼쪽 끝이
+	# 정확히 겹치지 않으면 세로 이음선이 그대로 보인다. 실제로 화면 왼쪽에
+	# 다른 색 띠가 났다.
+	#
+	# 가로를 1280 에 맞추면 이음선 자체가 사라진다. 대신 세로가 795 가 되어
+	# 아래 75px 가 화면 밖으로 나가는데, 원본에서 머리 꼭대기가 프레임 위쪽
+	# 3% 지점이라 **위에서 자르면 안 되고 아래는 잘라도 된다.** 잘리는 쪽이
+	# 인물의 아랫도리라 손해가 없다.
+	var h := 1280.0 / VIDEO_ASPECT
+	v.position = Vector2.ZERO
+	v.size = Vector2(1280.0, h)
 	add_child(v)
 	v.play()
 	# 5초짜리라 그냥 두면 한 번 돌고 멈춘다.
