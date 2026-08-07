@@ -16,12 +16,11 @@ signal back()
 var tut: Tutorial = null
 
 const TILE: float = 62.0
-## 배치 격자. 왼쪽 칸(x 48 ~ RIGHT_X) 의 가운데에 세운다.
+## 배치 격자. 제목·대원 선택과 같은 왼쪽 선에 맞춘다.
 ##
-## 왼쪽 벽에 붙여 놓으면 격자 2칸이 화면 구석에 몰려서, 오른쪽 모듈 슬롯과
-## 무게가 안 맞는다. 이 화면에서 제일 먼저 보는 것이 배치판이므로 제 칸의
-## 가운데에 있어야 한다.
-const GRID_AT := Vector2(232, 124)
+## 가운데로 옮겨 봤는데, 이 화면의 왼쪽 칸은 제목 -> 격자 -> 대원 선택이
+## 위에서 아래로 읽히는 한 덩어리다. 가운데 것 하나만 들여쓰면 그 줄기가 끊긴다.
+const GRID_AT := Vector2(48, 124)
 const RIGHT_X: float = 560.0
 ## ── 보유 모듈 줄 ────────────────────────────────────────────────────────
 ## 화면 맨 아래를 가로로 다 쓴다. 명일방주 하단 오퍼레이터 바와 같은 자리이고,
@@ -51,10 +50,12 @@ const ROSTER_Y: float = 124.0
 ##
 ## ROSTER_Y(138) + ROW_H*2 + 128 <= 542 이어야 하므로 ROW_H 는 최대 134 다.
 ## 그리고 ROW_H 는 행 바닥(128)보다 커야 행끼리 안 겹친다.
-const ROW_H: float = 130.0
+## 판 하나가 담아야 하는 것: 머리줄(28) + 슬롯 3칸(30~104) + 기본기 줄.
+## 기본기 줄이 판 밖으로 삐져나가면 판으로 감싼 의미가 없다.
+const ROW_H: float = 140.0
 const SLOT_H: float = 24.0
 const SLOT_STEP: float = 25.0
-const INNATE_DY: float = 110.0
+const INNATE_DY: float = 106.0
 
 var run: RunState
 
@@ -224,11 +225,8 @@ func _build_grid() -> void:
 
 	# 격자를 왼쪽 칸 가운데로 옮겼으므로 방향 안내도 같이 간다. 캡션이
 	# 대상에서 떨어지면 무엇을 설명하는 글인지 알 수 없다.
-	# 캡션은 격자 폭에 맞춰 가운데 정렬한다. 왼쪽 끝에 걸어 두면 격자와
-	# 따로 노는 글이 된다.
-	var cap := UiKit.label(grid_root, Vector2(GRID_AT.x - 168.0, 314), Vector2(460, 20),
+	UiKit.label(grid_root, Vector2(GRID_AT.x, 314), Vector2(460, 20),
 		UiText.t("loadout.m03", "←  뒤         앞  →        (적은 오른쪽에서 온다)"), 11, UiKit.MUTED)
-	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 func _member_at(slot: int) -> int:
@@ -288,6 +286,22 @@ func _build_roster() -> void:
 		var y := ROSTER_Y + i * ROW_H
 		var tid: String = run.roster[i]["type"]
 		var s: Dictionary = UnitData.TABLE[tid]
+
+		# ── 대원마다 판 하나 ────────────────────────────────────────────
+		# 슬롯·기본기·특수 칸이 배경 없이 떠 있어서, 어디까지가 한 대원의
+		# 것인지 줄 간격으로만 짐작해야 했다. 셋을 판으로 감싸면 "이 덩어리가
+		# 이 대원" 이 한 번에 읽힌다.
+		#
+		# 고른 대원은 테두리에 그 대원 고유색을 두른다. 왼쪽 배치판에서 고른
+		# 얼굴과 오른쪽 이 판이 같은 색으로 묶여야, 지금 무엇을 만지고 있는지
+		# 눈으로 이어진다.
+		var card := _SlotCard.new()
+		card.position = Vector2(RIGHT_X - 12, y - 10)
+		card.size = Vector2(660, 134)
+		card.tint = s["color"]
+		card.selected = sel_member == i
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		roster_root.add_child(card)
 
 		var pick := UiKit.button(roster_root, Vector2(RIGHT_X, y), Vector2(140, 28),
 			String(s["name"]), 14)
@@ -619,3 +633,38 @@ class _TileFace extends Control:
 		# 고른 것은 왼쪽에 굵은 막대를 세운다. 테두리만으로는 호버와 구별이 안 된다.
 		if tile.selected:
 			draw_rect(Rect2(0, tile.CUT, 4, s.y - tile.CUT), t)
+
+
+## ── 대원별 모듈 판 ───────────────────────────────────────────────────────
+## 니케의 캐릭터 카드처럼, 왼쪽에 굵은 색 띠를 세우고 오른쪽 아래를 사선으로
+## 자른다. 색은 대원 고유색이라 배치판의 얼굴 테두리와 같은 색으로 묶인다.
+##
+## 고르지 않은 대원은 띠와 테두리를 흐리게 둔다. 전부 같은 세기로 두르면
+## 판 셋이 똑같이 소리쳐서 결국 아무것도 강조가 안 된다.
+class _SlotCard extends Control:
+	const CUT: float = 16.0
+
+	var tint: Color = Color(0.6, 0.6, 0.6)
+	var selected: bool = false
+
+	func _draw() -> void:
+		var s := size
+		var shape := PackedVector2Array([
+			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
+			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
+		])
+		draw_colored_polygon(shape,
+			Color(0.085, 0.10, 0.135, 0.95) if selected else Color(0.065, 0.075, 0.10, 0.9))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line,
+			Color(tint.r, tint.g, tint.b, 0.95 if selected else 0.22),
+			2.0 if selected else 1.0, true)
+		# 왼쪽 색 띠. 고른 대원만 굵고 진하다.
+		var bw: float = 5.0 if selected else 3.0
+		draw_rect(Rect2(0, CUT, bw, s.y - CUT),
+			Color(tint.r, tint.g, tint.b, 0.95 if selected else 0.30))
+		if selected:
+			# 고른 판에만 옅은 색을 깔아 준다. 테두리만으로는 셋 중 어느
+			# 것인지 훑을 때 안 걸린다.
+			draw_colored_polygon(shape, Color(tint.r, tint.g, tint.b, 0.07))

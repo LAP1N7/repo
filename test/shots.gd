@@ -76,8 +76,13 @@ func _init() -> void:
 	run.place("musketeer", 0)
 	run.place("assassin", 4)
 	run.place("bard", 2)
+	# 고른 대원이 오른쪽 판과 색으로 이어지는지. 아무도 안 고른 상태로 찍으면
+	# 하이라이트가 아예 안 보인다.
 	await _shot("03_loadout", load("res://scenes/loadout_screen.tscn").instantiate(),
-		func(s): s.setup(run))
+		func(s):
+			s.setup(run)
+			s.sel_member = 1
+			s.refresh())
 
 	await _shot("04_battle", load("res://scenes/battle_view.tscn").instantiate(),
 		func(s): s.setup(run), 6)

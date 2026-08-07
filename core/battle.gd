@@ -395,6 +395,73 @@ func focus_target_for(unit: Unit) -> Unit:
 # ── 틱 ───────────────────────────────────────────────────────────────────
 
 ## 1틱 진행. 전투가 계속되면 true.
+## ── 이번 틱의 행동 순서 ──────────────────────────────────────────────────
+## 기본은 Unit.index 다. 이 게임은 한 틱 안에서 대원이 **차례로** 행동하고,
+## 각자 행동한 결과는 곧바로 판에 반영된다(제자리 갱신). 그래서 순서 자체가
+## 규칙의 일부이고, 임의로 흔들면 같은 편성이 판마다 다르게 논다.
+##
+## 딱 한 가지만 예외로 둔다: **따라다니는 대원은 따라다닐 대상 뒤에 선다.**
+##
+## 왜 필요한가 - 악사에게 [방패 뒤] 를 꽂고 악사를 방패병보다 앞 칸에 배치하면
+## 이런 일이 났다.
+##
+##   1틱  악사 판단: 방패병 곁이다 -> 제자리
+##        방패병 판단: 전진        -> 한 칸 나감
+##   2틱  악사 판단: 방패병이 멀다 -> 이제야 따라감
+##
+## 악사는 항상 **한 틱 전의 방패병**을 보고 있었다. 실제로 3틱이 지나서야
+## 처음 움직였다. 따라다니라고 산 모듈이 한 박자씩 늦으면 그건 모듈이 아니라
+## 지연이다.
+##
+## 순서는 위상 정렬로 잡는다. 서로를 따라다니는 고리가 생기면(A→B→A) 그 고리는
+## index 순으로 두고 넘어간다 - 답이 없는 관계라 억지로 풀면 오히려 순서가
+## 판마다 달라진다.
+##
+## 결정론은 유지된다. 난수가 없고, 동점은 전부 index 로 끊는다.
+func act_order() -> Array:
+	var live: Array = []
+	for u in units:
+		if u.alive:
+			live.append(u)
+
+	# 누가 누구를 따라다니는가. 값은 index 다.
+	var anchor: Dictionary = {}
+	for u in live:
+		var a: Unit = Rules.follow_anchor(u, self)
+		if a != null and a.alive and a.index != u.index:
+			anchor[u.index] = a.index
+
+	if anchor.is_empty():
+		return live
+
+	var out: Array = []
+	var done: Dictionary = {}
+	var busy: Dictionary = {}
+
+	# 재귀 대신 명시적 스택. GDScript 에 지역 재귀 함수가 없다.
+	for start in live:
+		if done.has(start.index):
+			continue
+		var stack: Array = [start]
+		while not stack.is_empty():
+			var u: Unit = stack[stack.size() - 1]
+			if done.has(u.index):
+				stack.pop_back()
+				continue
+			var need: int = int(anchor.get(u.index, -1))
+			# 아직 안 내보낸 기준이 있고, 그 기준이 지금 스택에 없다면(고리가
+			# 아니라면) 그쪽을 먼저 처리한다.
+			if need >= 0 and not done.has(need) and not busy.has(need):
+				busy[u.index] = true
+				stack.append(units[need])
+				continue
+			busy.erase(u.index)
+			done[u.index] = true
+			out.append(u)
+			stack.pop_back()
+	return out
+
+
 func step() -> bool:
 	if result != RESULT_ONGOING:
 		return false
@@ -425,7 +492,7 @@ func step() -> bool:
 
 	_emit({ "type": "tick_begin", "tick": tick })
 
-	for u in units:
+	for u in act_order():
 		if not u.alive:
 			continue
 
@@ -743,9 +810,17 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 
 		"move_to_ally":
 			# 아군 쪽으로 붙는다. 경로 계산은 접근과 같고, 목적지만 아군이다.
+			#
+			# **멈추는 거리를 1 로 박는다.** 기본값은 mover.atk_range 인데,
+			# 그러면 사거리 2 인 악사가 방패병에게 갈 때 "이미 2칸이니 다 왔다"
+			# 로 판단해 한 걸음도 안 걷는다. 판단부(_move_by_ally)는 1칸으로
+			# 재고 실행부는 사거리로 재고 있었다 - 규칙은 발동하는데 아무 일도
+			# 안 일어나는, 가장 찾기 어려운 종류의 어긋남이었다.
 			var afrom: Vector2i = u.pos
-			var apath := plan_move_path(u, target, true, int(card.get("move_bonus", 0)))
+			var apath := plan_move_path(u, target, true,
+				int(card.get("move_bonus", 0)), 1)
 			u.pos = apath[apath.size() - 1]
+			u.moved_this_tick = u.pos != afrom
 			_emit({ "type": "move", "unit": u.index, "from": afrom, "to": u.pos,
 				"path": apath })
 

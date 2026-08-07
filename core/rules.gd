@@ -302,6 +302,18 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 	# 남고 그 대원이 왜 멈췄는지 아무 데도 안 적힌다. 실제로 아군이 전부
 	# 만피인 악사가 통째로 사라진 것처럼 보였다.
 	if target == null:
+		# ── 표적이 없어도 진형은 유지한다 ────────────────────────────────
+		# 여기서 곧장 제자리로 돌아가고 있었다. 그런데 자리 모듈 중 상당수는
+		# **적이 아니라 아군을 기준으로** 선다. [방패 뒤]·[방패 추종]·[밀집]
+		# 은 표적이 있든 없든 할 일이 있다.
+		#
+		# 악사가 대표적인 피해자였다. 기본 행동이 회복이라 아군이 전부 만피인
+		# 동안에는 표적이 없고, 그래서 [방패 뒤] 를 꽂아도 방패병이 앞으로
+		# 나가는 걸 그냥 지켜보고 있었다. 누가 다칠 때까지는 진형이 아예
+		# 작동하지 않은 것이다.
+		var formed := _move_by_ally(unit, state, stand, bonus)
+		if not formed.is_empty():
+			return formed
 		return _rule(unit, "대상 없음", "hold", unit, 0, 0)
 
 	# ── 사거리 안이면 일한다 ─────────────────────────────────────────────
@@ -341,16 +353,12 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 	return _move_by_stand(unit, state, target, stand, bonus, designated)
 
 
-static func _move_by_stand(unit: Unit, state, target: Unit,
-		stand: String, bonus: int, designated: bool = false) -> Dictionary:
-	var ai := Innates.base_ai(unit.type_id)
-
+## 아군을 기준으로 서는 자리들. 표적이 있든 없든 판단이 같으므로 따로 뗀다.
+## 아무 할 일이 없으면 빈 사전을 돌려준다.
+static func _move_by_ally(unit: Unit, state, stand: String, bonus: int) -> Dictionary:
 	# ── 협력이 위치 모듈보다 먼저 걸린다 ─────────────────────────────────
 	# 부대 차원의 결정이 개인의 자리 취향을 이긴다. [방패 추종] 을 넣어 놓고
 	# 혼자 딴 데 서면 그건 협력이 아니다.
-	#
-	# 위치 모듈이 있으면 그쪽이 이긴다 - 플레이어가 명시적으로 자리를 지정한
-	# 것이므로, 협력이 그걸 덮으면 지정이 무의미해진다.
 	if stand in ["follow_guard", "follow_lead", "protect_support", "protect_ranged",
 			"escort", "rally"]:
 		var mate := _coop_anchor(unit, state, stand)
@@ -359,6 +367,38 @@ static func _move_by_stand(unit: Unit, state, target: Unit,
 			# "다 왔다" 고 판단해 협력 모듈이 아무 일도 안 한다.
 			if state.plan_move(unit, mate, true, bonus, 1) != unit.pos:
 				return _rule(unit, "동행", "move_to_ally", mate, 0, bonus)
+		return {}
+
+	if stand == "behind_guard":
+		var guard := _guard_ally(unit, state)
+		if guard == null:
+			return {}
+		if _is_ahead_of(unit, guard) 				and state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
+			return _rule(unit, "방패 뒤", "move_to_ally", guard, 0, bonus)
+		if Grid.manhattan(unit.pos, guard.pos) > 1 				and state.plan_move(unit, guard, true, bonus, 1) != unit.pos:
+			return _rule(unit, "방패 뒤 따라감", "move_to_ally", guard, 0, bonus)
+		return {}
+
+	if stand == "cluster":
+		var near := _nearest_ally(unit, state)
+		if near != null and Grid.manhattan(unit.pos, near.pos) > 1 				and state.plan_move(unit, near, true, bonus, 1) != unit.pos:
+			return _rule(unit, "밀집", "move_to_ally", near, 0, bonus)
+		return {}
+
+	return {}
+
+
+static func _move_by_stand(unit: Unit, state, target: Unit,
+		stand: String, bonus: int, designated: bool = false) -> Dictionary:
+	var ai := Innates.base_ai(unit.type_id)
+
+	# 위치 모듈이 있으면 그쪽이 이긴다 - 플레이어가 명시적으로 자리를 지정한
+	# 것이므로, 협력이 그걸 덮으면 지정이 무의미해진다.
+	if stand in ["follow_guard", "follow_lead", "protect_support", "protect_ranged",
+			"escort", "rally"]:
+		var coop := _move_by_ally(unit, state, stand, bonus)
+		if not coop.is_empty():
+			return coop
 
 	match stand:
 		"keep_range":
@@ -441,6 +481,35 @@ static func _rule(unit: Unit, name: String, act: String, target: Unit,
 		card["power"] = power
 	return { "card": card, "target": target, "card_id": "", "slot": -1,
 		"innate": true, "special": false }
+
+
+## ── 이 대원이 누구를 기준으로 서는가 ────────────────────────────────────
+## 행동 순서를 정하는 데 쓴다. 따라다니는 쪽은 따라다닐 대상이 움직인 **뒤에**
+## 판단해야 한다. (core/battle.gd 의 act_order 주석 참조)
+##
+## 실제 판단과 같은 함수를 쓰되, 카드가 걸릴지 말지는 여기서 안 따진다.
+## 순서만 정하는 일이라 대충 잡아도 손해가 없고, 정확히 맞추려면 판단을 두 번
+## 하게 된다.
+const FOLLOW_STANDS: Array[String] = [
+	"follow_guard", "follow_lead", "protect_support", "protect_ranged",
+	"escort", "rally", "behind_guard",
+]
+
+
+static func follow_anchor(unit: Unit, state) -> Unit:
+	# 장착한 위치 모듈 중 따라다니는 것이 있는가.
+	for cid in unit.cards:
+		var c: Dictionary = Cards.TABLE.get(cid, {})
+		if String(c.get("axis", "")) != Axes.POSITION:
+			continue
+		var st := String(c.get("stand", ""))
+		if not FOLLOW_STANDS.has(st):
+			continue
+		var mate: Unit = _guard_ally(unit, state) if st == "behind_guard" \
+			else _coop_anchor(unit, state, st)
+		if mate != null and mate.alive:
+			return mate
+	return null
 
 
 ## 협력 축이 기준으로 삼는 아군. 없으면 null.

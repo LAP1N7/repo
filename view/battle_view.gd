@@ -1611,11 +1611,27 @@ func _play_events(evs: Array, my_id: int) -> void:
 				a.rest_motion()
 
 			"heal":
+				# ── 회복도 동작이다 ──────────────────────────────────────
+				# 지금까지 회복은 숫자만 떴다. 악사는 판 위에서 가만히 서
+				# 있는데 어딘가에 +12 가 뜨는 식이라, **누가 회복시켰는지**를
+				# 로그를 읽어야만 알 수 있었다.
+				#
+				# 리그의 동작 애니메이션을 그대로 쓴다(악사는 활 대신 활대를
+				# 켜는 모션이다). 표적 쪽을 보고 한 번 재생하면 "저 대원이
+				# 저 대원을 살렸다" 가 그림으로 읽힌다.
 				sfx.play("heal")
-				_log("   %s %s" % [_who(unit_views[e["target"]].unit),
+				var ht := unit_views[e["target"]]
+				var ha := unit_views[e["unit"]] if e.has("unit") else null
+				if ha != null and ha != ht:
+					ha.face_to(ht.position.x - ha.position.x)
+				if ha != null:
+					ha.play_motion(UnitView.ANIM_ATTACK, ACT_TIME * 0.6 / speed)
+				_log("   %s %s" % [_who(ht.unit),
 					_c(UiText.t("battle.heal_log", "+%d") % e["amount"], UiKit.GOOD)])
-				_pop_number(unit_views[e["target"]].position, "+%d" % e["amount"], UiKit.GOOD)
+				_pop_number(ht.position, "+%d" % e["amount"], UiKit.GOOD)
 				await _wait(ACT_TIME * 0.32)
+				if ha != null:
+					ha.rest_motion()
 
 			"special":
 				sfx.play("special")
