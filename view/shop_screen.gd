@@ -25,6 +25,8 @@ var run: RunState
 
 var lbl_budget: Label
 var lbl_note: Label
+## 이 판에 나오는 적 구성. 대응 모듈을 고를 근거다.
+var lbl_roster: Label
 var lbl_hint: Label
 var lbl_strategy: Label
 var btn_reroll: Button
@@ -72,7 +74,9 @@ func setup(p_run: RunState) -> void:
 	# 대신 그 자리를 적 정보에 준다. 적 알고리즘은 숨기지 않고 그대로 공개한다 -
 	# 숨기면 시행착오 게임이 되고, 공개하면 추리 게임이 된다. (DESIGN 2.4)
 	lbl_strategy = UiKit.label(self, Vector2(40, 90), Vector2(1000, 22), "", 13, UiKit.BAD)
-	lbl_note = UiKit.label(self, Vector2(40, 116), Vector2(900, 22), "", 13, UiKit.MUTED)
+	lbl_roster = UiKit.label(self, Vector2(40, 112), Vector2(1100, 20), "", 12,
+		Color(0.92, 0.62, 0.58))
+	lbl_note = UiKit.label(self, Vector2(40, 134), Vector2(900, 22), "", 13, UiKit.MUTED)
 
 	shop_root = Control.new()
 	shop_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -164,6 +168,12 @@ func refresh() -> void:
 	for t in Stages.trait_list(run.stage_id):
 		line += "     " + Traits.describe(t).split(" - ")[0]
 	lbl_strategy.text = line
+	# ── 무엇이 오는지 ────────────────────────────────────────────────────
+	# 여기가 모듈을 사는 자리다. 그런데 사는 시점에 적 구성을 모르면 [지원
+	# 차단]·[사수 사냥]·[방패 격파] 같은 대응 모듈은 전부 도박이 된다.
+	# 공개하면 그 자리에서 답이 보이고, 그게 이 게임이 판마다 새 답을 요구하는
+	# 방식이다.
+	lbl_roster.text = UiText.t("shop.enemy_roster", "적 구성:  %s") % 		Stages.enemy_summary(run.stage_id)
 
 	# 정제권이 없으면 정제 모드로 들어갈 수 없다.
 	if run.refine_tokens <= 0:

@@ -48,6 +48,11 @@ static var _ctx_target: Unit = null
 ## 어긋난다.
 const THREAT_ONLY: Array[String] = ["taunt", "aggressive", "stealth"]
 
+## [광전] 이 붙는 위력 배수. 물러나지 않는 대신 받는 값이다.
+## 1.3 은 기본기(70)를 91 로, 평타(100)를 130 으로 올린다 - 한 방이 눈에 띄게
+## 커지되 궁극기(150~200)를 넘지는 않는 선이다.
+const BERSERK_POWER: float = 1.3
+
 
 ## 발동할 규칙을 고른다.
 ##
@@ -328,6 +333,17 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 	if act_kind == "heal" and target.team != unit.team:
 		act_kind = "attack"
 		power = 100
+
+	# ── [광전] 은 값을 치른 만큼 받아야 한다 ─────────────────────────────
+	# 원래는 "물러나지 않는다" 뿐이었다. 그런데 물러나지 않는 것은 **손해**다 -
+	# 맞을 자리에 계속 서 있겠다는 뜻이니까. 손해만 주는 모듈은 아무도 안 산다.
+	#
+	# 실측으로 5판 × 3명에서 발동 14회, 행동 변화 15회. 표의 51개 중 꼴찌였고
+	# 사실상 죽어 있었다.
+	#
+	# 물러나는 대신 세게 친다. 그래야 "빠질까, 붙어서 끝낼까" 가 선택이 된다.
+	if stance == "engage":
+		power = int(round(float(power) * BERSERK_POWER))
 
 	var dist: int = Grid.manhattan(unit.pos, target.pos)
 	if dist <= unit.atk_range:

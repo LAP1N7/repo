@@ -371,6 +371,34 @@ static func trait_list(stage_id: int) -> Array[String]:
 	return out
 
 
+## ── 이 판에 무엇이 나오는가 ─────────────────────────────────────────────
+## "적 알고리즘을 공개한다" 는 원칙(DESIGN 2.4)의 마지막 조각이다.
+##
+## 전략과 페이즈 수와 특성은 이미 공개하고 있었는데, 정작 **어떤 개체가 몇이나
+## 나오는지**만 안 알려 줬다. 그래서 표적 축의 대응 모듈들이 도박이 됐다.
+## [지원 차단](회복하는 적을 친다)은 적 악사가 있는 판에서만 값을 하고, 실측으로
+## 5판 통틀어 8회밖에 안 걸렸다. 살 이유가 없었던 게 아니라 **살 이유를 알
+## 방법이 없었다.**
+##
+## 무엇이 오는지 알면 대응 모듈을 고르는 것이 곧 전략이 된다. 그게 이 게임이
+## 스테이지마다 새 답을 요구하는 방식이다.
+static func enemy_summary(stage_id: int) -> String:
+	var count: Dictionary = {}
+	var order: Array[String] = []
+	for w in waves(get_stage(stage_id)):
+		for e in w:
+			var t := String((e as Dictionary)["type"])
+			if not count.has(t):
+				count[t] = 0
+				order.append(t)
+			count[t] = int(count[t]) + 1
+	var parts: Array[String] = []
+	for t in order:
+		var nm := String(UnitData.TABLE.get(t, {}).get("name", t))
+		parts.append("%s %d" % [nm, int(count[t])])
+	return " · ".join(parts)
+
+
 static func get_stage(stage_id: int) -> Dictionary:
 	if stage_id == TUTORIAL_ID:
 		return TUTORIAL

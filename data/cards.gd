@@ -420,9 +420,9 @@ const TABLE: Dictionary = {
 		"cost": 3,
 		"name": "광전",
 		"cond": "self_hp_below",
-		"cond_arg": 40,
+		"cond_arg": 45,
 		"stance": "engage",
-		"text": "자신 HP < 40% → 물러나지 않는다",
+		"text": "자신 HP < 45% → 물러나지 않고 위력 +30%",
 	},
 	"taunt": {
 		"axis": "doctrine",

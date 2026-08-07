@@ -202,7 +202,8 @@ var roster_root: Control
 ## 지금 마우스가 올라간 판 위의 대원. 없으면 null.
 var hover_unit: Unit = null
 ## 마지막 판인가. 곡을 가른다.
-var _boss_music: bool = false
+## 이 판에 깔 배경음. 스테이지 번호가 정한다.
+var _battle_music: String = "opening_theme"
 
 ## 전황판의 회색 네모 위에 마우스가 올라갔을 때 그 적. 판에서 아무것도 안
 ## 잡혔을 때만 쓴다 - 전황판에서 짚어도 **판 위에서** 정체가 뜨게 하려는 것이다.
@@ -211,7 +212,7 @@ var roster_hover: Unit = null
 
 func setup(p_run: RunState) -> void:
 	sfx = Sfx.new()
-	_boss_music = p_run != null and Stages.is_last(p_run.stage_id)
+	_battle_music = _music_for(p_run.stage_id if p_run != null else 1)
 	add_child(sfx)
 	run = p_run
 	# UnitView 가 이 폰트로 머리 위 규칙 칩(12px)과 이름을 그린다. 둘 다 작은 글씨다.
@@ -250,13 +251,9 @@ func setup(p_run: RunState) -> void:
 	_build_ui()
 	_reset()
 
-	# ── 마지막 판만 곡이 다르다 ──────────────────────────────────────────
-	# 다섯 판이 전부 같은 곡이면 마지막 판도 그냥 여섯 번째 교전으로 들린다.
-	# 곡이 바뀌는 순간 "여기가 끝" 이 규칙보다 먼저 전해진다.
-	#
 	# 편성으로 돌아갔다 와도 다시 시작하지 않는다 - play_music 이 같은 곡이면
 	# 아무것도 안 한다.
-	sfx.play_music("boss_theme" if _boss_music else "opening_theme")
+	sfx.play_music(_battle_music)
 
 	# 개발용 훅. 무인 재생으로 프레임을 뽑아 백업 영상을 찍을 때 쓴다. (DESIGN D4)
 	#   GG_SPEED=2      배속
@@ -1334,15 +1331,22 @@ func _brief_text(st: Dictionary, waves: int) -> String:
 	if not hz.is_empty():
 		out += " " + UiText.t("brief.hazard",
 			"판 자체가 공격합니다 - %s. 예고된 칸은 붉게 칠해집니다.") % 			String(hz.get("name", "지형 기믹"))
+	# 무엇이 오는지. 표적 축 대응 모듈은 이 줄이 있어야 도박이 아니라 선택이 된다.
+	var roster := Stages.enemy_summary(run.stage_id)
+	if roster != "":
+		out += "
+" + UiText.t("brief.roster", "구성: ") + roster
 	var tl := Stages.trait_list(run.stage_id)
 	if not tl.is_empty():
-		# 특성 설명은 "이름 - 무슨 일이 일어나는가" 형태다. 여기서는 뒤쪽만
-		# 쓴다. 이름은 개체에 마우스를 올리면 다시 나온다.
+		# ── 특성은 이름만 ────────────────────────────────────────────────
+		# 전문을 다 적었더니 구성 줄이 붙으면서 다섯 줄이 되어 판 밖으로
+		# 넘쳤다. 무슨 일이 일어나는지는 그 개체에 마우스를 올리면 전문이
+		# 뜨므로, 여기서는 **무엇이 섞여 있는지**만 알리면 된다.
 		var parts: Array[String] = []
 		for t in tl:
-			parts.append(Traits.describe(String(t)).replace(" - ", ": "))
+			parts.append(Traits.describe(String(t)).split(" - ")[0])
 		out += "
-" + UiText.t("brief.traits", "섞인 개체: ") + "   ".join(parts)
+" + UiText.t("brief.traits", "섞인 개체: ") + " · ".join(parts)
 	return out
 
 
@@ -1394,6 +1398,20 @@ class _Brief extends Control:
 		if cur != "":
 			out.append(cur)
 		return out
+
+
+## ── 판마다 곡이 바뀐다 ──────────────────────────────────────────────────
+## 다섯 판이 전부 같은 곡이면 마지막 판도 그냥 여섯 번째 교전으로 들린다.
+## 곡이 바뀌는 순간 "여기서부터 다르다" 가 규칙보다 먼저 전해진다.
+##
+## 셋으로 나눈다.
+##   1~2 배우는 구간   opening_theme  타이틀과 같은 곡 - 아직 같은 세계다
+##   3~4 갈리는 구간   ost2           승률이 반토막 나는 지점이다. 곡도 바뀐다
+##   5   마지막        boss_theme
+func _music_for(stage_id: int) -> String:
+	if Stages.is_last(stage_id):
+		return "boss_theme"
+	return "ost2" if stage_id >= 3 else "opening_theme"
 
 
 func _reset() -> void:

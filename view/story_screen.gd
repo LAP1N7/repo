@@ -368,6 +368,25 @@ func _show(i: int) -> void:
 	(_fx as _Glitch).t0 = _t
 	_fx.queue_redraw()
 
+	# ── 연출에는 소리가 따라야 한다 ──────────────────────────────────────
+	# 화면이 찢어지는데 아무 소리도 안 나면 그건 그림이 잘못 그려진 것처럼
+	# 보인다. 짧은 비프 하나면 "장치가 무언가를 알리고 있다" 가 된다.
+	#
+	# 연출마다 음을 다르게 한다. 같은 소리를 세 곳에 쓰면 셋이 같은 사건으로
+	# 들리고, 그러면 이야기가 어디서 꺾이는지 귀로는 알 수 없다.
+	#   glitch    높고 짧게 - 신호가 튄다
+	#   sync      낮고 무겁게 - 무언가가 진행 중이다
+	#   log       중간 - 기록이 넘어간다
+	#   collapse  가장 낮게 - 되돌릴 수 없다
+	if _sfx != null and fx != "":
+		var pitch := 1.0
+		match fx:
+			"glitch": pitch = 1.45
+			"sync": pitch = 0.72
+			"log": pitch = 1.0
+			"collapse": pitch = 0.55
+		_sfx.play("beep", pitch, 0.0)
+
 	# 몰아보기의 구간 표지. 대사가 아니라 목차라 색과 크기를 달리한다.
 	var marker := bool(b.get("marker", false))
 	_lbl_text.add_theme_color_override("font_color",
@@ -593,6 +612,11 @@ func _tick_log(delta: float) -> void:
 		while _log_n < Story.LOG_LINES.size() and _log_t > LOG_LINE_SEC:
 			_log_t -= LOG_LINE_SEC
 			_log_n += 1
+			# 두 줄에 한 번만 울린다. 줄마다 울리면 소리가 벽이 되고,
+			# 벽이 된 소리는 아무것도 안 알린다. 음도 조금씩 흔든다 -
+			# 똑같은 음이 반복되면 기계가 아니라 메트로놈으로 들린다.
+			if _sfx != null and _log_n % 2 == 0:
+				_sfx.play("beep", 1.6 + float(_log_n % 5) * 0.06, 0.0)
 			_log.text = "
 ".join(Story.LOG_LINES.slice(0, _log_n))
 
