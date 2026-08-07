@@ -1,16 +1,21 @@
 {
   "_comment": [
-    "튜토리얼 대본. 화자는 MIRA 다 - 스토리 ACT 0 에서 자기소개를 하고 곧바로",
-    "이 훈련으로 이어지므로, 목소리가 바뀌면 같은 인물로 안 읽힌다.",
+    "튜토리얼 **진행 구조**. 대사는 여기 없다 - data/story.json 의",
+    "\"tutorial\" 항목에 step id 로 들어 있다.",
+    "",
+    "둘을 나눈 이유: 고치는 빈도가 다르다. 대사는 자주 손보고 진행 구조는",
+    "거의 안 건드린다. 한 파일에 섞여 있으면 말 한 줄 고치려고 앵커와 게이트",
+    "사이를 헤집어야 한다.",
     "",
     "필드",
-    "  screen   tutorial | shop | loadout | battle | any",
+    "  screen   tutorial | shop | command | loadout | battle | any",
     "  anchor   화면이 register_anchor 로 등록한 이름. 말풍선이 가리킨다",
     "  advance  click | action:<이름>   action 이면 그 조작을 해야 넘어간다",
     "  gate     참이면 앵커 밖의 조작을 막는다",
     "  at_tick  전투 재생을 그 틱 앞에서 멈춘다",
     "  place    말풍선 위치. 없으면 side 로 정한다",
     "  portrait false 면 초상을 안 띄운다(전투 중에는 판을 가린다)",
+    "  text     비상용 폴백. 보통은 비워 두고 story.json 을 쓴다",
     "",
     "상점 제시는 view/game.gd 의 fixed_offers 가 고정한다. 자리를 지목하는",
     "대사(0번을 사라 · 2번을 제외하라)가 있으므로 둘은 항상 같이 고쳐야 한다."
@@ -22,56 +27,49 @@
       "screen": "tutorial",
       "speaker": "ai",
       "side": "left",
-      "advance": "click",
-      "text": "지휘관님. 작전 보조 에이전트 MIRA 입니다.\n첫 교전 전에 지휘 방식을 확인하겠습니다."
+      "advance": "click"
     },
     {
       "id": "intro_2",
       "screen": "tutorial",
       "speaker": "ai",
       "side": "left",
-      "advance": "click",
-      "text": "이 전장에서 지휘관님은 대원을 직접 조종하지 않습니다.\n대원이 무엇을 보고 판단할지를 정하십시오."
+      "advance": "click"
     },
     {
       "id": "intro_3",
       "screen": "tutorial",
       "speaker": "ai",
       "side": "left",
-      "advance": "click",
-      "text": "판단은 세 축으로 나뉩니다.\nTARGET 누구를 쫓는가 · POSITION 어디에 서는가 · DOCTRINE 언제 무엇을 하는가."
+      "advance": "click"
     },
     {
       "id": "intro_4",
       "screen": "tutorial",
       "speaker": "ai",
       "side": "left",
-      "advance": "click",
-      "text": "각 대원은 축 모듈을 세 칸까지 장착합니다.\n매 틱, 위에서부터 조건을 확인해 처음 성립하는 하나를 실행합니다."
+      "advance": "click"
     },
     {
       "id": "intro_5",
       "screen": "tutorial",
       "speaker": "ai",
       "side": "left",
-      "advance": "click",
-      "text": "그래서 이 게임에서 순서는 곧 전략입니다.\n같은 모듈도 몇 번째 칸에 두느냐에 따라 다른 대원이 됩니다."
+      "advance": "click"
     },
     {
       "id": "intro_6",
       "screen": "tutorial",
       "speaker": "ai",
       "side": "left",
-      "advance": "click",
-      "text": "훈련장을 준비했습니다.\n표적 둘, 대원 하나. 한 판만 같이 치르겠습니다."
+      "advance": "click"
     },
     {
       "id": "shop_1",
       "screen": "shop",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "여기가 알고리즘 구성 단계입니다.\n예산 안에서 모듈을 확보하십시오. 확보한 것만 장착할 수 있습니다."
+      "advance": "click"
     },
     {
       "id": "shop_2",
@@ -80,8 +78,7 @@
       "side": "right",
       "anchor": "shop_card_0",
       "advance": "action:buy",
-      "gate": true,
-      "text": "[근접 추적] 을 확보하십시오.\nTARGET 축입니다 - 가장 가까운 적을 쫓습니다.\n\n표적이 정해져야 나머지 축이 의미를 가집니다."
+      "gate": true
     },
     {
       "id": "shop_3",
@@ -90,8 +87,7 @@
       "side": "right",
       "anchor": "shop_card_1",
       "advance": "action:buy",
-      "gate": true,
-      "text": "다음은 [거리 유지] 입니다.\nPOSITION 축 - 최대 사거리를 지킵니다.\n\n궁수는 사거리 3 입니다. 이 둘을 함께 쓰면 쫓아가되 붙지는 않습니다."
+      "gate": true
     },
     {
       "id": "shop_4",
@@ -100,8 +96,7 @@
       "side": "right",
       "anchor": "shop_ban_2",
       "advance": "action:ban",
-      "gate": true,
-      "text": "[방어 태세] 는 이번 판에 쓰지 않습니다.\n[제외] 를 누르십시오 - 이 작전 전체에서 사라집니다.\n\n덱이 두꺼워질수록 원하는 것이 덜 나옵니다. 버리는 것도 설계입니다."
+      "gate": true
     },
     {
       "id": "shop_5",
@@ -109,8 +104,7 @@
       "speaker": "ai",
       "side": "right",
       "anchor": "shop_reroll",
-      "advance": "click",
-      "text": "제시가 마음에 들지 않으면 [재검색] 으로 다시 뽑습니다.\n다만 값이 오릅니다. 예산은 유한합니다."
+      "advance": "click"
     },
     {
       "id": "shop_6",
@@ -119,16 +113,14 @@
       "side": "right",
       "anchor": "shop_command",
       "advance": "action:command",
-      "gate": true,
-      "text": "[보조 지휘] 는 모듈이 아니라 부대 자체를 키우는 곳입니다.\n화력·장갑·보급을 단계별로 올립니다.\n\n눌러서 들어가 보십시오."
+      "gate": true
     },
     {
       "id": "cmd_1",
       "screen": "command",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "여기가 보조 지휘입니다.\n분류마다 기둥이 하나씩 서 있고, 칸에 손을 올리면 무엇이 오르는지 펼쳐집니다.\n\n모듈은 이번 판에서만 쓰지만 여기서 올린 것은 작전이 끝날 때까지 남습니다.\n다 보셨으면 [상점으로] 돌아가십시오."
+      "advance": "click"
     },
     {
       "id": "shop_7",
@@ -137,8 +129,7 @@
       "side": "right",
       "anchor": "shop_next",
       "advance": "action:next",
-      "gate": true,
-      "text": "편성 단계로 이동하겠습니다."
+      "gate": true
     },
     {
       "id": "load_1",
@@ -147,8 +138,7 @@
       "side": "right",
       "anchor": "unit_archer",
       "advance": "action:pick_type",
-      "gate": true,
-      "text": "궁수를 선택하십시오."
+      "gate": true
     },
     {
       "id": "load_2",
@@ -157,24 +147,21 @@
       "side": "right",
       "anchor": "grid_slot_0",
       "advance": "action:place",
-      "gate": true,
-      "text": "왼쪽 뒤 칸에 배치하십시오.\n적은 오른쪽에서 들어옵니다. 사거리가 긴 대원은 뒤가 유리합니다."
+      "gate": true
     },
     {
       "id": "load_2b",
       "screen": "loadout",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "배치가 곧 진형입니다.\n적은 위협도가 가장 높은 대원을 노리는데, 위협도는 거리에 크게 좌우됩니다 - 앞에 선 대원이 먼저 맞습니다.\n\n그래서 앞뒤를 나누는 것만으로도 이미 전술입니다."
+      "advance": "click"
     },
     {
       "id": "load_2c",
       "screen": "loadout",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "위협도는 자리 말고도 올라갑니다.\n방금 적을 때린 대원, HP 가 30% 아래로 떨어진 대원, [도발] 을 쓴 대원이 높아집니다.\n\n반대로 [은신] 은 내립니다. 누가 맞을지를 지휘관님이 정하는 수단입니다."
+      "advance": "click"
     },
     {
       "id": "load_3",
@@ -183,8 +170,7 @@
       "side": "right",
       "anchor": "hand_card_0",
       "advance": "action:equip",
-      "gate": true,
-      "text": "1번 칸에 [근접 추적] 을 꽂으십시오.\n누구를 쫓을지가 먼저 정해져야 합니다."
+      "gate": true
     },
     {
       "id": "load_4",
@@ -193,32 +179,28 @@
       "side": "right",
       "anchor": "hand_card_0",
       "advance": "action:equip",
-      "gate": true,
-      "text": "2번 칸에 [거리 유지].\n표적이 정해진 뒤, 그 표적에게서 어느 거리에 설지를 이 칸이 정합니다."
+      "gate": true
     },
     {
       "id": "load_5",
       "screen": "loadout",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "순서를 바꾸면 다른 대원이 됩니다.\n[거리 유지] 를 위로 올리면 표적을 정하기 전에 물러서려 하고, 그러면 쏠 대상이 없습니다.\n\n▲▼ 로 언제든 바꿀 수 있습니다."
+      "advance": "click"
     },
     {
       "id": "load_6",
       "screen": "loadout",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "세 칸을 다 채우지 않아도 됩니다.\n모듈이 전부 어긋나면 대원은 직업 기본기로 판단합니다 - 카드 아래 회색 줄이 그것입니다."
+      "advance": "click"
     },
     {
       "id": "load_6b",
       "screen": "loadout",
       "speaker": "ai",
       "side": "right",
-      "advance": "click",
-      "text": "세 칸을 축 셋으로 고루 나눌 수도, 한 축에 몰아줄 수도 있습니다.\n고루 나누면 어떤 상황에서도 무언가는 걸리고, 몰아주면 그 상황에서만 아주 잘합니다.\n\n정답은 없습니다. 다음 판에 무엇이 오는지가 정합니다 - 상점 아래 [적 배치] 를 보고 정하십시오."
+      "advance": "click"
     },
     {
       "id": "load_7",
@@ -227,8 +209,7 @@
       "side": "right",
       "anchor": "fight_button",
       "advance": "action:fight",
-      "gate": true,
-      "text": "교전을 개시하십시오."
+      "gate": true
     },
     {
       "id": "battle_1",
@@ -238,8 +219,7 @@
       "anchor": "start_button",
       "portrait": false,
       "advance": "action:start",
-      "gate": true,
-      "text": "판을 먼저 보십시오.\n왼쪽이 아군, 오른쪽이 적입니다. 한 틱에 대원 하나가 한 번 판단하고 한 번 행동합니다.\n\n시작하겠습니다."
+      "gate": true
     },
     {
       "id": "battle_t1",
@@ -249,8 +229,7 @@
       "place": "bottom_left",
       "at_tick": 1,
       "portrait": false,
-      "advance": "click",
-      "text": "1틱. 표적이 사거리 밖입니다.\n[근접 추적] 은 쫓을 대상을 정했지만, [거리 유지] 는 이미 충분히 멀다고 판단했습니다.\n\n그래서 기본기가 실행됩니다 - 사거리 밖이면 접근."
+      "advance": "click"
     },
     {
       "id": "battle_t2",
@@ -260,8 +239,7 @@
       "place": "bottom_left",
       "at_tick": 2,
       "portrait": false,
-      "advance": "click",
-      "text": "머리 위에 뜨는 표시가 이번 틱에 발동한 규칙입니다.\n회색이면 기본기, 색이 있으면 지휘관님이 꽂은 모듈입니다.\n\n판이 안 풀릴 때 제일 먼저 볼 곳입니다."
+      "advance": "click"
     },
     {
       "id": "battle_t3",
@@ -271,8 +249,7 @@
       "place": "bottom_left",
       "at_tick": 3,
       "portrait": false,
-      "advance": "click",
-      "text": "사거리 3 에 들어왔습니다.\n[근접 추적] 이 표적을 잡고, 사거리 안이므로 사격합니다.\n\n이동이든 공격이든 한 틱에 하나입니다."
+      "advance": "click"
     },
     {
       "id": "battle_t4",
@@ -282,8 +259,7 @@
       "place": "bottom_left",
       "at_tick": 4,
       "portrait": false,
-      "advance": "click",
-      "text": "적 개체 위에 마우스를 올려 보십시오.\nHP · 능력치 · 특성, 그리고 지금 무엇을 하는 중인지가 뜹니다.\n\n판단이 이상해 보이면 대개 답이 거기 있습니다."
+      "advance": "click"
     },
     {
       "id": "battle_t5",
@@ -294,8 +270,7 @@
       "anchor": "roster_panel",
       "at_tick": 5,
       "portrait": false,
-      "advance": "click",
-      "text": "오른쪽 전황판을 보십시오.\n대원 옆 회색 칸이 그 대원에게 붙은 적입니다.\n\n적은 위협도가 가장 높은 대원을 고릅니다. 앞에 나온 대원, 방금 때린 대원, [도발] 을 쓴 대원이 위협도가 높습니다."
+      "advance": "click"
     },
     {
       "id": "battle_t6",
@@ -305,8 +280,7 @@
       "place": "bottom_left",
       "at_tick": 6,
       "portrait": false,
-      "advance": "click",
-      "text": "위협도는 지휘관님이 설계할 수 있는 값입니다.\n방패병이 위협도를 올리고 궁수가 뒤에서 쏘는 진형이 성립하는 이유입니다."
+      "advance": "click"
     },
     {
       "id": "battle_t7",
@@ -316,8 +290,7 @@
       "place": "bottom_left",
       "at_tick": 7,
       "portrait": false,
-      "advance": "click",
-      "text": "표적이 2칸까지 붙었습니다.\n[거리 유지] 가 발동해 물러납니다 - 사거리 3, 유지 문턱 2 이므로 2칸에서는 뒤로 갑니다.\n\n쫓기지 않고 쏘는 상태를 이렇게 만듭니다."
+      "advance": "click"
     },
     {
       "id": "battle_t8",
@@ -327,8 +300,7 @@
       "place": "bottom_left",
       "at_tick": 8,
       "portrait": false,
-      "advance": "click",
-      "text": "물러날 칸이 없으면 [거리 유지] 는 성립하지 않습니다.\n그때는 아래 칸으로 넘어가고, 마지막에는 기본기로 떨어집니다.\n\n성립하지 않는 규칙은 조용히 건너뜁니다. 판이 멈추지는 않습니다."
+      "advance": "click"
     },
     {
       "id": "battle_t9",
@@ -339,8 +311,7 @@
       "anchor": "brief_panel",
       "at_tick": 10,
       "portrait": false,
-      "advance": "click",
-      "text": "왼쪽 아래 [적 개요] 와 오른쪽 [교전 기록] 을 기억해 두십시오.\n무엇이 나오는지와, 누가 몇 번 칸으로 판단했는지가 전부 적힙니다."
+      "advance": "click"
     },
     {
       "id": "outro_1",
@@ -348,8 +319,7 @@
       "speaker": "ai",
       "side": "left",
       "place": "bottom_right",
-      "advance": "click",
-      "text": "훈련을 종료합니다.\n\n지휘관님이 조종하는 것은 대원이 아니라 대원의 사고방식입니다.\n그것만 기억하시면 됩니다."
+      "advance": "click"
     }
   ]
 }

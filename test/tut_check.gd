@@ -36,14 +36,11 @@ func _init() -> void:
 		"튜토리얼이 정제권을 한 장 준다")
 
 	# 4) 대본 자체
-	var raw := FileAccess.get_file_as_string("res://data/tutorial.json")
-	var d = JSON.parse_string(raw)
-	_ok(typeof(d) == TYPE_DICTIONARY and d.has("steps"), "대본을 읽을 수 있다")
-	if typeof(d) != TYPE_DICTIONARY:
-		quit(1)
-		return
-
-	var steps: Array = d["steps"]
+	# 실제 게임과 같은 경로로 읽는다. 파일을 직접 파싱하면 story.json 에서
+	# 대사를 끌어오는 단계를 건너뛰어, 대사가 비어도 통과해 버린다.
+	var tut := Tutorial.new()
+	_ok(tut.load_script(), "대본을 읽을 수 있다")
+	var steps: Array = tut.steps
 	_ok(steps.size() > 0, "대사가 있다")
 
 	var seen: Dictionary = {}
@@ -53,6 +50,8 @@ func _init() -> void:
 		var id := String(st.get("id", ""))
 		_ok(id != "" and not seen.has(id), "id 가 비지 않고 안 겹친다: %s" % id)
 		seen[id] = true
+		# 대사는 story.json 에서 온다. Tutorial.load_script() 가 채워 넣으므로
+		# 여기서는 **채워진 뒤의 상태**를 본다 - 둘 중 어느 파일이 비어도 잡힌다.
 		_ok(String(st.get("text", "")) != "", "%s 에 대사가 있다" % id)
 		var scr := String(st.get("screen", "any"))
 		_ok(scr in ["tutorial", "shop", "command", "loadout", "battle", "any"],

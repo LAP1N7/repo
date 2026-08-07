@@ -10,9 +10,20 @@ extends RefCounted
 ##
 ## ── 왜 대사가 JSON 인가 ────────────────────────────────────────────────
 ## 대사는 가장 자주 고치는 데이터다. 코드에 박으면 문구 하나 바꾸는 데 재빌드가
-## 필요하고, 무엇보다 기획자가 못 만진다. data/tutorial.json 만 고치면 된다.
-
+## 필요하고, 무엇보다 기획자가 못 만진다.
+##
+## ── 왜 파일이 둘인가 ───────────────────────────────────────────────────
+## 고치는 빈도가 다르기 때문이다.
+##
+##   data/tutorial.json  **언제 어디서 뜨는가** - 화면 · 가리킬 대상 ·
+##                       넘어가는 조건 · 멈출 틱. 거의 안 고친다
+##   data/story.json     **무슨 말을 하는가** - "tutorial" 항목에 step id 로
+##                       들어 있다. 자주 고친다
+##
+## 한 파일에 섞여 있으면 말 한 줄 고치려고 앵커와 게이트 사이를 헤집어야 한다.
+## 본편 스토리 대사도 story.json 에 있으므로, **대사는 전부 한 파일**이 된다.
 const DATA_PATH := "res://data/tutorial.json"
+const TEXT_PATH := "res://data/story.json"
 
 signal step_changed()
 signal finished()
@@ -39,7 +50,29 @@ func load_script() -> bool:
 		return false
 	steps = parsed["steps"]
 	speaker_name = String(parsed.get("speaker_name", ""))
+	_load_lines()
 	return true
+
+
+## story.json 에서 대사를 끌어와 단계에 채운다.
+##
+## 없으면 tutorial.json 에 남아 있는 text 를 그대로 쓴다 - 대본 파일 하나가
+## 빠져도 훈련 과정이 통째로 벙어리가 되지는 않는다.
+func _load_lines() -> void:
+	if not FileAccess.file_exists(TEXT_PATH):
+		return
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(TEXT_PATH))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var lines: Dictionary = parsed.get("tutorial", {})
+	if lines.is_empty():
+		return
+	for i in steps.size():
+		var st: Dictionary = steps[i]
+		var id := String(st.get("id", ""))
+		if lines.has(id):
+			st["text"] = String(lines[id])
+		steps[i] = st
 
 
 func start() -> void:
