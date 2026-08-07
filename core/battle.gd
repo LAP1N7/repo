@@ -141,6 +141,18 @@ func _spawn_wave(n: int) -> void:
 		# 시간을 끈 판이 2페이즈가 뜨자마자 정체 패배로 끝난다.
 		last_damage_tick = tick
 		_repair()
+		# ── 궁극기는 페이즈마다 한 번 ────────────────────────────────────
+		# 교전당 1회였다. 그런데 페이즈가 셋인 판에서는 1페이즈에 쓰고 나면
+		# 나머지 두 판을 맨손으로 치른다 - 그러면 궁극기를 **아끼는 것**이
+		# 늘 정답이 되고, 아끼다 보면 판이 끝난다. 실제로 3페이즈짜리에서
+		# 한 번도 안 쓰고 지는 경우가 있었다.
+		#
+		# 페이즈마다 한 번으로 바꾸면 "지금 쓸까, 다음 파를 위해 남길까" 가
+		# 사라지고 "이 페이즈 어디에서 쓸까" 만 남는다. 아끼는 쪽이 늘 옳은
+		# 선택지는 선택지가 아니다.
+		for u in units:
+			if u.team == Unit.TEAM_PLAYER and u.alive:
+				u.special_used = false
 		_emit({ "type": "wave", "wave": n, "units": spawned, "total": waves.size() })
 
 

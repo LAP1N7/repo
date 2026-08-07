@@ -342,15 +342,26 @@ func test_specials() -> void:
 		ok(sp.has("unit") and UnitData.TABLE.has(String(sp["unit"])),
 			"%s: 직업이 유효하다" % sid)
 
-	# 궁극기는 교전당 1회다.
+	# ── 궁극기는 페이즈당 1회다 ──────────────────────────────────────────
+	# 교전당 1회에서 바꿨다. 그래서 이제 "몇 번 썼나" 가 아니라 **"페이즈
+	# 하나 안에서 두 번 이상 쓰지 않았나"** 를 봐야 한다. 총 횟수로 재면
+	# 페이즈가 둘인 판에서 정상 동작이 실패로 잡힌다.
 	var b := Battle.new()
 	b.setup(1, [member("musketeer", 1, [], "keep_off"), member("warrior", 0), member("bard", 4)])
 	b.run()
-	var used := 0
+	var per_wave: Dictionary = {}
+	var cur_wave := 0
 	for e in b.events:
-		if String(e.get("type", "")) == "special" and int(e.get("unit", -1)) == 0:
-			used += 1
-	ok(used <= 1, "궁극기는 교전당 한 번만", "%d회" % used)
+		var et := String(e.get("type", ""))
+		if et == "wave":
+			cur_wave = int(e.get("wave", 0))
+		elif et == "special" and int(e.get("unit", -1)) == 0:
+			per_wave[cur_wave] = int(per_wave.get(cur_wave, 0)) + 1
+	var worst := 0
+	for k in per_wave:
+		worst = maxi(worst, int(per_wave[k]))
+	ok(worst <= 1, "궁극기는 페이즈당 한 번만", "한 페이즈에 %d회" % worst)
+	ok(per_wave.size() <= b.waves.size(), "쓴 페이즈 수가 페이즈 수를 안 넘는다")
 
 
 # ── 14. 튜토리얼 ─────────────────────────────────────────────────────────

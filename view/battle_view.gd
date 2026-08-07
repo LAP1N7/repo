@@ -2657,7 +2657,7 @@ class _SquadCard extends Control:
 				String(r.get("text", ""))])
 		if unit.special != "" and Specials.TABLE.has(unit.special):
 			rows.append(["", String(Specials.TABLE[unit.special]["name"]),
-				UiText.t("battle.squad_ult", "궁극기 · 교전당 1회")])
+				UiText.t("battle.squad_ult", "궁극기 · 페이즈당 1회")])
 		rows.append(["", UiText.t("battle.m04", "기본기"), Innates.describe(unit.type_id)])
 
 		var h := 26.0 + rows.size() * 22.0

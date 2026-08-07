@@ -373,7 +373,7 @@ func _draw() -> void:
 		if special:
 			# 어느 대원 것인지가 제일 먼저 필요하다. 남의 궁극기를 사면 그 판
 			# 내내 못 쓴다 - 산 뒤에 알면 늦는다.
-			tag = UiText.t("card.special_tag", "%s 전용 · 교전당 1회") % UnitData.TABLE[c["unit"]]["name"]
+			tag = UiText.t("card.special_tag", "%s 전용 · 페이즈당 1회") % UnitData.TABLE[c["unit"]]["name"]
 		else:
 			tag = UiText.t("card.tactic_tag", "전술 · 조건이 맞는 한 매 틱 발동")
 			tcol = UiKit.MUTED

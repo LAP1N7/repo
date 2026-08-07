@@ -16,7 +16,42 @@ extends Control
 
 signal done()
 
+## 카메라 위상. 대사가 바뀔 때마다 0 에서 다시 자란다.
+var _cam_t: float = 0.0
+var _cam_dir: Vector2 = Vector2.RIGHT
+## 화자 줌인의 남은 세기. 말하기 시작할 때 1 이 되고 가라앉는다.
+var _speak: float = 0.0
+## 대본이 이 대사에 준 연출 배율. 1.0 이 기본, 0 이면 아예 안 움직인다.
+var _cam_gain: float = 1.0
+## 배경 판의 제자리. 표류는 여기서부터 잰다.
+var _art_home: Vector2 = Vector2.ZERO
+var _zoom_gain: float = 1.0
+
 const PAD := 64.0
+
+## ── 카메라 연출 ─────────────────────────────────────────────────────────
+## 정지 화면에 글자만 바뀌면 그건 슬라이드 쇼다. 아주 조금만 움직여도 화면이
+## "지금 벌어지는 일" 로 읽힌다 - 미연시가 오래 써 온 방법이고, 핵심은
+## **알아채지 못할 만큼만** 움직이는 것이다. 크게 움직이면 연출이 아니라
+## 멀미가 된다.
+##
+## 셋을 겹친다.
+##   배경 표류  대사가 바뀔 때마다 아주 천천히 밀리고 배율이 오간다
+##   화자 줌인  말하기 시작할 때 초상이 살짝 커졌다 제자리로 돌아온다
+##   판 흔들림  fx 가 걸린 대사에서 화면이 한 번 튄다
+##
+## 값은 전부 대본이 덮어쓸 수 있다(camera / zoom / shake).
+const CAM_DRIFT: float = 14.0       ## 배경이 한 대사 동안 미는 거리(px)
+const CAM_ZOOM: float = 0.035       ## 배경 배율 진폭
+const CAM_SPEED: float = 0.055      ## 표류 속도(1/초)
+const SPEAK_ZOOM: float = 0.045     ## 화자가 말하기 시작할 때 커지는 정도
+const SPEAK_SETTLE: float = 2.6     ## 그 확대가 가라앉는 속도(1/초)
+
+## 대사마다 방향이 달라야 같은 화면이 반복돼도 다르게 보인다. 난수를 안 쓰는
+## 이유는 늘 그렇듯 재현성 때문이다 - 대사 번호에서 방향을 만든다.
+const CAM_DIRS: Array[Vector2] = [
+	Vector2(1, 0.35), Vector2(-1, 0.2), Vector2(0.6, -1), Vector2(-0.7, -0.5),
+]
 
 ## ── 인물별 배율 보정 ─────────────────────────────────────────────────────
 ## 기본 규칙은 "그림 폭을 칸 폭에 맞춘다" 이다. 인물이 프레임 폭을 꽉 채우는
@@ -94,7 +129,8 @@ func setup(p_beats: Array) -> void:
 	#
 	# 배경을 바닥까지 늘리고 대사판을 반투명으로 바꾸면, 대사가 같은 공간
 	# 안에서 들리는 소리가 된다. 미연시가 오래전부터 쓰는 배치다.
-	_art.position = Vector2(PAD, 56)
+	_art_home = Vector2(PAD, 56)
+	_art.position = _art_home
 	_art.size = Vector2(1280 - PAD * 2, 664 - 56)
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_art)
@@ -293,6 +329,17 @@ func _show(i: int) -> void:
 	#
 	# 배경을 걷어내고 싶으면 "none" 이라고 적는다. 빈 문자열은 "그대로" 라서
 	# 끄는 뜻으로 못 쓴다.
+	# ── 연출 값 ──────────────────────────────────────────────────────────
+	# 대본이 정한다. 조용해야 하는 대목(로그 화면·BSOD)은 camera 0 으로 끄고,
+	# 무언가 다가오는 대목은 1.5 처럼 올린다.
+	_cam_gain = float(b.get("camera", 1.0))
+	_zoom_gain = float(b.get("zoom", 1.0))
+	_cam_t = 0.0
+	_cam_dir = CAM_DIRS[i % CAM_DIRS.size()]
+	# 화자가 있는 대사에서만 줌인이 걸린다. 나레이션에 걸면 아무도 안 말하는데
+	# 화면이 다가오는 셈이 된다.
+	_speak = 1.0 if String(b.get("speaker", "")) != "" else 0.0
+
 	var art := String(b.get("art", _bg_id))
 	if art == "none":
 		art = ""
@@ -337,6 +384,7 @@ func _show(i: int) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_tick_type(delta)
+	_tick_camera(delta)
 
 	if _log_box != null and _log_box.visible:
 		_tick_log(delta)
@@ -494,6 +542,35 @@ const LOG_LINE_SEC: float = 0.34
 const LOG_LINE_H: float = 17.0
 
 ## 대사를 한 글자씩 찍는다. 다 찍으면 아무것도 안 한다.
+## ── 카메라를 민다 ───────────────────────────────────────────────────────
+## 배경과 초상을 각각 조금씩 움직인다. 배경은 계속 표류하고, 초상은 말하기
+## 시작할 때만 한 번 커졌다 가라앉는다.
+##
+## pivot_offset 을 가운데로 잡아 두고 scale 만 만진다. position 으로 확대를
+## 흉내 내면 크기가 커질수록 그림이 한쪽으로 밀린다.
+func _tick_camera(delta: float) -> void:
+	_cam_t += delta
+	if _speak > 0.0:
+		_speak = maxf(0.0, _speak - delta * SPEAK_SETTLE)
+
+	if _art != null and is_instance_valid(_art):
+		var t := _cam_t * CAM_SPEED * TAU
+		var k: float = 1.0 + (CAM_ZOOM * _cam_gain) * (0.5 - 0.5 * cos(t))
+		_art.pivot_offset = _art.size * 0.5
+		_art.scale = Vector2(k, k)
+		# 표류는 확대된 만큼 안쪽으로만 움직인다. 안 그러면 가장자리에 빈틈이
+		# 생긴다 - 배경이 화면 끝까지 차 있어야 하는 화면이다.
+		var reach: float = CAM_DRIFT * _cam_gain
+		_art.position = _art_home + _cam_dir.normalized() * reach 			* (1.0 - cos(t)) * 0.5
+
+	if _portrait != null and is_instance_valid(_portrait) and _portrait.visible:
+		# 말하기 시작한 순간이 가장 크고, 곧 제자리로 돌아온다. 계속 커져
+		# 있으면 그건 확대이지 연출이 아니다.
+		var pz: float = 1.0 + SPEAK_ZOOM * _zoom_gain * _speak
+		_portrait.pivot_offset = Vector2(_portrait.size.x * 0.5, _portrait.size.y)
+		_portrait.scale = Vector2(pz, pz)
+
+
 func _tick_type(delta: float) -> void:
 	if _lbl_text == null or _typed >= float(_full.length()):
 		return
