@@ -346,8 +346,11 @@ func _build_hand() -> void:
 	# 같은 동작이라 설명이 필요 없다.
 	var n := owned.size()
 	var tab := _Dossier.new()
-	tab.position = Vector2(1240 - _Dossier.TAB_W, SHOP_Y - 16)
-	tab.size = Vector2(_Dossier.TAB_W, 368)
+	# rect 는 서랍을 다 편 크기로 잡는다. 안 그러면 펼쳐진 부분의 클릭·휠이
+	# Control 밖이라 이벤트가 오지 않는다. 닫혀 있을 때 뒤를 안 먹는 것은
+	# _has_point 가 막는다.
+	tab.position = Vector2(1240 - _Dossier.TAB_W - _Dossier.OPEN_W, SHOP_Y - 16)
+	tab.size = Vector2(_Dossier.TAB_W + _Dossier.OPEN_W, 368)
 	# 카드보다 위에 떠야 서랍이 카드에 잘리지 않는다.
 	tab.z_index = 40
 	tab.top_level = false
@@ -496,9 +499,12 @@ class _Dossier extends Control:
 	func max_scroll() -> float:
 		return maxf(0.0, float(shown().size() - rows_fit()))
 
-	## 서랍이 열리면 판이 제 Control 사각형 왼쪽으로 삐져나간다. 그 위에
-	## 마우스가 올라가 있는 동안에도 열린 채여야 하므로, 판정은 rect 가 아니라
-	## 실제로 그려진 넓이로 한다.
+	## 입력을 받을 넓이. rect 는 다 편 크기로 잡혀 있으므로, 닫혀 있을 때
+	## 이걸로 좁혀 주지 않으면 손잡이 왼쪽의 상점 카드가 전부 안 눌린다.
+	func _has_point(point: Vector2) -> bool:
+		return _drawn_rect().has_point(point)
+
+	## 지금 그려져 있는 넓이. 열리면 왼쪽으로 자란다.
 	func _drawn_rect() -> Rect2:
 		var w := TAB_W + _open * OPEN_W
 		return Rect2(Vector2(size.x - w, 0), Vector2(w, size.y))

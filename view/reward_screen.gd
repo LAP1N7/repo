@@ -191,7 +191,7 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 			var to: int = mini(RunState.MAX_UPGRADE, lv + up)
 			title = UiText.t("reward.upgrade_title", "%s 강화") % s["name"]
 			accent = s["color"]
-			body = UiText.t("reward.m01", "+%d → +%d\n\nHP %d → %d\n공격 %d → %d\n\n%s") % [
+			body = UiText.t("reward.m01", "+%d → +%d\n\nHP %d → %d\nATK %d → %d\n\n%s") % [
 				lv, to,
 				run.upgraded_stat(tid, "hp", int(s["hp"])),
 				UnitData.scaled(tid, "hp", int(s["hp"]), to),

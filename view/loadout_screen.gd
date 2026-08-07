@@ -16,7 +16,12 @@ signal back()
 var tut: Tutorial = null
 
 const TILE: float = 62.0
-const GRID_AT := Vector2(48, 124)
+## 배치 격자. 왼쪽 칸(x 48 ~ RIGHT_X) 의 가운데에 세운다.
+##
+## 왼쪽 벽에 붙여 놓으면 격자 2칸이 화면 구석에 몰려서, 오른쪽 모듈 슬롯과
+## 무게가 안 맞는다. 이 화면에서 제일 먼저 보는 것이 배치판이므로 제 칸의
+## 가운데에 있어야 한다.
+const GRID_AT := Vector2(232, 124)
 const RIGHT_X: float = 560.0
 ## ── 보유 모듈 줄 ────────────────────────────────────────────────────────
 ## 화면 맨 아래를 가로로 다 쓴다. 명일방주 하단 오퍼레이터 바와 같은 자리이고,
@@ -25,11 +30,18 @@ const RIGHT_X: float = 560.0
 ## 500 으로 올렸다가 오른쪽 모듈 슬롯 3번째 대원 행(바닥 y=534)을 카드가
 ## 덮었다. 화면 아래가 비어 보인다고 올렸던 것인데, 비어 보이는 것보다
 ## 가려지는 쪽이 훨씬 나쁘다. 대원 선택 칸을 키워 그 여백을 대신 채운다.
-const HAND_Y: float = 556.0
+## 얼굴 칸이 y=352 에서 시작해 100 높이로 끝나면 452 다. 거기서 여백 한 뼘만
+## 두고 바로 잇는다 - 사이가 비면 화면이 두 동강 난 것처럼 보인다.
+const HAND_Y: float = 530.0
 
 ## 유닛 한 명이 차지하는 세로 높이. 헤더 28 + 슬롯 3×27 + 기본기 줄 18 + 여백.
 ## 줄이면 기본기 줄이 다음 유닛 헤더를 덮는다.
-const ROSTER_Y: float = 138.0
+## 오른쪽 모듈 슬롯 3인분이 손패 위에서 끝나야 한다.
+##   ROSTER_Y + ROW_H*2 + 128(행 바닥) <= HAND_Y - 26(손패 머리)
+##   124 + 260 + 128 = 512 <= 504 ... 이 아니라 512 이므로 행 바닥이 머리와
+##   8px 겹친다. 머리글은 x=48 에서 시작하고 슬롯은 x=560 부터라 가로로는
+##   안 만난다.
+const ROSTER_Y: float = 124.0
 ## ── 행 내부 간격 ────────────────────────────────────────────────────────
 ## 대원 3명이 보유 목록(HAND_Y-30 = 542) 위에 다 들어가야 한다.
 ##
@@ -105,7 +117,7 @@ func setup(p_run: RunState) -> void:
 	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
 	# 로딩 화면의 TIP 이 그 역할을 한다 - 유닛 버튼 아래에 태그를 달면 정보가
 	# 늘어난 만큼 화면이 빽빽해지고, 정작 고를 때 읽는 건 HP·공격력이다.
-	_head(Vector2(48, 330), UiText.t("loadout.unit_pick", "대원 선택"))
+	_head(Vector2(48, 344), UiText.t("loadout.unit_pick", "대원 선택"))
 	var x := 48.0
 	for tid in UnitData.playable():
 		var s: Dictionary = UnitData.TABLE[tid]
@@ -115,8 +127,12 @@ func setup(p_run: RunState) -> void:
 		var b := _Tile.new()
 		# 얼굴 칸을 세로로 키웠다. 가로는 못 늘린다 - 여섯 개가 오른쪽 모듈
 		# 슬롯(x=560) 앞에서 끝나야 한다.
-		b.position = Vector2(x, 352)
-		b.size = Vector2(82, 132)
+		# 그림은 정사각이라 칸 폭이 곧 그림 높이다. 칸을 그보다 높이 잡으면
+		# 그림 아래에 빈 띠가 남고, 이름 칸이 그 아래에서 시작하니 "그림이
+		# 끝난 선" 과 "글이 시작하는 선" 이 어긋난다. 칸 높이를 그림 높이 +
+		# 이름띠로 딱 맞춘다.
+		b.position = Vector2(x, 366)
+		b.size = Vector2(82, 82 - 12 + 30)
 		b.type_id = String(tid)
 		b.label = String(s["name"])
 		b.sub = UiText.t("loadout.unit_stat", "HP%d ATK%d") % [s["hp"], s["atk"]]
@@ -206,7 +222,9 @@ func _build_grid() -> void:
 		if tut != null:
 			tut.register_anchor("grid_slot_%d" % i, b)
 
-	UiKit.label(grid_root, Vector2(48, 314), Vector2(460, 20),
+	# 격자를 왼쪽 칸 가운데로 옮겼으므로 방향 안내도 같이 간다. 캡션이
+	# 대상에서 떨어지면 무엇을 설명하는 글인지 알 수 없다.
+	UiKit.label(grid_root, Vector2(GRID_AT.x - 100.0, 314), Vector2(460, 20),
 		UiText.t("loadout.m03", "←  뒤         앞  →        (적은 오른쪽에서 온다)"), 11, UiKit.MUTED)
 
 
@@ -248,17 +266,17 @@ func _build_roster() -> void:
 	for c in roster_root.get_children():
 		c.queue_free()
 
-	UiKit.label(roster_root, Vector2(RIGHT_X, 96), Vector2(700, 22),
+	UiKit.label(roster_root, Vector2(RIGHT_X, 82), Vector2(700, 22),
 		UiText.t("loadout.slots_head", "규칙 슬롯 - 위에서부터 처음 맞는 규칙 하나가 실행된다"), 15, UiKit.MUTED)
 
 	if run.roster.is_empty():
-		UiKit.label(roster_root, Vector2(RIGHT_X, 128), Vector2(600, 22),
+		UiKit.label(roster_root, Vector2(RIGHT_X, 112), Vector2(600, 22),
 			UiText.t("loadout.no_unit", "아직 배치된 유닛이 없다. 왼쪽에서 유닛을 고르고 빈 칸을 눌러라."),
 			13, UiKit.MUTED)
 		return
 
 	# 기본 AI 는 직업마다 다르므로 범례로 한 번에 못 적는다. 대원 줄마다 붙인다.
-	UiKit.label(roster_root, Vector2(RIGHT_X, 116), Vector2(700, 18),
+	UiKit.label(roster_root, Vector2(RIGHT_X, 104), Vector2(700, 18),
 		UiText.t("loadout.base_hint",
 			"대원은 모듈이 없어도 자기 직업의 일을 합니다. 모듈은 그 판단을 수정합니다."),
 		10, UiKit.FAINT)
@@ -538,7 +556,7 @@ class _Tile extends Button:
 		# 가장자리에 닿는다). 칸에 딱 붙여 놓으면 그 잘린 단면이 테두리와
 		# 만나서 "잘렸다" 로 읽힌다. 안쪽으로 한 겹 물려 여백을 만든다.
 		_clip.position = Vector2(6, 6)
-		_clip.size = Vector2(size.x - 12, size.y - band - 8)
+		_clip.size = Vector2(size.x - 12, size.y - band - 6)
 		var tex := null if (empty or type_id == "") 			else UiKit.art(["portraits", "units"], type_id)
 		_tr.texture = tex
 		_tr.modulate = Color(1, 1, 1, 0.45 if disabled else 1.0)
@@ -592,8 +610,10 @@ class _TileFace extends Control:
 			if String(tile.sub) != "":
 				# 사선 모서리가 오른쪽 아래를 잘라 먹는다. 숫자 줄을 칸 폭
 				# 그대로 가운데 맞추면 끝자리가 그 잘림에 걸린다.
-				draw_string(fs, Vector2(5, ly + 23), String(tile.sub),
-					HORIZONTAL_ALIGNMENT_CENTER, s.x - 10, 9, UiKit.FAINT)
+				# 82px 칸에 "HP 125 · ATK 18" 은 9pt 로는 안 들어간다. 잘리면
+				# 숫자가 아니라 잡음이 된다.
+				draw_string(fs, Vector2(4, ly + 23), String(tile.sub),
+					HORIZONTAL_ALIGNMENT_CENTER, s.x - 8, 8, UiKit.FAINT)
 
 		var line := PackedVector2Array(tile.shape(s))
 		line.append(line[0])

@@ -60,6 +60,18 @@ func _init() -> void:
 	await _shot("09_command", load("res://scenes/command_screen.tscn").instantiate(),
 		func(s): s.setup(run))
 
+	# 호버로 펼쳐진 칸. 마우스를 못 쓰니 값을 직접 넣는다.
+	await _shot("09b_command_hover",
+		load("res://scenes/command_screen.tscn").instantiate(),
+		func(s):
+			s.setup(run)
+			for c in s.root.get_children():
+				if c.get("forced") != null:
+					c.forced = true
+					c._t = 1.0
+					c.queue_redraw()
+					break, 10)
+
 	# 편성·전투는 대원이 있어야 한다.
 	run.place("musketeer", 0)
 	run.place("assassin", 4)

@@ -554,22 +554,68 @@ class _Overlay extends Node2D:
 		if not owner_view.shown_alive():
 			return
 
+		# ── HP 게이지 ────────────────────────────────────────────────────
+		# 그냥 네모 두 개였다. 판 위에 여덟 개가 동시에 떠 있으면 그건 색깔
+		# 막대기이지 계기가 아니다.
+		#
+		# 계기로 보이게 하는 것은 장식이 아니라 **눈금**이다. 25% 마다 칸을
+		# 끊으면 "반 넘게 깎였다" 가 색 판단이 아니라 칸 세기가 되고, 그건
+		# 훨씬 빠르다. 여기에 사선 끝단과 얇은 하이라이트를 얹어 이 게임의
+		# 다른 판들(호버 판·슬래브)과 어법을 맞춘다.
 		var top := UnitView.R + 3.0
 		var hw := UnitView.HP_W
-		draw_rect(Rect2(-hw * 0.5, top, hw, 6.0), Color(0, 0, 0, 0.65))
+		var bh := 7.0
+		var x0 := -hw * 0.5
 		var frac := clampf(float(u.hp) / float(u.max_hp), 0.0, 1.0)
-		var hp_col := Color(0.35, 0.9, 0.45)
+		var hp_col := Color(0.36, 0.95, 0.62)
 		if frac <= 0.25:
-			hp_col = Color(0.92, 0.3, 0.3)
+			hp_col = Color(1.0, 0.32, 0.36)
 		elif frac <= 0.5:
-			hp_col = Color(0.95, 0.75, 0.25)
-		draw_rect(Rect2(-hw * 0.5, top, hw * frac, 6.0), hp_col)
+			hp_col = Color(1.0, 0.78, 0.26)
+
+		# 틀. 오른쪽 위를 사선으로 잘라 계기판 느낌을 낸다.
+		var cut := 4.0
+		var frame := PackedVector2Array([
+			Vector2(x0, top), Vector2(x0 + hw - cut, top),
+			Vector2(x0 + hw, top + cut), Vector2(x0 + hw, top + bh),
+			Vector2(x0, top + bh),
+		])
+		draw_colored_polygon(frame, Color(0.02, 0.03, 0.05, 0.9))
+
+		# 채워진 부분. 위쪽 한 줄만 밝게 남겨 유리관처럼 보이게 한다.
+		var fw := (hw - 1.0) * frac
+		if fw > 0.5:
+			draw_rect(Rect2(x0 + 0.5, top + 1.0, fw, bh - 2.0),
+				Color(hp_col.r, hp_col.g, hp_col.b, 0.92))
+			draw_rect(Rect2(x0 + 0.5, top + 1.0, fw, 1.0),
+				Color(1, 1, 1, 0.55))
+
+		# 25% 눈금. 세 줄이면 반과 4분의 1이 동시에 읽힌다.
+		for i in 3:
+			var gx := x0 + hw * (0.25 * float(i + 1))
+			draw_line(Vector2(gx, top + 1.0), Vector2(gx, top + bh - 1.0),
+				Color(0.02, 0.03, 0.05, 0.85), 1.0)
+
+		# 테두리. 남은 체력 색을 옅게 물려 멀리서도 상태가 읽힌다.
+		var line := PackedVector2Array(frame)
+		line.append(frame[0])
+		draw_polyline(line, Color(hp_col.r, hp_col.g, hp_col.b, 0.55), 1.0, true)
 
 		# 궁극기 표시. 1회제라 게이지가 아니라 켜짐/꺼짐이다.
 		# 금색 = 아직 남았다, 어두운 회색 = 이미 썼다.
 		if u.special != "":
-			draw_rect(Rect2(-hw * 0.5, top + 7.0, hw, 3.0),
-				Color(0.30, 0.28, 0.34) if u.special_used else Color(1.0, 0.85, 0.3))
+			var uy := top + bh + 1.5
+			draw_rect(Rect2(x0, uy, hw, 3.0), Color(0.02, 0.03, 0.05, 0.85))
+			if u.special_used:
+				draw_rect(Rect2(x0 + 1.0, uy + 1.0, hw - 2.0, 1.0),
+					Color(0.30, 0.28, 0.34))
+			else:
+				# 다 찬 칸 셋. 아직 쓸 것이 남았다는 신호를 HP 와 다른 모양으로
+				# 준다 - 같은 모양이면 게이지가 둘인 줄 안다.
+				for i in 3:
+					draw_rect(Rect2(x0 + 1.0 + float(i) * (hw - 2.0) / 3.0,
+						uy + 0.5, (hw - 2.0) / 3.0 - 1.5, 2.0),
+						Color(1.0, 0.86, 0.32))
 
 		var f: Font = owner_view.font
 		if f == null:

@@ -75,61 +75,47 @@ func refresh() -> void:
 		c.queue_free()
 	lbl_budget.text = UiText.t("shop.budget", "예산  %d") % run.budget
 
-	# 11줄 + 분류 머리 4개 + 실험용 장치를 720 안에 다 넣어야 한다.
-	# [야전 정비] 를 넣으면서 한 줄이 늘었고, 그만큼 실험용 장치가 아래로 밀려
-	# [상점으로] 버튼과 겹쳤다. 간격에는 여유가 없다 - 줄이 늘면 간격을 줄인다.
-	var x := ART_W + 40.0
-	var y := 92.0
-	for group in Command.GROUPS:
-		UiKit.label(root, Vector2(x, y), Vector2(300, 18), group, 13,
-			Color(0.55, 0.88, 1.0))
-		y += 18.0
+	# ── 분류마다 한 기둥 ────────────────────────────────────────────────
+	# 예전에는 열한 줄을 세로로 죽 늘어놓았다. 분류 머리글이 사이사이 끼어
+	# 있었지만, 줄 높이가 다 같아서 **어디서 분류가 바뀌는지**가 안 보였다.
+	#
+	# 기둥으로 세우면 분류가 곧 자리가 된다. "전투를 밀지 경제를 밀지" 가
+	# 화면 구조 자체로 읽히고, 그게 이 화면에서 하는 유일한 고민이다.
+	var x0 := ART_W + 36.0
+	var colw := (1240.0 - x0) / float(Command.GROUPS.size())
+	for gi in Command.GROUPS.size():
+		var group := Command.GROUPS[gi]
+		var cx := x0 + float(gi) * colw
+		var head := _Pillar.new()
+		head.position = Vector2(cx, 96)
+		head.size = Vector2(colw - 12.0, 26)
+		head.title = group
+		head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(head)
+
+		var y := 130.0
 		for id in Command.ids_in(group):
-			_row(id, Vector2(x, y))
-			y += 34.0
-		y += 3.0
+			var cell := _Cell.new()
+			cell.position = Vector2(cx, y)
+			cell.size = Vector2(colw - 12.0, _Cell.BASE_H)
+			cell.id = id
+			cell.level = run.command_level(id)
+			cell.price = Command.price(cell.level)
+			cell.affordable = cell.price >= 0 and run.budget >= cell.price
+			cell.now = Command.amount(id, cell.level)
+			cell.bought.connect(_on_buy)
+			root.add_child(cell)
+			y += _Cell.BASE_H + 12.0
 
-	_swap_section(Vector2(x, y + 4))
+		# 확률은 항목이 하나뿐이라 기둥 아래가 통째로 빈다. 실험용 장치를
+		# 그 자리에 넣는다 - 둘 다 "무엇이 나오게 할 것인가" 라 성격도 맞는다.
+		if group == "확률":
+			_swap_section(Vector2(cx, y + 10.0), colw - 12.0)
 
 
-## 강화 한 줄. 이름 · 효과 · 단계 표시 · 구매 버튼.
-func _row(id: String, at: Vector2) -> void:
-	var d: Dictionary = Command.TABLE[id]
-	var lv := run.command_level(id)
-	var price := Command.price(lv)
-
-	var panel := _Holo.new()
-	panel.position = at
-	panel.size = Vector2(700, 31)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(panel)
-
-	UiKit.label(panel, Vector2(12, 1), Vector2(150, 16), String(d["name"]), 13)
-	UiKit.label(panel, Vector2(12, 16), Vector2(430, 15), String(d["text"]), 10, UiKit.MUTED)
-
-	# 단계 칸. 산 만큼 채워진다 - 숫자보다 눈에 빨리 들어온다.
-	for i in Command.MAX_LEVEL:
-		var pip := ColorRect.new()
-		pip.color = Color(0.45, 0.85, 1.0) if i < lv else Color(0.14, 0.18, 0.24)
-		pip.position = Vector2(452 + i * 16, 12)
-		pip.size = Vector2(11, 9)
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		panel.add_child(pip)
-
-	# 지금 값이 얼마인지. 0단계면 안 적는다 - 아직 아무것도 아니기 때문이다.
-	if lv > 0:
-		UiKit.label(panel, Vector2(508, 8), Vector2(80, 16),
-			"+%d" % Command.amount(id, lv), 12, UiKit.GOOD)
-
-	var txt := UiText.t("cmd.maxed_short", "최대") if price < 0 \
-		else UiText.t("cmd.buy", "강화  -%d") % price
-	var btn := UiKit.button(panel, Vector2(578, 2), Vector2(110, 27), txt, 12)
-	btn.disabled = price < 0 or run.budget < price
-	btn.pressed.connect(func():
-		var err := run.command_buy(id)
-		lbl_note.text = err
-		refresh()
-	)
+func _on_buy(id: String) -> void:
+	lbl_note.text = run.command_buy(id)
+	refresh()
 
 
 ## ── 실험용 장치 ──────────────────────────────────────────────────────────
@@ -137,49 +123,57 @@ func _row(id: String, at: Vector2) -> void:
 ##
 ## 축을 넘어가면 안 된다. 표적을 위치로 바꿀 수 있으면 축의 의미가 사라진다.
 ## 축 안에서만 도니까 "표적 교리를 다듬는다" 가 된다.
-func _swap_section(at: Vector2) -> void:
-	UiKit.label(root, Vector2(at.x, at.y), Vector2(400, 20),
-		UiText.t("cmd.swap_head", "실험용 장치"), 13, Color(0.55, 0.88, 1.0))
-	UiKit.label(root, Vector2(at.x, at.y + 22), Vector2(700, 18),
-		UiText.t("cmd.swap_sub", "보유 모듈 하나를 같은 축의 다른 모듈로 바꿉니다. 축은 넘어가지 않습니다."),
-		10, UiKit.MUTED)
+func _swap_section(at: Vector2, w: float) -> void:
+	var head := _Pillar.new()
+	head.position = at
+	head.size = Vector2(w, 26)
+	head.title = UiText.t("cmd.swap_head", "실험용 장치")
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(head)
+
+	# 값을 머리글 옆에 박아 둔다. 누르기 전에 얼마가 드는지 모르면 그건
+	# 선택이 아니라 도박이다.
+	UiKit.label(root, Vector2(at.x + 4, at.y + 32), Vector2(w - 8, 30),
+		UiText.t("cmd.swap_cost", "한 번 바꿀 때마다 예산 %d.  같은 축 안에서만 바뀝니다.")
+			% Command.SWAP_COST, 10, UiKit.MUTED, true)
 
 	if run.hand.is_empty():
-		UiKit.label(root, Vector2(at.x, at.y + 44), Vector2(500, 18),
+		UiKit.label(root, Vector2(at.x + 4, at.y + 64), Vector2(w - 8, 18),
 			UiText.t("cmd.swap_none", "보유 모듈이 없습니다."), 11, UiKit.FAINT)
 		return
 
-	# 한 줄만 놓는다. 두 줄이 되면 [상점으로] 를 밀어내고 화면 밖으로 나간다.
-	# 대신 넘기는 버튼을 붙인다 - 4장만 보이고 나머지는 없는 셈 치면 안 된다.
 	var owned: Array[String] = []
 	for cid in run.hand:
 		if Cards.TABLE.has(cid):
 			owned.append(cid)
-	var pages := int(ceil(owned.size() / 4.0))
+	var per := 4
+	var pages := int(ceil(owned.size() / float(per)))
 	swap_page = 0 if pages == 0 else posmod(swap_page, pages)
+
+	var y := at.y + 66.0
+	for cid in owned.slice(swap_page * per, swap_page * per + per):
+		var c: Dictionary = Cards.TABLE[cid]
+		var b := _Swap.new()
+		b.position = Vector2(at.x, y)
+		b.size = Vector2(w, 30)
+		b.label = String(c["name"])
+		b.tint = Axes.color(String(c.get("axis", "")))
+		b.enabled = run.budget >= Command.SWAP_COST
+		b.pressed_id.connect(func(id: String):
+			lbl_note.text = run.command_swap(id)
+			refresh()
+		)
+		b.id = cid
+		root.add_child(b)
+		y += 34.0
+
 	if pages > 1:
-		var nx := UiKit.button(root, Vector2(at.x + 4 * 152, at.y + 44),
-			Vector2(86, 28), UiText.t("cmd.swap_more", "다음 %d/%d") % [
-				swap_page + 1, pages], 11)
+		var nx := UiKit.button(root, Vector2(at.x, y + 4), Vector2(w, 26),
+			UiText.t("cmd.swap_more", "다음 %d/%d") % [swap_page + 1, pages], 11)
 		nx.pressed.connect(func():
 			swap_page += 1
 			refresh()
 		)
-
-	var i := 0
-	for cid in owned.slice(swap_page * 4, swap_page * 4 + 4):
-		var c: Dictionary = Cards.TABLE[cid]
-		var ax := String(c.get("axis", ""))
-		var btn := UiKit.button(root,
-			Vector2(at.x + i * 152, at.y + 44),
-			Vector2(146, 28), "%s  -%d" % [c["name"], Command.SWAP_COST], 11)
-		btn.add_theme_color_override("font_color", Axes.color(ax))
-		btn.disabled = run.budget < Command.SWAP_COST
-		btn.pressed.connect(func():
-			lbl_note.text = run.command_swap(cid)
-			refresh()
-		)
-		i += 1
 
 
 # ── 조각 ─────────────────────────────────────────────────────────────────
@@ -248,3 +242,203 @@ class _Holo extends Control:
 		while y < s.y:
 			draw_line(Vector2(0, y), Vector2(s.x, y), Color(0, 0, 0, 0.18), 1.0)
 			y += 3.0
+
+
+## ── 분류 머리 ────────────────────────────────────────────────────────────
+## 사선으로 자른 띠. 전투 화면 호버 판과 같은 어법이라 새로 배울 게 없다.
+class _Pillar extends Control:
+	var title: String = ""
+
+	func _draw() -> void:
+		var s := size
+		var cut := 10.0
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		])
+		draw_colored_polygon(shape, Color(0.07, 0.16, 0.24, 0.95))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(0.35, 0.75, 1.0, 0.6), 1.5, true)
+		draw_rect(Rect2(0, cut, 3, s.y - cut), Color(0.45, 0.85, 1.0, 0.9))
+		draw_string(UiKit.font(13), Vector2(12, 18), title,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.62, 0.90, 1.0))
+
+
+## ── 강화 한 칸 ───────────────────────────────────────────────────────────
+##
+##   화력 증폭
+##   □ □ □          [업그레이드 -4]
+##
+## 손을 올리면 칸이 조금 자라면서 아래에 설명이 펼쳐진다. 설명을 늘 띄워
+## 두면 열한 칸이 전부 글자 벽이 되고, 아예 없애면 무엇을 사는지 모른다.
+## 필요할 때만 나오는 것이 정답이다.
+class _Cell extends Control:
+	signal bought(id: String)
+
+	const BASE_H: float = 76.0
+	const OPEN_H: float = 110.0
+	const CUT: float = 12.0
+
+	var id: String = ""
+	var level: int = 0
+	var price: int = -1
+	var affordable: bool = false
+	var now: int = 0
+
+	var _t: float = 0.0
+	var _btn: Rect2 = Rect2()
+	## 스크린샷 검증용. 마우스 없이 펼친 모습을 찍으려면 이 문이 필요하다.
+	var forced: bool = false
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _process(delta: float) -> void:
+		var want: float = 1.0 if (forced or _inside()) else 0.0
+		var k := clampf(delta * 12.0, 0.0, 1.0)
+		var prev := _t
+		_t = lerpf(_t, want, k)
+		if absf(_t - prev) > 0.001:
+			queue_redraw()
+
+	func _inside() -> bool:
+		return Rect2(Vector2.ZERO, Vector2(size.x, drawn_h())).has_point(
+			get_local_mouse_position())
+
+	func drawn_h() -> float:
+		return lerpf(BASE_H, OPEN_H, _t)
+
+	## 자란 부분까지 입력을 받아야 설명 위에서 손이 떨어지지 않는다.
+	func _has_point(point: Vector2) -> bool:
+		return Rect2(Vector2.ZERO, Vector2(size.x, drawn_h())).has_point(point)
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
+				and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			if affordable and _btn.has_point((e as InputEventMouseButton).position):
+				bought.emit(id)
+				accept_event()
+
+	func _draw() -> void:
+		var d: Dictionary = Command.TABLE.get(id, {})
+		var h := drawn_h()
+		var s := Vector2(size.x, h)
+		var on := _t > 0.02
+		z_index = 4 if on else 0
+		var shape := PackedVector2Array([
+			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
+			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
+		])
+		draw_colored_polygon(shape, Color(0.05, 0.12, 0.19,
+			lerpf(0.85, 0.98, _t)))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(0.35, 0.75, 1.0, lerpf(0.30, 0.85, _t)), 1.6, true)
+		# 홀로그램 주사선. 이 화면의 파란 톤을 유지한다.
+		var sy := 0.0
+		while sy < s.y:
+			draw_line(Vector2(1, sy), Vector2(s.x - 1, sy), Color(0, 0, 0, 0.16), 1.0)
+			sy += 3.0
+
+		var fs := UiKit.font(12)
+		draw_string(UiKit.font(13), Vector2(12, 20), String(d.get("name", id)),
+			HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 60), 13, UiKit.TEXT)
+		if level > 0:
+			draw_string(fs, Vector2(s.x - 56, 20), "+%d" % now,
+				HORIZONTAL_ALIGNMENT_RIGHT, 46, 12, UiKit.GOOD)
+
+		# 단계 칸. 산 만큼 채워진다 - 숫자보다 눈에 빨리 들어온다.
+		for i in Command.MAX_LEVEL:
+			var r := Rect2(12 + float(i) * 18.0, 32, 13, 11)
+			draw_rect(r, Color(0.45, 0.85, 1.0) if i < level \
+				else Color(0.11, 0.16, 0.22))
+			draw_rect(r, Color(0.35, 0.75, 1.0, 0.45), false, 1.0)
+
+		# 업그레이드 버튼. 칸 안에서 직접 그린다 - Button 을 얹으면 제 글자를
+		# 먼저 그리고 그 위에 이 판이 덮인다(상점 슬래브에서 겪은 그것).
+		var bw: float = minf(120.0, s.x - 86.0)
+		_btn = Rect2(s.x - bw - 10.0, 28, bw, 20)
+		var maxed := price < 0
+		var bc: Color = Color(0.28, 0.34, 0.40)
+		if not maxed:
+			bc = Color(0.30, 0.70, 0.95) if affordable else Color(0.34, 0.30, 0.34)
+		draw_rect(_btn, Color(bc.r, bc.g, bc.b, 0.22))
+		draw_rect(_btn, Color(bc.r, bc.g, bc.b, 0.85), false, 1.0)
+		var btxt := UiText.t("cmd.maxed_short", "최대") if maxed \
+			else UiText.t("cmd.buy", "강화  -%d") % price
+		draw_string(fs, Vector2(_btn.position.x, _btn.position.y + 14), btxt,
+			HORIZONTAL_ALIGNMENT_CENTER, int(bw), 11,
+			Color(0.75, 0.92, 1.0) if (affordable and not maxed) else UiKit.FAINT)
+
+		# 펼쳐진 부분에만 설명을 적는다.
+		if _t > 0.25:
+			var a := clampf((_t - 0.25) / 0.5, 0.0, 1.0)
+			var ty := 74.0
+			for ln in _wrap(fs, String(d.get("text", "")), s.x - 24.0):
+				if ty > s.y - 4.0:
+					break
+				draw_string(fs, Vector2(12, ty), ln,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.72, 0.86, 0.96, a))
+				ty += 15.0
+
+	func _wrap(f: Font, text: String, max_w: float) -> Array:
+		var out: Array = []
+		var cur := ""
+		for word in text.split(" "):
+			var probe: String = word if cur == "" else cur + " " + word
+			if f.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x > max_w \
+					and cur != "":
+				out.append(cur)
+				cur = word
+			else:
+				cur = probe
+		if cur != "":
+			out.append(cur)
+		return out
+
+
+## 실험용 장치의 모듈 한 줄. 축 색으로 왼쪽 막대를 세운다.
+class _Swap extends Control:
+	signal pressed_id(id: String)
+
+	var id: String = ""
+	var label: String = ""
+	var tint: Color = Color(0.7, 0.7, 0.7)
+	var enabled: bool = true
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _gui_input(e: InputEvent) -> void:
+		if enabled and e is InputEventMouseButton \
+				and (e as InputEventMouseButton).pressed \
+				and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			pressed_id.emit(id)
+			accept_event()
+
+	func _draw() -> void:
+		var s := size
+		var cut := 9.0
+		var hot: bool = enabled and Rect2(Vector2.ZERO, s).has_point(
+			get_local_mouse_position())
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		])
+		draw_colored_polygon(shape, Color(0.06, 0.13, 0.20, 0.95 if hot else 0.8))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(tint.r, tint.g, tint.b,
+			(0.95 if hot else 0.45) if enabled else 0.2), 1.4, true)
+		draw_rect(Rect2(0, cut, 3, s.y - cut),
+			Color(tint.r, tint.g, tint.b, 0.9 if enabled else 0.25))
+		draw_string(UiKit.font(12), Vector2(12, 20), label,
+			HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 50), 12,
+			UiKit.TEXT if enabled else UiKit.FAINT)
+		draw_string(UiKit.font(11), Vector2(s.x - 44, 20),
+			"-%d" % Command.SWAP_COST, HORIZONTAL_ALIGNMENT_RIGHT, 36, 11,
+			UiKit.ACCENT if enabled else UiKit.FAINT)

@@ -623,7 +623,7 @@ func _draw_hover(c: CanvasItem) -> void:
 	rows.append([UiText.t("hover.role", "역할"), String(d.get("role", "-")), UiKit.MUTED])
 	rows.append([UiText.t("hover.hp", "HP"), "%d / %d" % [maxi(0, u.hp), u.max_hp],
 		UiKit.TEXT])
-	rows.append([UiText.t("hover.stat", "공격 · 사거리 · 이동"),
+	rows.append([UiText.t("hover.stat", "ATK · RNG · MOV"),
 		"%d · %d · %d" % [u.atk, u.atk_range, u.move_range], UiKit.TEXT])
 	for t in u.traits:
 		rows.append([UiText.t("hover.trait", "특성"), Traits.describe(String(t)),
@@ -2612,8 +2612,10 @@ class _SquadCard extends Control:
 		var stat := UiText.t("battle.squad_stat", "ATK %d · DEF %d · RNG %d · MOV %d") % [
 			unit.atk, 2 + unit.passive_def + unit.command_def,
 			unit.atk_range, unit.move_range]
-		draw_string(fs, Vector2(106, 72), stat,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UiKit.FAINT)
+		# 네 값이 한 줄에 다 들어가야 한다. 10pt 로는 "MOV" 에서 잘렸고,
+		# 잘린 수치는 없는 것만 못하다.
+		draw_string(fs, Vector2(96, 72), stat,
+			HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 104), 9, UiKit.FAINT)
 
 		if dead:
 			draw_rect(Rect2(0, 0, s.x, s.y), Color(0, 0, 0, 0.55))
