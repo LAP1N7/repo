@@ -30,6 +30,7 @@ func _init() -> void:
 	test_music_files()
 	await test_unit_scale()
 	await test_opening_video()
+	await test_typewriter()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [pass_n + fail_n, fail_n])
 	quit(1 if fail_n > 0 else 0)
 
@@ -479,3 +480,32 @@ func test_opening_video() -> void:
 			"글 기둥이 인물에서 떨어져 있다",
 			"글 끝 %d / 인물 %d" % [int(t.TEXT_X + 300.0), int(face_x)])
 	t.queue_free()
+
+
+## ── 타자기 ───────────────────────────────────────────────────────────────
+## 대사가 한 글자씩 찍히고, 소리가 같이 나고, 한 번 누르면 다 찍히고 두 번째에
+## 넘어간다. 셋 중 하나만 어긋나도 "누르면 대사가 통째로 날아가는" 화면이 된다.
+func test_typewriter() -> void:
+	print("\n[11] 대사 타자기")
+	ok(ResourceLoader.exists("res://assets/sfx/typing.wav"), "타이핑 소리가 있다")
+
+	var s = load("res://scenes/story_screen.tscn").instantiate()
+	get_root().add_child(s)
+	s.setup([
+		{ "speaker": "MIRA", "text": "0123456789012345678901234567890123456789" },
+		{ "speaker": "대원 A", "text": "다음" },
+	])
+	await process_frame
+	ok(s._lbl_text.text.length() < 40, "처음에는 다 안 나와 있다",
+		str(s._lbl_text.text.length()))
+
+	# 한 번 누르면 나머지가 다 찍힌다.
+	s._advance()
+	ok(s._lbl_text.text.length() == 40, "한 번 누르면 다 찍힌다",
+		str(s._lbl_text.text.length()))
+	ok(s.index == 0, "아직 안 넘어간다", str(s.index))
+
+	# 두 번째에 넘어간다.
+	s._advance()
+	ok(s.index == 1, "두 번 누르면 넘어간다", str(s.index))
+	s.queue_free()

@@ -59,6 +59,54 @@ func _make_video() -> VideoStreamPlayer:
 	return v
 
 
+## ── 메뉴는 판이 아니라 글자다 ────────────────────────────────────────────
+## 회색 상자 세 개가 세로로 쌓여 있으면 그건 메뉴가 아니라 양식 입력란이다.
+## HADES·명일방주 계열의 시작 화면은 버튼을 그리지 않는다 - 글자만 놓고,
+## 지금 가리키는 것에만 표시를 준다.
+##
+## 배경에 인물이 있는 화면이라 더 그렇다. 판을 깔면 그만큼 그림을 가린다.
+func _menu(at: Vector2, text: String, h: float) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.position = at
+	b.size = Vector2(360, h)
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var blank := StyleBoxEmpty.new()
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, blank)
+	b.add_theme_font_override("font", UiKit.title_font())
+	b.add_theme_font_size_override("font_size", 26)
+	b.add_theme_color_override("font_color", Color(0.86, 0.88, 0.94))
+	b.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	b.add_theme_color_override("font_pressed_color", UiKit.ACCENT)
+	add_child(b)
+
+	# 가리키는 줄에만 왼쪽에 짧은 막대가 선다. 글자만으로는 "지금 이것"
+	# 이라는 것이 안 보인다.
+	var mark := _MenuMark.new()
+	mark.host = b
+	mark.position = at + Vector2(-16, 0)
+	mark.size = Vector2(10, h)
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(mark)
+	return b
+
+
+## 메뉴 항목 왼쪽의 표시. 가리키고 있을 때만 보인다.
+class _MenuMark extends Control:
+	var host: Button
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if host == null or not host.is_hovered():
+			return
+		draw_rect(Rect2(2, size.y * 0.18, 3, size.y * 0.64), UiKit.ACCENT)
+
+
 func setup() -> void:
 	sfx = Sfx.new()
 	add_child(sfx)
@@ -123,21 +171,20 @@ func setup() -> void:
 		15, UiKit.ACCENT, true)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
-	var b1 := UiKit.button(self, Vector2(TEXT_X, 372), Vector2(300, 56), UiText.t("title.start", "런 시작"), 22)
+	var b1 := _menu(Vector2(TEXT_X, 386), UiText.t("title.start", "작전 개시"), 30)
 	b1.pressed.connect(func():
 		sfx.play("click")
 		start_run.emit()
 	)
 
-	var b2 := UiKit.button(self, Vector2(TEXT_X, 442), Vector2(300, 46), UiText.t("title.tutorial", "튜토리얼"), 17)
+	var b2 := _menu(Vector2(TEXT_X, 442), UiText.t("title.tutorial", "훈련 과정"), 30)
 	b2.pressed.connect(func(): start_tutorial.emit())
 
 	# ── 왜 규칙 요약 대신 스토리인가 ────────────────────────────────────
 	# 규칙 요약은 상점 화면에도 [게임 방법] 으로 있다. 같은 것을 두 군데 둘
 	# 이유가 없고, 지금 더 급한 건 대본을 고칠 때마다 다섯 판을 다시 이기지
 	# 않고 이야기만 확인하는 길이다.
-	var b3 := UiKit.button(self, Vector2(TEXT_X, 500), Vector2(300, 36),
-		UiText.t("title.story", "스토리 몰아보기"), 14)
+	var b3 := _menu(Vector2(TEXT_X, 498), UiText.t("title.story", "기록 열람"), 30)
 	b3.pressed.connect(func(): show_help.emit())
 
 	# 콘텐츠 개수(스테이지 5개 · 카드 18종 …)는 뺐다.

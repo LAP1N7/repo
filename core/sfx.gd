@@ -343,10 +343,14 @@ func stop_music() -> void:
 
 ## 이름 하나로 낸다. 없는 이름이면 조용히 무시한다 -
 ## 소리 때문에 게임이 멈추는 일은 없어야 한다.
-func play(name: String, pitch: float = 1.0) -> void:
+## dedupe 를 따로 받는다. 기본값(0.045초)은 "같은 소리가 한 틱에 여섯 번
+## 겹치는 것" 을 막으려는 값인데, 타자기 소리처럼 **원래 촘촘하게 이어져야
+## 하는** 소리에는 그 방어가 오히려 소리를 지운다.
+func play(name: String, pitch: float = 1.0, dedupe: float = -1.0) -> void:
 	if not enabled or _players.is_empty():
 		return
-	if _clock - float(_last_at.get(name, -99.0)) < DEDUPE:
+	var gap: float = DEDUPE if dedupe < 0.0 else dedupe
+	if _clock - float(_last_at.get(name, -99.0)) < gap:
 		return
 	var stream := _stream_for(name)
 	if stream == null:

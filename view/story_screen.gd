@@ -133,9 +133,25 @@ var _portrait: Control
 ## MIRA 는 시설의 AI 다. 이름을 한 곳에만 적어 둔다.
 const MIRA_NAME := "MIRA"
 const COL_MIRA := Color(0.96, 0.97, 1.0)
+## 대사판 테두리에 쓰는 MIRA 색. 이름은 흰색이지만 판은 하늘색이다 -
+## 흰 테두리는 그냥 밝은 선으로 보여서 "누구" 를 말하지 못한다.
+const COL_MIRA_EDGE := Color(0.45, 0.80, 1.0)
 const COL_HUMAN := Color(1.0, 0.78, 0.35)
+const COL_NARRATION := Color(0.58, 0.62, 0.70)
 
 ## 지금 깔려 있는 배경. 대사가 배경을 안 적으면 이 값이 이어진다.
+## 지금 대사의 전체 글월과, 어디까지 찍었는지.
+##
+## 글자 수를 실수로 들고 있는 이유는 속도를 초당 글자 수로 주기 때문이다.
+## 정수로 세면 프레임률에 따라 박자가 흔들린다.
+var _full: String = ""
+var _typed: float = 0.0
+
+## 초당 몇 글자. 소리와 같이 나므로 너무 빠르면 잡음이 된다.
+const TYPE_CPS: float = 34.0
+## 몇 글자마다 소리를 낼지. 매 글자면 소리가 뭉개진다.
+const TYPE_SFX_EVERY: int = 2
+
 var _bg_id: String = ""
 var _sfx: Sfx
 
@@ -176,6 +192,12 @@ func _advance() -> void:
 		_log.text = "
 ".join(Story.LOG_LINES)
 		return
+	# 찍히는 중이면 먼저 다 찍는다. 같은 규칙이다 - 건너뛸 수는 있되 모르고
+	# 지나칠 수는 없게 한다.
+	if _typed < float(_full.length()):
+		_typed = float(_full.length())
+		_lbl_text.text = _full
+		return
 	index += 1
 	if index >= beats.size():
 		done.emit()
@@ -186,15 +208,34 @@ func _advance() -> void:
 func _show(i: int) -> void:
 	var b: Dictionary = beats[i]
 	_lbl_name.text = String(b.get("speaker", ""))
-	_lbl_text.text = String(b.get("text", ""))
+	# ── 한 글자씩 찍는다 ─────────────────────────────────────────────────
+	# 대사가 통째로 튀어나오면 읽는 속도를 화면이 정해 주지 않는다. 한 글자씩
+	# 찍히면 눈이 글을 따라가고, 그 사이에 소리가 붙으면 "누가 지금 말하고
+	# 있다" 가 된다. 시설 AI 가 화자인 이야기에 특히 맞는 어법이다.
+	_full = String(b.get("text", ""))
+	_typed = 0.0
+	_lbl_text.text = ""
 
 	# ── 화자에 따라 이름 색을 가른다 ─────────────────────────────────────
 	# MIRA 는 시설의 목소리다. 사람이 아니므로 감정 색을 주지 않는다 - 흰색.
 	# 대원과 그 밖의 사람은 호박색. 색 하나로 "지금 기계가 말하나 사람이
 	# 말하나" 가 읽히면, 이야기가 뒤집히는 대목에서 그 차이가 무기가 된다.
+	# ── 누가 말하는지를 테두리로도 말한다 ────────────────────────────────
+	# 이름 색만으로는 대사판을 볼 때 시선이 이름줄에 한 번 갔다 와야 한다.
+	# 판 자체가 색을 띠면 글을 읽기 전에 화자를 안다.
+	#
+	#   MIRA      하늘색 - 기계의 목소리
+	#   대원       호박색 - 사람
+	#   나레이션   회색   - 아무도 말하지 않는다
 	var speaker := String(b.get("speaker", ""))
-	_lbl_name.add_theme_color_override("font_color",
-		COL_MIRA if speaker == MIRA_NAME else COL_HUMAN)
+	var voice: Color = COL_NARRATION
+	if speaker == MIRA_NAME:
+		voice = COL_MIRA_EDGE
+	elif speaker != "":
+		voice = COL_HUMAN
+	_lbl_name.add_theme_color_override("font_color", voice)
+	(_bubble as _Panel).tint = voice
+	_bubble.queue_redraw()
 
 	# 화자 초상. 대본이 "portrait" 를 적은 대사에서만 뜬다.
 	var portrait := String(b.get("portrait", ""))
@@ -253,6 +294,7 @@ func _show(i: int) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_tick_type(delta)
 
 	if _log_box != null and _log_box.visible:
 		_tick_log(delta)
@@ -301,6 +343,8 @@ class _ArtSlot extends Control:
 
 ## 대사판. 카드·튜토리얼과 같은 사선 어법.
 class _Panel extends Control:
+	var tint: Color = UiKit.ACCENT
+
 	func _draw() -> void:
 		var s := size
 		var cut := 20.0
@@ -311,7 +355,7 @@ class _Panel extends Control:
 		draw_colored_polygon(shape, Color(0.06, 0.07, 0.10, 0.95))
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
-		draw_polyline(line, UiKit.ACCENT, 1.8, true)
+		draw_polyline(line, tint, 1.8, true)
 
 
 ## 화면 깨짐·동기화 표시.
@@ -387,6 +431,23 @@ class _Glitch extends Control:
 ## 고정하고, 종이가 밀려 올라가듯 화면도 그만큼씩만 흐르게 한다.
 const LOG_LINE_SEC: float = 0.34
 const LOG_LINE_H: float = 17.0
+
+## 대사를 한 글자씩 찍는다. 다 찍으면 아무것도 안 한다.
+func _tick_type(delta: float) -> void:
+	if _lbl_text == null or _typed >= float(_full.length()):
+		return
+	var before := int(_typed)
+	_typed = minf(_typed + delta * TYPE_CPS, float(_full.length()))
+	var now := int(_typed)
+	if now == before:
+		return
+	_lbl_text.text = _full.substr(0, now)
+	# 공백에서는 소리를 내지 않는다. 띄어쓰기마다 딸깍하면 말이 아니라
+	# 기계 소음으로 들린다.
+	if now % TYPE_SFX_EVERY == 0 and _full[now - 1].strip_edges() != "":
+		# dedupe 를 꺼야 한다. 기본 0.045초는 초당 34글자를 통째로 지운다.
+		_sfx.play("typing", 0.94 + float(now % 5) * 0.03, 0.0)
+
 
 func _tick_log(delta: float) -> void:
 	if _log_n < Story.LOG_LINES.size():

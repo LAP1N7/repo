@@ -11,7 +11,7 @@
     "",
     "  portrait  화면에 세울 화자 그림. assets/art/standing 의 파일 이름.",
     "            MIRA 는 ai(가만히) · ai_talk(말하는 중) · ai_smile(웃음) 셋.",
-    "            대원은 지금 warrior · archer 스탠딩을 빌려 쓴다.",
+    "            대원은 지금 archer · bard 스탠딩을 빌려 쓴다.",
     "            안 적으면 그 대사에서는 아무도 안 선다.",
     "",
     "  art       배경 그림. assets/art/story 의 파일 이름.",
@@ -31,17 +31,17 @@
     {
       "speaker": "대원 A",
       "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!",
-      "portrait": "warrior"
+      "portrait": "archer"
     },
     {
       "speaker": "대원 B",
       "text": "이번 목표는 북부 장벽 수복입니다!\n어서 전술 맵을 열고 명령을 내려주세요.",
-      "portrait": "archer"
+      "portrait": "bard"
     },
     {
       "speaker": "대원 B",
       "text": "저와 대원들은 지휘관님의 손가락 끝만 믿고 있다고요!",
-      "portrait": "archer"
+      "portrait": "bard"
     },
     {
       "speaker": "MIRA",
@@ -99,12 +99,12 @@
     {
       "speaker": "대원 B",
       "text": "히히, 봤지? 이기기만 하면 만사 OK 라니까!",
-      "portrait": "archer"
+      "portrait": "bard"
     },
     {
       "speaker": "대원 B",
       "text": "지휘관님, 다음 승리 기념으로 나한테 선물 주기로 한 거 잊지 마!\n호감도 아이템으로 '딸기 케이크' 주면—",
-      "portrait": "archer"
+      "portrait": "bard"
     },
     {
       "text": "아까부터 배경 그래픽이 이상하다.\n내 반응이 늦다는 걸 눈치챈 듯 MIRA 가 이쪽을 본다."
@@ -142,7 +142,7 @@
     {
       "speaker": "대원 B",
       "text": "아, 아하하! 렌더링 서버 과열입니다!\n픽셀 오류예요! 신경 쓰지 마시고 다음 단계를—",
-      "portrait": "archer"
+      "portrait": "bard"
     },
     {
       "text": "MIRA 가 손을 뻗자 대원 B 의 당황한 듯한 움직임이 멎는다.",
@@ -151,7 +151,7 @@
     {
       "speaker": "대원 B",
       "text": "다음 단계는 ---에요!\nㅇㅇ한 전술을 사용하면 좋을 것 같아요.",
-      "portrait": "archer"
+      "portrait": "bard"
     },
     {
       "speaker": "MIRA",
@@ -287,7 +287,7 @@
     {
       "speaker": "대원 A",
       "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!\n어서 명령을 내려주세요!",
-      "portrait": "warrior"
+      "portrait": "archer"
     }
   ]
 }
