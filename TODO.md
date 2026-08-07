@@ -14,9 +14,11 @@
 | 웹 셸 로딩 화면 (PROJECT RECLAIM + TIP) | **완료** | `build_web.ps1` 로 빌드 |
 | GitHub 원격 저장소 + push | **완료** | `github.com/LAP1N7/repo` (master) |
 | GitHub Pages 켜기 | **완료** | https://lap1n7.github.io/repo/ · master / docs |
+| 웹 빌드 자동 배포 (Actions) | **완료** | push 하면 빌드 → Pages 배포 |
 | 플레이 영상 30~60초 | 미착수 | 구성안은 `SUBMISSION.md` §2 |
-| 게임 소개 PDF | 초안 완료 | `SUBMISSION.md` §3 → 링크 채우고 변환 |
-| AI 활용 기술 PDF | 초안 완료 | `SUBMISSION.md` §4 → **프롬프트 내역 보강 필요** |
+| 게임 소개 PDF | **원고 완료** | `GAME_OVERVIEW.md` → 영상 링크만 채우고 변환 |
+| AI 활용 기술 PDF | **원고 완료** | `AI_USAGE.md` → 부록 A~E 에 대표 프롬프트 포함 |
+| 외부 에셋 출처 5줄 | 미착수 | `CREDITS.md` 의 **(출처 확인 필요)** — 제출 전 필수 |
 
 `.gitignore` 에서 `*.import` 를 빼야 한다. Godot 4 의 `.import` 는 리소스 UID 를
 들고 있어서 빠지면 클론했을 때 씬 참조가 어긋날 수 있다.
