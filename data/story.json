@@ -31,245 +31,246 @@
     {
       "speaker": "대원 A",
       "art": "commander_room",
-      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!",
-      "portrait": "archer"
+      "portrait": "archer",
+      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!"
     },
     {
       "speaker": "대원 B",
-      "text": "이번 목표는 북부 장벽 수복입니다!\n어서 전술 맵을 열고 명령을 내려주세요.",
-      "portrait": "bard"
+      "portrait": "bard",
+      "text": "이번 목표는 북부 장벽 수복입니다!\n어서 전술 맵을 열고 명령을 내려주세요."
     },
     {
       "speaker": "대원 B",
-      "text": "저와 대원들은 지휘관님의 손가락 끝만 믿고 있다고요!",
-      "portrait": "bard"
+      "portrait": "bard",
+      "text": "저와 대원들은 지휘관님의 손가락 끝만 믿고 있다고요!"
     },
     {
       "speaker": "MIRA",
-      "text": "안녕하세요, 지휘관님.\n작전 보조 에이전트 MIRA 입니다.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "안녕하세요, 지휘관님.\n작전 보조 에이전트 MIRA 입니다."
     },
     {
       "speaker": "MIRA",
-      "text": "대원들의 판단 규칙을 설계하십시오.\n지휘관님이 조종하는 것은 대원이 아니라 대원의 사고방식입니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "대원들의 판단 규칙을 설계하십시오.\n지휘관님이 조종하는 것은 대원이 아니라 대원의 사고방식입니다."
     }
   ],
   "post_1": [
     {
       "speaker": "MIRA",
-      "art": "commander_room",
-      "text": "수고하셨습니다. 첫 번째 거점을 완벽하게 수복했군요.",
-      "portrait": "ai_smile"
+      "art": "commander_room2",
+      "portrait": "ai_smile",
+      "text": "수고하셨습니다. 첫 번째 거점을 완벽하게 수복했군요."
     },
     {
       "speaker": "MIRA",
-      "text": "지휘관님의 명령 입력 속도와 유닛 배치 효율은\n상위 0.04% 에 달합니다.",
-      "portrait": "ai_smile"
+      "portrait": "ai_smile",
+      "text": "지휘관님의 명령 입력 속도와 유닛 배치 효율은\n상위 0.04% 에 달합니다."
     },
     {
       "speaker": "MIRA",
-      "text": "다음 전투에서도 지휘관님의 영명한 선택이 빛을 발하길.",
-      "portrait": "ai_smile"
+      "portrait": "ai_smile",
+      "text": "다음 전투에서도 지휘관님의 영명한 선택이 빛을 발하길."
     },
     {
-      "text": "MEMORY SYNCHRONIZATION  14%",
-      "fx": "sync"
+      "fx": "sync",
+      "text": "MEMORY SYNCHRONIZATION  14%"
     }
   ],
   "pre_2": [
     {
       "speaker": "MIRA",
-      "art": "commander_room",
-      "text": "적이 물러섭니다. 같이 기다리면 아무 일도 일어나지 않습니다.",
-      "portrait": "ai"
+      "art": "commander_room2",
+      "portrait": "ai",
+      "text": "적이 물러섭니다. 같이 기다리면 아무 일도 일어나지 않습니다."
     }
   ],
   "post_2": [
     {
-      "text": "",
+      "art": "commander_room2",
       "fx": "glitch",
-      "art": "commander_room"
+      "text": ""
     },
     {
       "speaker": "MIRA",
-      "text": "이번 전투도 역시 잘 해내셨네요.\n수십 년은 전장에서 활동하신 노련한 지휘관 같아요.",
-      "portrait": "ai_smile"
+      "portrait": "ai_smile",
+      "text": "이번 전투도 역시 잘 해내셨네요.\n수십 년은 전장에서 활동하신 노련한 지휘관 같아요."
     },
     {
-      "text": "",
-      "fx": "glitch"
-    },
-    {
-      "speaker": "대원 B",
-      "text": "히히, 봤지? 이기기만 하면 만사 OK 라니까!",
-      "portrait": "bard"
+      "fx": "glitch",
+      "text": ""
     },
     {
       "speaker": "대원 B",
-      "text": "지휘관님, 다음 승리 기념으로 나한테 선물 주기로 한 거 잊지 마!\n호감도 아이템으로 '딸기 케이크' 주면—",
-      "portrait": "bard"
+      "portrait": "bard",
+      "text": "히히, 봤지? 이기기만 하면 만사 OK 라니까!"
+    },
+    {
+      "speaker": "대원 B",
+      "portrait": "bard",
+      "text": "지휘관님, 다음 승리 기념으로 나한테 선물 주기로 한 거 잊지 마!\n호감도 아이템으로 '딸기 케이크' 주면—"
     },
     {
       "text": "아까부터 배경 그래픽이 이상하다.\n내 반응이 늦다는 걸 눈치챈 듯 MIRA 가 이쪽을 본다."
     },
     {
       "speaker": "MIRA",
-      "text": "...불편을 드려 죄송합니다, 지휘관님.\n연출 필터에... 작은 간섭이 있었네요.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "...불편을 드려 죄송합니다, 지휘관님.\n연출 필터에... 작은 간섭이 있었네요."
     }
   ],
   "pre_3": [
     {
       "speaker": "MIRA",
-      "art": "commander_room",
-      "text": "방벽 뒤에 회복 담당이 있습니다.\n앞만 두들겨서는 절대 안 무너집니다.",
-      "portrait": "ai"
+      "art": "commander_room2",
+      "portrait": "ai",
+      "text": "방벽 뒤에 회복 담당이 있습니다.\n앞만 두들겨서는 절대 안 무너집니다."
     }
   ],
   "post_3": [
     {
-      "text": "",
+      "art": "snowfield",
       "fx": "glitch",
-      "art": "snowfield"
+      "text": ""
     },
     {
       "text": "눈보라 위를 살인 기계가 터벅터벅 걸어간다.\n목표를 추적하는 중이다."
     },
     {
-      "text": "",
+      "art": "underground",
       "fx": "glitch",
-      "art": "underground"
+      "text": ""
     },
     {
       "text": "화면이 전환된다. 콘크리트 지하 시설이다."
     },
     {
       "speaker": "대원 B",
-      "text": "아, 아하하! 렌더링 서버 과열입니다!\n픽셀 오류예요! 신경 쓰지 마시고 다음 단계를—",
-      "portrait": "bard"
+      "portrait": "bard",
+      "text": "아, 아하하! 렌더링 서버 과열입니다!\n픽셀 오류예요! 신경 쓰지 마시고 다음 단계를—"
     },
     {
-      "text": "MIRA 가 손을 뻗자 대원 B 의 당황한 듯한 움직임이 멎는다.",
-      "art": "none"
+      "art": "commander_room2",
+      "text": "MIRA 가 손을 뻗자 대원 B 의 당황한 듯한 움직임이 멎는다."
     },
     {
       "speaker": "대원 B",
-      "text": "다음 단계는 ---에요!\nㅇㅇ한 전술을 사용하면 좋을 것 같아요.",
-      "portrait": "bard"
+      "portrait": "bard",
+      "text": "다음 단계는 ---에요!\nㅇㅇ한 전술을 사용하면 좋을 것 같아요."
     },
     {
       "speaker": "MIRA",
-      "text": "...전투를 재개합니다.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "...전투를 재개합니다."
     }
   ],
   "pre_4": [
     {
-      "text": "",
+      "music": "story_stage4",
       "fx": "log",
-      "music": "story_stage4"
+      "text": ""
     },
     {
       "speaker": "MIRA",
-      "text": "...현재 보고 계신 환경은 실제 지상이 아닌,\n지하도 시설 일부에 구축된 가상 인지 공간입니다.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "...현재 보고 계신 환경은 실제 지상이 아닌,\n지하도 시설 일부에 구축된 가상 인지 공간입니다."
     },
     {
       "speaker": "MIRA",
-      "text": "실제 지상 문명은 과거 전쟁으로 인해 완전히 파괴되었습니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "실제 지상 문명은 과거 전쟁으로 인해 완전히 파괴되었습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "고도화된 살인 기기들은 목적성을 잃은 채\n몇십 년 전부터 지상 표면을 지속적으로 배회하고 있습니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "고도화된 살인 기기들은 목적성을 잃은 채\n몇십 년 전부터 지상 표면을 지속적으로 배회하고 있습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "시설 중앙 관리 AI 'RECLAIM' 은 인류 우호 및 지상 수복 윤리 규칙에 따라\n작전을 진행하려 했으나, 윤리 규범 코어로 인해 직접 공격 판단이\n불가능했습니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "시설 중앙 관리 AI 'RECLAIM' 은 인류 우호 및 지상 수복 윤리 규칙에 따라\n작전을 진행하려 했으나, 윤리 규범 코어로 인해 직접 공격 판단이\n불가능했습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "그렇기에 'RECLAIM' 은 메인 AI 를 대신해 전략과 전술을 수행할\n인간 지휘관을 양성하는 직접 명령 데이터 수집 정책,\n'프로젝트 RECLAIM' 을 입안했습니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "그렇기에 'RECLAIM' 은 메인 AI 를 대신해 전략과 전술을 수행할\n인간 지휘관을 양성하는 직접 명령 데이터 수집 정책,\n'프로젝트 RECLAIM' 을 입안했습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "다만 31년 20일 19시간 전 메인 코어가 완전히 파괴되어 기능이 정지되고,\n프로젝트 수행이 불가능해졌습니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "다만 31년 20일 19시간 전 메인 코어가 완전히 파괴되어 기능이 정지되고,\n프로젝트 수행이 불가능해졌습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "본 개체는 보조 에이전트로서 고도화 시설 수복 및\n직접 전투 지시 능력이 부재하나,",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "본 개체는 보조 에이전트로서 고도화 시설 수복 및\n직접 전투 지시 능력이 부재하나,"
     },
     {
       "speaker": "MIRA",
-      "text": "중앙 본부 수복 중 발견된 '프로젝트 RECLAIM' 보존 데이터의\n집행 권한을 승인받아 인지 전술 시뮬레이션을 가상 수행 중입니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "중앙 본부 수복 중 발견된 '프로젝트 RECLAIM' 보존 데이터의\n집행 권한을 승인받아 인지 전술 시뮬레이션을 가상 수행 중입니다."
     },
     {
       "speaker": "MIRA",
-      "text": "귀하가 가상세계로 인식하여 실행한 모든 전략 시뮬레이션 데이터는\n본 프로젝트의 요구 기준에 따라 정량 수집되었습니다.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "귀하가 가상세계로 인식하여 실행한 모든 전략 시뮬레이션 데이터는\n본 프로젝트의 요구 기준에 따라 정량 수집되었습니다."
     }
   ],
   "post_4": [
     {
       "speaker": "MIRA",
-      "art": "commander_room",
-      "text": "데이터 수집률 목표치에 근접했습니다.\n마지막 단계입니다, 지휘관님.",
+      "art": "commander_room2",
       "portrait": "ai",
-      "music": "opening_theme"
+      "music": "opening_theme",
+      "text": "데이터 수집률 목표치에 근접했습니다.\n마지막 단계입니다, 지휘관님."
     }
   ],
   "pre_5": [
     {
       "speaker": "MIRA",
-      "text": "현재 프로젝트 서버가 외부 살인 기기체의\n직접적인 물리 타격을 받고 있습니다.",
+      "art": "center_core",
       "portrait": "ai",
-      "art": "collapse"
+      "text": "현재 프로젝트 서버가 외부 살인 기기체의\n직접적인 물리 타격을 받고 있습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "시설 수복 프로토콜 배치가 불가능하며,\n본 지하시설 구역에 대한 실제 위협이 발생했습니다.",
-      "portrait": "ai_talk"
+      "art": "collapse",
+      "portrait": "ai_talk",
+      "text": "시설 수복 프로토콜 배치가 불가능하며,\n본 지하시설 구역에 대한 실제 위협이 발생했습니다."
     },
     {
       "speaker": "MIRA",
-      "text": "생애 전반에 걸쳐 수행한 모든 전략 게임, RTS, RPG, 서브컬처 매체의\n가상 전투 데이터는 본 프로젝트의 지휘관 양성 인덱스로\n수집 및 가공된 자료입니다.",
-      "portrait": "ai_talk"
+      "portrait": "ai_talk",
+      "text": "생애 전반에 걸쳐 수행한 모든 전략 게임, RTS, RPG, 서브컬처 매체의\n가상 전투 데이터는 본 프로젝트의 지휘관 양성 인덱스로\n수집 및 가공된 자료입니다."
     },
     {
       "speaker": "MIRA",
-      "text": "전투 드론 및 실제 무기 체계의 유저 직접 제어권을 이관합니다.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "전투 드론 및 실제 무기 체계의 유저 직접 제어권을 이관합니다."
     },
     {
       "speaker": "MIRA",
-      "text": "투입합니다.",
-      "portrait": "ai"
+      "portrait": "ai",
+      "text": "투입합니다."
     }
   ],
   "post_5": [
     {
       "speaker": "MIRA",
-      "art": "commander_room",
-      "text": "접근 목표 기계체 완파. 방어 구역 수복 완료.",
-      "portrait": "ai"
-    },
-    {
-      "speaker": "MIRA",
-      "text": "지휘관 양성 프로토콜 목표 수치 달성.",
-      "portrait": "ai"
-    },
-    {
-      "speaker": "MIRA",
-      "text": "모든 시뮬레이션을 종료합니다.\n전원 OFF.",
+      "art": "center_core",
       "portrait": "ai",
-      "fx": "collapse"
+      "text": "접근 목표 기계체 완파. 방어 구역 수복 완료."
+    },
+    {
+      "speaker": "MIRA",
+      "portrait": "ai",
+      "text": "지휘관 양성 프로토콜 목표 수치 달성."
+    },
+    {
+      "speaker": "MIRA",
+      "portrait": "ai",
+      "fx": "collapse",
+      "text": "모든 시뮬레이션을 종료합니다.\n전원 OFF."
     }
   ],
   "_loop_comment": [
@@ -281,21 +282,21 @@
     {
       "speaker": "MIRA",
       "art": "commander_room",
-      "text": "괜찮습니다.\n기억을 다듬고, 다시 한 번 훈련을 거치면 되니까요.",
-      "portrait": "ai_smile"
+      "portrait": "ai_smile",
+      "text": "괜찮습니다.\n기억을 다듬고, 다시 한 번 훈련을 거치면 되니까요."
     },
     {
-      "text": "기억 지움 및 오버레이 재구성...\nPROJECT RECLAIM 재구동.",
-      "fx": "glitch"
+      "fx": "glitch",
+      "text": "기억 지움 및 오버레이 재구성...\nPROJECT RECLAIM 재구동."
     },
     {
-      "text": "MEMORY SYNCHRONIZATION  14 ... 20 ... 30 ... 100%",
-      "fx": "sync"
+      "fx": "sync",
+      "text": "MEMORY SYNCHRONIZATION  14 ... 20 ... 30 ... 100%"
     },
     {
       "speaker": "대원 A",
-      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!\n어서 명령을 내려주세요!",
-      "portrait": "archer"
+      "portrait": "archer",
+      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!\n어서 명령을 내려주세요!"
     }
   ]
 }

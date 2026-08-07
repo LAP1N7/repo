@@ -141,7 +141,8 @@ func _init() -> void:
 
 	# 스토리는 대목마다 그림이 크게 달라서 대표 셋을 찍는다.
 	for tag in [["pre", 1, "06_story_intro"], ["post", 3, "07_story_glitch"],
-			["pre", 4, "08_story_log"]]:
+			["pre", 4, "08_story_log"], ["pre", 5, "16_story_core"],
+			["post", 1, "17_story_room2"]]:
 		var beats := Story.beats(String(tag[0]), int(tag[1]))
 		if beats.is_empty():
 			continue

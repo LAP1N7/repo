@@ -176,7 +176,7 @@ const TABLE: Array[Dictionary] = [
 			# 감독기가 처음부터 서 있다. 살려 두면 암살자가 25% 세진다 -
 			# "먼저 끊어야 할 적" 이 판 위에 명시적으로 존재한다.
 			[
-				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": ["keep_range"],
+				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": [],
 				  "traits": ["overseer"] },
 				{ "type": "assassin", "pos": Vector2i(5, 1),
 				  "cards": ["backline", "forced_march", "berserk"],
@@ -189,7 +189,7 @@ const TABLE: Array[Dictionary] = [
 			# 2페이즈는 같은 문제에 신호기가 얹힌다. 감독기를 끊어야 하는데
 			# 표적 판단은 신호기로 끌린다.
 			[
-				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": ["keep_range"],
+				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": [],
 				  "traits": ["overseer"] },
 				{ "type": "assassin", "pos": Vector2i(5, 1),
 				  "cards": ["backline", "forced_march"] },
@@ -254,7 +254,7 @@ const TABLE: Array[Dictionary] = [
 				  "traits": ["immobile"] },
 				{ "type": "turret", "pos": Vector2i(6, 3), "cards": [],
 				  "traits": ["immobile"] },
-				{ "type": "overseer", "pos": Vector2i(5, 2), "cards": ["keep_range"],
+				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": [],
 				  "traits": ["overseer"] },
 				{ "type": "bomber", "pos": Vector2i(5, 1), "cards": ["forced_march"],
 				  "traits": ["volatile"] },

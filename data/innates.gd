@@ -73,8 +73,18 @@ const BASE_AI: Dictionary = {
 	"beacon":    { "act": "attack", "power": 0, "stand": "advance", "flee_within": 0 },
 	"bomber":    { "act": "attack", "power": 100, "stand": "advance", "flee_within": 0 },
 	"stalker":   { "act": "attack", "power": 100, "stand": "advance", "flee_within": 0 },
-	# 감독기는 뒤에 머문다. 붙으면 죽고, 죽으면 나머지가 약해진다.
-	"overseer":  { "act": "attack", "power": 100, "stand": "hold", "flee_within": 2 },
+	# ── 감독기는 도망가지 않는다 ────────────────────────────────────────
+	# 뒤에 서 있고, 살아 있는 동안 같은 편을 25% 세게 만든다. 그러니 "먼저
+	# 끊어야 할 적" 이고, 그걸 끊는 수단으로 [후열 침투]와 [완충 격파]를
+	# 만들어 뒀다 - 감독기는 가장 깊은 칸에 있고 최대 HP 도 가장 높다.
+	#
+	# 그런데 flee_within 2 에 [거리 유지]까지 얹혀 있었다. 다가가면 물러나고
+	# 물러날 칸은 x=7 이 비어 있으니 영영 안 잡힌다. 스테이지 4 패배의 42%가
+	# 정체였고 원인이 이것이다. **잡으라고 만든 적이 안 잡히면 그 카드들은
+	# 존재하지 않는 것과 같다.**
+	#
+	# 이제 제자리에 선다. 사거리 2 라 붙으면 맞고, 맞으면 죽는다.
+	"overseer":  { "act": "attack", "power": 100, "stand": "hold", "flee_within": 0 },
 
 	# 훈련용 표적. 아무것도 안 한다.
 	"dummy":     { "act": "attack", "power": 0, "stand": "hold", "flee_within": 0 },
