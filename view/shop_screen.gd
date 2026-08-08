@@ -144,12 +144,6 @@ func setup(p_run: RunState) -> void:
 func refresh() -> void:
 	# 가산금과 리롤값은 이번 스테이지에 산 만큼 오른다. 값이 왜 올랐는지
 	# 화면에 안 적히면 "버그인가?" 가 된다.
-	var sur := run.surcharge()
-	lbl_budget.text = UiText.t("shop.budget", "예산  %d") % run.budget
-	if sur > 0:
-		# 자리 표시 개수와 인자 개수가 반드시 같아야 한다. 하나라도 어긋나면
-		# 치환이 통째로 실패해 "%d" 가 화면에 그대로 뜬다.
-		lbl_budget.text += UiText.t("shop.budget_surcharge", "  (+%d)") % sur
 	# 제외권이 몇 장 남았는지 안내문에 적는다. 카드마다 숫자가 붙지만,
 	# 지금 몇 장인지를 한 곳에서도 말해 줘야 "쓸까 말까" 를 결정할 수 있다.
 	lbl_hint.text = UiText.t("shop.hint",

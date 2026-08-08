@@ -424,17 +424,6 @@ const TABLE: Dictionary = {
 		"stance": "defend",
 		"text": "인접한 적 2명 이상 → 받는 피해를 줄인다",
 	},
-	"berserk": {
-		"axis": "doctrine",
-		"tag": "charge",
-		"tier": 2,
-		"cost": 3,
-		"name": "광전",
-		"cond": "self_hp_below",
-		"cond_arg": 45,
-		"stance": "engage",
-		"text": "자신 HP < 45% → 물러나지 않고 위력 +30%",
-	},
 	"taunt": {
 		"axis": "doctrine",
 		"tag": "charge",
@@ -531,17 +520,6 @@ const TABLE: Dictionary = {
 		"cond_arg": 1,
 		"stance": "close_in",
 		"text": "적이 1명 남으면 → 물러나지 않고 이동 +1로 붙는다",
-	},
-	"last_stand": {
-		"axis": "doctrine",
-		"tag": "charge",
-		"tier": 3,
-		"cost": 4,
-		"name": "결사",
-		"cond": "allies_left_at_most",
-		"cond_arg": 1,
-		"stance": "close_in",
-		"text": "아군이 나 하나면 → 물러나지 않고 이동 +1로 붙는다",
 	},
 	# ── 방어가 아니라 유인이다 ───────────────────────────────────────────
 	# 처음에는 "내 진영 안이면 제자리에서 방어" 로 짰다. 실측 -4 였고, 붙었을

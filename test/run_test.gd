@@ -162,7 +162,7 @@ func test_escalating_cost() -> void:
 	var r2 := RunState.new()
 	r2.fixed_seed = 1
 	r2.start_run(1)
-	ok(r2.surcharge() == 0, "처음엔 가산금이 없다")
+	# 가산금은 없앴다. 리롤값만 오른다 - 값이 오르는 이유가 자명한 쪽만 남겼다.
 	var base := r2.reroll_cost()
 	r2.reroll()
 	ok(r2.reroll_cost() > base, "리롤할수록 리롤이 비싸진다",
@@ -171,8 +171,7 @@ func test_escalating_cost() -> void:
 	# 스테이지를 넘어가면 리셋된다. 안 그러면 뒤로 갈수록 한 장도 못 산다.
 	r2.on_stage_cleared()
 	r2.advance()
-	ok(r2.surcharge() == 0 and r2.rerolls_this_stage == 0,
-		"스테이지가 바뀌면 가산금이 초기화된다")
+	ok(r2.rerolls_this_stage == 0, "스테이지가 바뀌면 리롤 횟수가 초기화된다")
 
 
 func test_run_reset() -> void:
@@ -685,15 +684,14 @@ func test_shadowing() -> void:
 		"같은 축에 조건 없는 것이 둘이면 아래가 죽는다")
 
 	# 조건 문턱 비교 — 넓은 조건이 좁은 조건을 가린다
-	# 같은 교전 축이고 위가 더 넓은 조건이면 아래는 절대 안 걸린다.
+	# ── 같은 문턱끼리는 위가 아래를 가린다 ──────────────────────────────
+	# 넓은/좁은 짝으로 재고 있었는데, [광전](45)이 빠지면서 표에 남은 HP 조건이
+	# 전부 30 이 됐다. 같은 문턱도 가려지는 것은 마찬가지다 - 위가 걸리면
+	# 아래는 영영 안 걸린다.
 	#
-	# 짝을 바꿨다. [부상 후퇴]·[경계 후퇴] 문턱을 50 -> 30 으로 내리고
-	# [광전] 을 40 -> 45 로 올리면서 넓고 좁은 쪽이 뒤바뀌었다. 이제
-	# 광전(45)이 부상 후퇴(30)를 가린다.
-	ok(not Shadow.shadowed_slots(["berserk", "fall_back"], 1).is_empty(),
-		"넓은 HP 조건이 좁은 HP 조건을 가린다 (같은 축)")
-	ok(Shadow.shadowed_slots(["fall_back", "berserk"], 1).is_empty(),
-		"좁은 조건이 위에 있으면 아래는 안 가린다")
+	# 문턱 비교 자체는 아래 implies 검사가 직접 잰다.
+	ok(not Shadow.shadowed_slots(["wary_step", "fall_back"], 1).is_empty(),
+		"같은 HP 문턱이면 위가 아래를 가린다 (같은 축)")
 	ok(Shadow.implies("self_hp_below", 25, "self_hp_below", 50),
 		"HP<25% 는 HP<50% 에 포함된다")
 	ok(not Shadow.implies("self_hp_below", 50, "self_hp_below", 25),

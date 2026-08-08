@@ -197,7 +197,7 @@ const TABLE: Array[Dictionary] = [
 				{ "type": "overseer", "pos": Vector2i(6, 2), "cards": [],
 				  "traits": ["overseer"] },
 				{ "type": "assassin", "pos": Vector2i(5, 1),
-				  "cards": ["backline", "forced_march", "berserk"],
+				  "cards": ["backline", "forced_march", "last_veil"],
 				  "special": "shadow_rend" },
 				# 하나는 숨어서 들어온다. 앞에서 배운 것을 여기서는 감독기와
 				# 같이 처리해야 한다 - 끊을 것이 둘이고 하나는 안 보인다.

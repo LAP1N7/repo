@@ -44,10 +44,10 @@ extends RefCounted
 ##
 ## 이 수치는 적 강화 +1 을 보상하려고 26/37/50 에서 올린 것이었는데, 보상
 ## 예산과 신속 제압까지 겹치면서 과보정이 됐다.
-const STAGE_BUDGET: Array[int] = [10, 15, 23, 31, 40]
+const STAGE_BUDGET: Array[int] = [9, 14, 21, 28, 36]
 
 ## 1스테이지 시작 예산. 표의 첫 칸이다.
-const START_BUDGET: int = 10
+const START_BUDGET: int = 9
 
 
 static func stage_budget(stage: int) -> int:
@@ -155,7 +155,15 @@ const REROLL_COST: int = 1
 ##
 ## 예산이 스테이지마다 늘어나므로 살 수 있는 장수도 자연히 늘어난다.
 ## 상한을 스테이지별로 따로 적어 줄 필요가 없다.
-const BUY_SURCHARGE: int = 1
+## ── 구매 가산금을 없앴다 ────────────────────────────────────────────────
+## 두 장 살 때마다 이후 모든 카드값이 +1 씩 붙었다. 화면에는 "예산 17 (+2)"
+## 로 떴는데, 그 (+2)가 무엇에 붙는 값인지 읽는 사람은 알 수가 없다.
+## 값이 오르는 이유가 화면에 안 적히면 그건 규칙이 아니라 사고다.
+##
+## 예산을 줄이는 쪽이 같은 일을 정직하게 한다 - 살 수 있는 장수가 줄어든다는
+## 사실이 숫자 하나에 그대로 적혀 있으니까. 재검색만 값이 오르게 둔다.
+## 그건 "같은 상점을 계속 흔드는" 행위라 값이 붙는 이유가 자명하다.
+const BUY_SURCHARGE: int = 0
 const PARTY_SIZE: int = 3
 
 ## ── 4판부터 한 명 더 ────────────────────────────────────────────────────
@@ -444,7 +452,7 @@ func cost_of(id: String) -> int:
 
 ## 실제로 지불할 값. 카드값 + 이번 스테이지 가산금.
 func price_of(id: String) -> int:
-	return cost_of(id) + surcharge() if id != "" else 0
+	return cost_of(id) if id != "" else 0
 
 
 func can_buy(index: int) -> bool:

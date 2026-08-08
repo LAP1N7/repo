@@ -339,61 +339,45 @@ class _TopLayer extends Control:
 
 
 ## ── 판 바닥 ──────────────────────────────────────────────────────────────
-## Into the Breach 방식으로 다시 짰다. 그쪽 판은 그리는 것이 딱 둘이다 -
-## **칸 하나에 네모 하나**, 그리고 그 네모의 테두리. 무늬도 회로도 없다.
+## 그리는 것은 둘뿐이다 - 칸마다 네모 하나, 그 네모의 빛나는 테두리.
 ##
-## 앞서 넣었던 것(이음매·베벨·발광 회로·사선 해칭)을 다 걷어냈다. 넷을 겹치니
-## 칸 하나에 다섯 겹이 얹혔고, 그 위에 대원과 표적선과 범위 표시가 또 올라가서
-## 판이 시끄러워졌다. **바닥이 조용해야 그 위가 보인다.**
+## 진영 색(파랑/빨강)을 뺐다. 적과 아군은 대원 머리 위 표식과 발밑 링이 이미
+## 말하고 있고, 바닥까지 색을 가지면 그 위에 올라가는 표적선·범위 표시와
+## 색이 섞인다. **바닥은 색을 갖지 않는다** 가 규칙이다.
 ##
-## 지금 그리는 것:
-##   1) 칸마다 안쪽으로 패딩을 준 네모  -> 칸 사이에 저절로 간격이 생긴다.
-##      선을 긋지 않아도 격자가 읽히고, 그 간격이 판을 성기게 만들어 준다.
-##   2) 그 네모의 테두리 한 겹 + 바깥으로 한 겹 더 옅게 (글로우)
-##   3) 진영 두 열만 색을 바꾼다. 파랑/빨강, 아주 옅게.
-##
-## 세 줄이면 끝이다. 나머지는 전부 그 위에 올라갈 것들의 몫이다.
-const CELL_PAD: float = 3.0
+## 대신 판을 눕혔다(lay 참조). 아래로 갈수록 폭이 넓어져 격자가 표가 아니라
+## 바닥으로 읽힌다.
+const CELL_PAD: float = 2.5
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), UiKit.BG)
 
 	var bw := float(Grid.W) * TILE_W
 	var bh := float(Grid.H) * TILE_H
+	var edge := Color(0.36, 0.72, 0.95)
 
 	for y in Grid.H:
 		for x in Grid.W:
-			var at := BOARD_ORIGIN + Vector2(x * TILE_W, y * TILE_H) \
-				+ Vector2(CELL_PAD, CELL_PAD)
-			var sz := Vector2(TILE_W - CELL_PAD * 2.0, TILE_H - CELL_PAD * 2.0)
+			var q := cell_quad(x, y, CELL_PAD)
+			draw_colored_polygon(q, Color(0.055, 0.070, 0.095))
+			# 글로우. 같은 테두리를 굵기와 투명도를 달리해 세 번 겹친다.
+			var line := PackedVector2Array(q)
+			line.append(q[0])
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.06), 5.0, true)
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.13), 3.0, true)
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.46), 1.0, true)
 
-			# 진영 두 열만 색이 다르다. 나머지는 같은 회색이다 - 체커보드를
-			# 없앴다. 밝기가 번갈아 바뀌면 그것만으로 눈이 바빠진다.
-			var fill := Color(0.075, 0.085, 0.115)
-			var edge := Color(0.42, 0.52, 0.70)
-			if x <= 1:
-				fill = Color(0.070, 0.098, 0.145)
-				edge = Color(0.35, 0.66, 1.0)
-			elif x >= Grid.W - 2:
-				fill = Color(0.115, 0.075, 0.088)
-				edge = Color(1.0, 0.38, 0.42)
-
-			draw_rect(Rect2(at, sz), fill)
-			# 바깥 한 겹을 옅게 깔아 테두리가 빛나는 것처럼 보이게 한다.
-			draw_rect(Rect2(at - Vector2(1, 1), sz + Vector2(2, 2)),
-				Color(edge.r, edge.g, edge.b, 0.10), false, 2.0)
-			draw_rect(Rect2(at, sz), Color(edge.r, edge.g, edge.b, 0.34), false, 1.0)
-
-	# 판 바깥 프레임과 네 귀 브래킷. 판이 화면에 놓인 장비로 읽힌다.
-	draw_rect(Rect2(BOARD_ORIGIN - Vector2(4, 4), Vector2(bw + 8, bh + 8)),
-		Color(0.45, 0.58, 0.80, 0.22), false, 1.0)
-	var bl := 18.0
-	for corner in [Vector2(0, 0), Vector2(bw, 0), Vector2(0, bh), Vector2(bw, bh)]:
+	# 네 귀 브래킷. 판이 화면에 놓인 장비로 읽힌다.
+	var bl := 20.0
+	var corners := [Vector2(0, 0), Vector2(bw, 0), Vector2(0, bh), Vector2(bw, bh)]
+	for corner in corners:
 		var sx: float = 1.0 if corner.x == 0.0 else -1.0
 		var sy: float = 1.0 if corner.y == 0.0 else -1.0
-		var o2: Vector2 = BOARD_ORIGIN + corner + Vector2(-4.0 * sx, -4.0 * sy)
-		draw_line(o2, o2 + Vector2(bl * sx, 0), Color(0.60, 0.80, 1.0, 0.55), 2.0)
-		draw_line(o2, o2 + Vector2(0, bl * sy), Color(0.60, 0.80, 1.0, 0.55), 2.0)
+		var o2 := lay_at(corner + Vector2(-6.0 * sx, -6.0 * sy))
+		var hx := lay_at(corner + Vector2(-6.0 * sx + bl * sx, -6.0 * sy))
+		var vy := lay_at(corner + Vector2(-6.0 * sx, -6.0 * sy + bl * sy))
+		draw_line(o2, hx, Color(0.55, 0.80, 1.0, 0.55), 2.0)
+		draw_line(o2, vy, Color(0.55, 0.80, 1.0, 0.55), 2.0)
 
 
 ## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
@@ -405,13 +389,10 @@ func _draw_overlay(c: CanvasItem) -> void:
 	# 진영 표시만 크기에 배율을 안 걸어서, 칸은 74px 인데 표시는 64px 로 그려져
 	# 반 칸씩 밀린 것처럼 보였다. 유닛이 어긋난 게 아니라 이 사각형이 어긋난
 	# 것이었다 - 눈에는 똑같이 "격자와 안 맞는다" 로 보인다.
-	var cell := Vector2(TILE_W, TILE_H)
 	for p in Grid.PLAYER_SLOTS:
-		c.draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
-			cell), COL_PLAYER_ZONE)
+		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD), COL_PLAYER_ZONE)
 	for p in Grid.ENEMY_SLOTS:
-		c.draw_rect(Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H),
-			cell), COL_ENEMY_ZONE)
+		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD), COL_ENEMY_ZONE)
 
 	_draw_zones(c)
 
@@ -422,22 +403,17 @@ func _draw_overlay(c: CanvasItem) -> void:
 	if battle != null and not battle.hazard_cells.is_empty():
 		var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 90.0)
 		for cc in battle.hazard_cells:
-			var r := Rect2(BOARD_ORIGIN + Vector2(cc.x * TILE_W, cc.y * TILE_H),
-				Vector2(TILE_W, TILE_H))
-			c.draw_rect(r, Color(1.0, 0.26, 0.20, 0.12 + 0.20 * pulse))
-			c.draw_rect(r, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), false, 2.0)
+			var q := cell_quad(cc.x, cc.y, CELL_PAD)
+			c.draw_colored_polygon(q, Color(1.0, 0.26, 0.20, 0.12 + 0.20 * pulse))
+			var ql := PackedVector2Array(q)
+			ql.append(q[0])
+			c.draw_polyline(ql, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), 2.0, true)
 			# 빗금. 깜빡임만으로는 정지 화면에서 안 읽힌다.
-			var step := 14.0
-			var d := -r.size.y
-			while d < r.size.x:
-				var x0: float = r.position.x + maxf(d, 0.0)
-				var y0: float = r.position.y + maxf(-d, 0.0)
-				var run_len: float = minf(r.size.x - maxf(d, 0.0),
-					r.size.y - maxf(-d, 0.0))
-				if run_len > 0.0:
-					c.draw_line(Vector2(x0, y0), Vector2(x0 + run_len, y0 + run_len),
-						Color(1.0, 0.40, 0.28, 0.22), 2.0)
-				d += step
+			# 칸이 눕었으므로 빗금도 칸의 네 귀를 기준으로 긋는다.
+			for i in 4:
+				var t: float = 0.2 + 0.2 * float(i)
+				c.draw_line(q[0].lerp(q[3], t), q[1].lerp(q[2], t),
+					Color(1.0, 0.40, 0.28, 0.20), 2.0)
 
 	if battle != null:
 		# 지금 적이 가장 많이 노리는 아군에게 고리를 씌운다.
@@ -456,18 +432,13 @@ func _draw_overlay(c: CanvasItem) -> void:
 				most_n = n
 				most = u
 		if most != null:
-			var pc := BOARD_ORIGIN + Vector2(most.pos.x * TILE_W + TILE_W * 0.5,
-				most.pos.y * TILE_H + TILE_H * 0.5)
+			var pc := BOARD_ORIGIN + tile_center(most.pos)
 			var pulse2: float = 0.6 + 0.4 * sin(Time.get_ticks_msec() / 220.0)
 			c.draw_arc(pc, TILE_W * 0.42, 0.0, TAU, 28,
 				Color(1.0, 0.42, 0.38, 0.30 + 0.35 * pulse2), 2.0)
 
-	for x in Grid.W + 1:
-		c.draw_line(BOARD_ORIGIN + Vector2(x * TILE_W, 0),
-			BOARD_ORIGIN + Vector2(x * TILE_W, Grid.H * TILE_H), UiKit.LINE, 1.0)
-	for y in Grid.H + 1:
-		c.draw_line(BOARD_ORIGIN + Vector2(0, y * TILE_H),
-			BOARD_ORIGIN + Vector2(Grid.W * TILE_W, y * TILE_H), UiKit.LINE, 1.0)
+	# 격자선은 안 긋는다. 칸마다 빛나는 테두리가 이미 그 일을 한다 -
+	# 선을 한 겹 더 얹으면 테두리와 겹쳐 두 줄로 보인다.
 
 
 
@@ -512,11 +483,17 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 			var fill := Color(u.color.r, u.color.g, u.color.b,
 				(0.22 if hot else 0.12) * pulse)
 			for p in cells:
-				var r := Rect2(BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H)
-					+ shift, Vector2(TILE_W, TILE_H))
-				c.draw_rect(r, fill)
-				_hatch(c, r, Color(u.color.r, u.color.g, u.color.b,
-					(0.42 if hot else 0.22) * pulse), 13.0)
+				var q := cell_quad(p.x, p.y, 0.0)
+				for qi in q.size():
+					q[qi] += shift
+				c.draw_colored_polygon(q, fill)
+				# 빗금도 칸의 네 귀를 기준으로. 판이 눕었으므로 축 정렬 사각으로
+				# 그으면 칸을 벗어난다.
+				var hc := Color(u.color.r, u.color.g, u.color.b,
+					(0.42 if hot else 0.22) * pulse)
+				for hi in 2:
+					var t: float = 0.33 + 0.34 * float(hi)
+					c.draw_line(q[0].lerp(q[3], t), q[1].lerp(q[2], t), hc, 2.0)
 			continue
 
 		# ── 바깥 테두리만 ────────────────────────────────────────────────
@@ -542,15 +519,18 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 		var w := 3.5 if hot else 2.0
 		var col := Color(edge.r, edge.g, edge.b, (0.95 if hot else 0.6) * pulse)
 		for p in cells:
-			var o := BOARD_ORIGIN + Vector2(p.x * TILE_W, p.y * TILE_H) + shift
+			var q2 := cell_quad(p.x, p.y, 0.0)
+			for qi2 in q2.size():
+				q2[qi2] += shift
+			# q2 는 좌상 → 우상 → 우하 → 좌하 순이다.
 			if not set.has(p + Vector2i(0, -1)):
-				c.draw_line(o, o + Vector2(TILE_W, 0), col, w)
+				c.draw_line(q2[0], q2[1], col, w)
 			if not set.has(p + Vector2i(0, 1)):
-				c.draw_line(o + Vector2(0, TILE_H), o + Vector2(TILE_W, TILE_H), col, w)
+				c.draw_line(q2[3], q2[2], col, w)
 			if not set.has(p + Vector2i(-1, 0)):
-				c.draw_line(o, o + Vector2(0, TILE_H), col, w)
+				c.draw_line(q2[0], q2[3], col, w)
 			if not set.has(p + Vector2i(1, 0)):
-				c.draw_line(o + Vector2(TILE_W, 0), o + Vector2(TILE_W, TILE_H), col, w)
+				c.draw_line(q2[1], q2[2], col, w)
 
 
 ## 사각형 안에 사선 빗금. 색이 겹쳐도 무늬는 살아남는다.
@@ -767,7 +747,7 @@ func _draw_hover(c: CanvasItem) -> void:
 	# 칸 위쪽에 붙인다. 아래로 늘어뜨리면 **판이 아직 안 본 칸을 가린다** -
 	# 자폭체가 어디까지 왔는지 보려고 마우스를 올렸는데 그 판이 다음 칸을
 	# 덮어 버린다. 위쪽은 이미 지나온 자리라 가려도 손해가 없다.
-	var cell := BOARD_ORIGIN + Vector2(u.pos.x * TILE_W, u.pos.y * TILE_H)
+	var cell := _live_pos(u) - Vector2(TILE_W, TILE_H) * 0.5
 	var at := Vector2(cell.x + TILE_W + 8.0, cell.y - h + TILE_H)
 	# 오른쪽 한계는 화면 끝이 아니라 **전황판 왼쪽**이다. 전황판은 별도
 	# CanvasLayer 라 이 판보다 항상 위에 그려진다 - 넘어가면 잘린다.
@@ -860,8 +840,47 @@ func _live_pos(u: Unit) -> Vector2:
 ##
 ## 판을 그리는 식과 **반드시 같은 값**을 써야 한다. 예전에 진영 표시만 다른
 ## 식으로 그렸다가 반 칸씩 어긋나 보였다. 칸 크기는 이 파일에 하나뿐이어야 한다.
+## ── 판을 눕힌다 ─────────────────────────────────────────────────────────
+## 정면에서 내려다본 직사각 격자는 표처럼 읽힌다. 아래로 갈수록 폭을 넓히면
+## 같은 격자가 **바닥에 깔린 판**이 된다 - 원근이 한 겹 생기는 것이다.
+##
+## 행렬(Transform2D)로는 못 한다. 그건 아핀 변환이라 평행사변형까지만 되고,
+## 위가 좁아지는 사다리꼴은 y 에 따라 x 배율이 달라져야 하기 때문이다.
+## 그래서 **점 단위 변환**으로 둔다 - 폴리곤이든 유닛 위치든 같은 함수를 통과
+## 시키면 되고, 역변환이 필요한 곳도 없다(마우스는 이미 변환된 유닛 위치를
+## 직접 재기 때문이다. _live_pos 참조).
+##
+## 값이 커지면 아래쪽 칸이 눈에 띄게 넓어져 칸 크기가 제각각으로 보인다.
+## 0.16 은 "눕혔다" 가 보이면서 칸이 아직 같은 크기로 읽히는 선이다.
+const PERSP: float = 0.16
+
+## 판 로컬 좌표 하나를 눕힌 자리로.
+static func lay(p: Vector2) -> Vector2:
+	var bw := float(Grid.W) * TILE_W
+	var bh := float(Grid.H) * TILE_H
+	var k: float = 1.0 + PERSP * ((p.y - bh * 0.5) / bh)
+	return Vector2(bw * 0.5 + (p.x - bw * 0.5) * k, p.y)
+
+
+## 화면 좌표로. 판 바깥에서 그리는 것들이 쓴다.
+static func lay_at(p: Vector2) -> Vector2:
+	return BOARD_ORIGIN + lay(p)
+
+
+## 칸 하나의 네 귀. inset 만큼 안쪽으로 줄여서 돌려준다.
+static func cell_quad(cx: int, cy: int, inset: float) -> PackedVector2Array:
+	var x0 := float(cx) * TILE_W + inset
+	var y0 := float(cy) * TILE_H + inset
+	var x1 := float(cx + 1) * TILE_W - inset
+	var y1 := float(cy + 1) * TILE_H - inset
+	return PackedVector2Array([
+		lay_at(Vector2(x0, y0)), lay_at(Vector2(x1, y0)),
+		lay_at(Vector2(x1, y1)), lay_at(Vector2(x0, y1)),
+	])
+
+
 func tile_center(p: Vector2i) -> Vector2:
-	return Vector2(p.x * TILE_W + TILE_W * 0.5, p.y * TILE_H + TILE_H * 0.5)
+	return lay(Vector2(p.x * TILE_W + TILE_W * 0.5, p.y * TILE_H + TILE_H * 0.5))
 
 
 # ── UI ───────────────────────────────────────────────────────────────────
