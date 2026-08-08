@@ -806,6 +806,26 @@ func _explode(src: Unit) -> void:
 			_recharge_on_death()
 
 
+## 인접한 적을 n 칸 밀어낸다. 밀린 목록을 돌려준다.
+##
+## 방패병 궁극기 [최후의 방벽] 에만 있던 개념을 판단 규칙 쪽으로 끌어왔다.
+## 페이즈당 한 번인 궁극기 안에만 있으면 플레이어가 그것으로 계획을 세울
+## 일이 없다 - 있는 줄도 모르는 규칙이 된다.
+##
+## 순회는 index 순, 밀리는 칸은 _push_cell 이 정하므로 전부 결정론이다.
+func _shove(u: Unit, n: int) -> Array:
+	var shoved: Array = []
+	if n <= 0:
+		return shoved
+	for e in living_enemies_of(u):
+		if Grid.manhattan(u.pos, e.pos) <= 1:
+			var dest := _push_cell(u, e, n)
+			if dest != e.pos:
+				shoved.append({ "unit": e.index, "from": e.pos, "to": dest })
+				e.pos = dest
+	return shoved
+
+
 func _execute(u: Unit, choice: Dictionary) -> void:
 	var card: Dictionary = choice["card"]
 	var target: Unit = choice["target"]
@@ -867,17 +887,21 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 
 		"move_toward", "move_away":
 			var from: Vector2i = u.pos
+			# 밀치고 나서 걷는다. 순서가 반대면 이미 떠난 자리의 적을 미는
+			# 것이 되어, 붙어 있던 적이 안 밀리고 엉뚱한 적이 밀린다.
+			var shoved: Array = _shove(u, int(card.get("push", 0)))
 			var path := plan_move_path(u, target, act == "move_toward",
 				int(card.get("move_bonus", 0)))
 			u.pos = path[path.size() - 1]
 			u.moved_this_tick = u.pos != from
 			_emit({ "type": "move", "unit": u.index, "from": from, "to": u.pos,
-				"path": path })
+				"path": path, "pushed": shoved })
 
 		"defend":
 			u.defending = true
 			u.defend_level = int(card.get("defend_bonus", 0))
-			_emit({ "type": "defend", "unit": u.index })
+			_emit({ "type": "defend", "unit": u.index,
+				"pushed": _shove(u, int(card.get("push", 0))) })
 
 		"hold":
 			_emit({ "type": "hold", "unit": u.index })

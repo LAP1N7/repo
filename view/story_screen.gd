@@ -29,6 +29,14 @@ var _zoom_gain: float = 1.0
 
 const PAD := 64.0
 
+## ── 대사판 치수 ─────────────────────────────────────────────────────────
+## 안쪽 여백을 24 에서 34 로 넓혔다. 글자가 상자에 바짝 붙어 있으면 대사가
+## 아니라 표에 적힌 문장처럼 읽힌다.
+const BUBBLE_X := 96.0
+const BUBBLE_Y := 470.0
+const BUBBLE_H := 170.0
+const PAD_IN := 34.0
+
 ## ── 카메라 연출 ─────────────────────────────────────────────────────────
 ## 정지 화면에 글자만 바뀌면 그건 슬라이드 쇼다. 아주 조금만 움직여도 화면이
 ## "지금 벌어지는 일" 로 읽힌다 - 미연시가 오래 써 온 방법이고, 핵심은
@@ -93,7 +101,7 @@ var index: int = 0
 
 var _art: Control
 var _bubble: Control
-var _lbl_name: Label
+var _name_tag: Control
 var _lbl_text: Label
 var _lbl_hint: Label
 var _fx: Control
@@ -129,9 +137,16 @@ func setup(p_beats: Array) -> void:
 	#
 	# 배경을 바닥까지 늘리고 대사판을 반투명으로 바꾸면, 대사가 같은 공간
 	# 안에서 들리는 소리가 된다. 미연시가 오래전부터 쓰는 배치다.
-	_art_home = Vector2(PAD, 56)
+	# ── 액자를 없앤다 ────────────────────────────────────────────────────
+	# 배경을 화면 안쪽 사각형에만 깔고 바깥에 검은 테를 둘렀다. 그러면 그림이
+	# **화면 속의 그림**이 되어, 인물이 서 있는 공간이 아니라 걸려 있는
+	# 액자가 된다.
+	#
+	# 화면을 가득 채우고 위아래에 비네팅만 얹는다. 테두리 대신 어둠으로
+	# 가장자리를 닫으면 시선이 가운데로 모이고, 대사판이 그 어둠 위에 놓인다.
+	_art_home = Vector2.ZERO
 	_art.position = _art_home
-	_art.size = Vector2(1280 - PAD * 2, 664 - 56)
+	_art.size = Vector2(1280, 720)
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_art)
 
@@ -175,21 +190,49 @@ func setup(p_beats: Array) -> void:
 	_portrait.visible = false
 	add_child(_portrait)
 
-	# 대사판. 튜토리얼 말풍선과 같은 사선 어법이다.
+	# ── 대사판 ──────────────────────────────────────────────────────────
+	# 고친 것 셋.
+	#
+	#   1. 더 어둡게 (0.80 -> 0.90). 반투명이 옅으면 밝은 배경 위에서 글자가
+	#      배경과 싸운다. 뒤가 비치는 것과 글이 안 읽히는 것은 다른 문제다.
+	#   2. 테두리를 얇고 은은하게. 굵은 노란 선이 시선을 먼저 가져갔다.
+	#      화자를 알리는 일은 이름표가 하면 되고, 판은 조용해야 한다.
+	#   3. 안쪽 여백 24 -> 34, 줄간격 1.35배. 글자가 상자에 붙어 있으면
+	#      대사가 아니라 표에 적힌 문장처럼 읽힌다.
 	_bubble = _Panel.new()
-	_bubble.position = Vector2(PAD, 484)
-	_bubble.size = Vector2(1280 - PAD * 2, 150)
+	_bubble.position = Vector2(BUBBLE_X, BUBBLE_Y)
+	_bubble.size = Vector2(1280 - BUBBLE_X * 2, BUBBLE_H)
 	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bubble)
 
-	_lbl_name = UiKit.label(_bubble, Vector2(24, 14), Vector2(400, 24), "", 15, UiKit.ACCENT)
-	_lbl_text = UiKit.label(_bubble, Vector2(24, 44), Vector2(1280 - PAD * 2 - 48, 90),
+	# ── 이름표는 판 밖에 ────────────────────────────────────────────────
+	# 안에 두면 첫 줄이 이름에 밀려 본문 자리가 좁아지고, 이름과 대사가 같은
+	# 상자 안에서 경쟁한다. 위로 빼면 "누가" 와 "무슨 말" 이 한눈에 갈린다.
+	_name_tag = _NameTag.new()
+	_name_tag.position = Vector2(BUBBLE_X + 6, BUBBLE_Y - 30)
+	_name_tag.size = Vector2(300, 30)
+	_name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_name_tag)
+
+	_lbl_text = UiKit.label(_bubble, Vector2(PAD_IN, PAD_IN - 6),
+		Vector2(1280 - BUBBLE_X * 2 - PAD_IN * 2, BUBBLE_H - PAD_IN * 2 + 12),
 		"", 17, UiKit.TEXT, true)
-	_lbl_hint = UiKit.label(self, Vector2(PAD, 646), Vector2(1280 - PAD * 2, 22),
+	# 줄간격 1.35배. 긴 대사가 붙어 있으면 읽는 속도가 뚝 떨어진다.
+	_lbl_text.add_theme_constant_override("line_spacing", 8)
+
+	_lbl_hint = UiKit.label(self, Vector2(BUBBLE_X, BUBBLE_Y + BUBBLE_H + 8),
+		Vector2(1280 - BUBBLE_X * 2, 22),
 		UiText.t("story.hint", "아무 곳이나 눌러 계속"), 12, UiKit.FAINT)
 	_lbl_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
-	UiKit.frame(self, UiKit.ACCENT)
+	# 위아래 비네팅. 액자 대신 이것이 화면을 닫는다.
+	var vig := _Vignette.new()
+	vig.size = Vector2(1280, 720)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vig)
+	# 대사판과 초상은 비네팅보다 위여야 한다.
+	move_child(vig, get_child_count() - 4)
+
 	_show(0)
 
 
@@ -285,7 +328,7 @@ func _advance() -> void:
 
 func _show(i: int) -> void:
 	var b: Dictionary = beats[i]
-	_lbl_name.text = String(b.get("speaker", ""))
+	(_name_tag as _NameTag).who = String(b.get("speaker", ""))
 	# ── 한 글자씩 찍는다 ─────────────────────────────────────────────────
 	# 대사가 통째로 튀어나오면 읽는 속도를 화면이 정해 주지 않는다. 한 글자씩
 	# 찍히면 눈이 글을 따라가고, 그 사이에 소리가 붙으면 "누가 지금 말하고
@@ -311,7 +354,9 @@ func _show(i: int) -> void:
 		voice = COL_MIRA_EDGE
 	elif speaker != "":
 		voice = COL_HUMAN
-	_lbl_name.add_theme_color_override("font_color", voice)
+	(_name_tag as _NameTag).tint = voice
+	(_name_tag as _NameTag).visible = speaker != ""
+	_name_tag.queue_redraw()
 	(_bubble as _Panel).tint = voice
 	_bubble.queue_redraw()
 
@@ -470,20 +515,77 @@ class _Panel extends Control:
 
 	func _draw() -> void:
 		var s := size
-		var cut := 20.0
+		# 절삭을 20 에서 10 으로 줄였다. 날카롭게 깎을수록 판이 장식이 되는데,
+		# 여기는 글을 읽는 자리다.
+		var cut := 10.0
 		var shape := PackedVector2Array([
 			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
 			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
 		])
-		# ── 반투명 ───────────────────────────────────────────────────────
-		# 불투명하면 그림에 구멍이 뚫린다. 뒤가 비쳐야 인물과 같은 공간에
-		# 있는 판으로 읽힌다. 대신 위쪽을 조금 더 진하게 깔아 이름과 첫 줄이
-		# 밝은 배경 위에서도 읽히게 한다.
-		draw_colored_polygon(shape, Color(0.03, 0.04, 0.07, 0.80))
-		draw_rect(Rect2(cut, 1, s.x - cut - 1, 34), Color(0.03, 0.04, 0.07, 0.30))
+		# 드롭 섀도. 판이 그림 위에 **떠 있는** 것으로 보이면 그것만으로
+		# 글자와 배경이 분리된다.
+		var sh := PackedVector2Array()
+		for pt in shape:
+			sh.append(pt + Vector2(0, 5))
+		draw_colored_polygon(sh, Color(0, 0, 0, 0.35))
+
+		# 반투명이되 충분히 어둡게. 뒤가 비치는 것과 글이 안 읽히는 것은
+		# 다른 문제다.
+		draw_colored_polygon(shape, Color(0.02, 0.025, 0.045, 0.90))
+		# 위에서 아래로 아주 옅은 그래디언트. 판이 평평한 색면으로 안 보인다.
+		for i in 6:
+			draw_rect(Rect2(cut, 1.0 + float(i) * 4.0, s.x - cut - 1, 4.0),
+				Color(1, 1, 1, 0.016 - 0.002 * float(i)))
+
+		# 테두리는 얇고 은은하게. 화자를 알리는 일은 이름표가 한다.
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
-		draw_polyline(line, tint, 1.8, true)
+		draw_polyline(line, Color(tint.r, tint.g, tint.b, 0.45), 1.0, true)
+		# 왼쪽 위 짧은 강조선 하나만 화자 색으로 남긴다.
+		draw_line(Vector2(cut, 0), Vector2(cut + 90.0, 0),
+			Color(tint.r, tint.g, tint.b, 0.9), 2.0)
+
+
+## ── 이름표 ───────────────────────────────────────────────────────────────
+## 대사판 위에 얹히는 작은 태그. 판 안에 두면 첫 줄이 밀려 본문이 좁아지고,
+## 이름과 대사가 같은 상자 안에서 자리를 다툰다.
+class _NameTag extends Control:
+	var who: String = ""
+	var tint: Color = UiKit.ACCENT
+
+	func _draw() -> void:
+		if who == "":
+			return
+		var f := UiKit.font(15)
+		var w: float = f.get_string_size(who, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 34.0
+		var h := size.y
+		var cut := 8.0
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(w, 0), Vector2(w - cut, h), Vector2(0, h),
+		])
+		draw_colored_polygon(shape, Color(0.02, 0.025, 0.045, 0.94))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(tint.r, tint.g, tint.b, 0.55), 1.0, true)
+		draw_rect(Rect2(cut, 0, 3, h), tint)
+		draw_string(f, Vector2(cut + 12.0, h - 9.0), who,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, tint)
+
+
+## ── 비네팅 ───────────────────────────────────────────────────────────────
+## 액자 대신 화면을 닫는다. 위아래로 어둠이 스며들면 시선이 가운데로 모이고,
+## 배경이 화면 밖으로 이어지는 것처럼 읽힌다.
+class _Vignette extends Control:
+	func _draw() -> void:
+		var s := size
+		var n := 22
+		for i in n:
+			var f := float(i) / float(n)
+			# 위: 짧고 옅게. 아래: 길고 진하게 - 대사판이 앉는 쪽이다.
+			draw_rect(Rect2(0, float(i) * 4.0, s.x, 4.0),
+				Color(0.01, 0.015, 0.03, 0.42 * (1.0 - f)))
+			draw_rect(Rect2(0, s.y - float(i) * 9.0 - 9.0, s.x, 9.0),
+				Color(0.01, 0.015, 0.03, 0.60 * (1.0 - f)))
 
 
 ## 화면 깨짐·동기화 표시.

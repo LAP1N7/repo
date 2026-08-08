@@ -652,13 +652,26 @@ func _draw_hover(c: CanvasItem) -> void:
 	#
 	# 판을 넓히는 대신 줄을 접는다. 넓히면 결국 어딘가는 넘친다.
 	var fs := UiKit.font(11)
-	const VAL_X: float = 96.0
 	const VAL_W: float = 300.0
 	var lines: Array = []
 	for r in rows:
 		var parts := _wrap_value(fs, String(r[1]), VAL_W)
 		for i in parts.size():
 			lines.append([String(r[0]) if i == 0 else "", parts[i], r[2]])
+
+	# ── 라벨 열 폭은 재서 정한다 ────────────────────────────────────────
+	# 96px 로 박혀 있었다. "ATK · RNG · MOV" 는 그보다 길어서 라벨이 값 위로
+	# 타고 올라갔다 - 글자 두 겹이 겹쳐 둘 다 안 읽혔다.
+	#
+	# 잘라내는 대신 잰다. 라벨은 여기서만 쓰는 몇 개뿐이라 가장 긴 것에
+	# 맞추면 되고, 그러면 이름이 늘어나도 다시 안 깨진다.
+	var label_w := 60.0
+	for r in lines:
+		if String(r[0]) == "":
+			continue
+		label_w = maxf(label_w,
+			fs.get_string_size(String(r[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x)
+	var VAL_X: float = 14.0 + label_w + 12.0
 	var w := VAL_X + VAL_W + 20.0
 	var h: float = 34.0 + lines.size() * 17.0
 

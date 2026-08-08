@@ -411,7 +411,7 @@ const TABLE: Dictionary = {
 		"cond": "enemies_adjacent_at_least",
 		"cond_arg": 2,
 		"stance": "defend",
-		"text": "인접한 적 2명 이상 → 받는 피해를 줄인다",
+		"text": "인접한 적 2명 이상 → 받는 피해를 줄인다. 3명 이상이면 밀어낸다",
 	},
 	"berserk": {
 		"axis": "doctrine",
@@ -457,6 +457,29 @@ const TABLE: Dictionary = {
 		"stance": "stealth",
 		"text": "\uc704\ud611\ub3c4\ub97c \ub0ae\ucd98\ub2e4. \uc801\uc774 \ub2e4\ub978 \ub300\uc6d0\uc744 \uba3c\uc800 \ubcf8\ub2e4",
 	},
+	# ── 궁지에서의 잠복 ──────────────────────────────────────────────────
+	# [잠복](개전 직후)과 같은 태세를 쓰지만 거는 때가 정반대다. 저쪽은
+	# 첫 교전을 통째로 넘기는 개전 수이고, 이쪽은 **죽기 직전에 한 번 사라지는**
+	# 수다.
+	#
+	# 은신을 대체한다. 은신은 위협도를 상시로 깎아 "덜 맞는" 쪽이고, 이쪽은
+	# 맞는 걸 3틱 통째로 지우는 대신 그 3틱을 아무것도 못 한다 - 같은
+	# 생존이라도 값을 언제 치르는가가 다르다.
+	#
+	# HP 30% 아래에서만 걸리므로 잠복이 풀릴 때 적은 대개 그 자리에 그대로
+	# 있다. 그래서 해제 직후의 +60% 한 방이 실제로 꽂힌다.
+	"last_veil": {
+		"axis": "doctrine",
+		"tag": "patience",
+		"tier": 2,
+		"cost": 3,
+		"name": "은막 반격",
+		"cond": "self_hp_below",
+		"cond_arg": 30,
+		"stance": "ambush",
+		"text": "자신 HP < 30% \u2192 3틱 잠복(맞지도 때리지도 않음) \u2192 해제 후 첫 공격 +60% (교전당 1회)",
+	},
+
 	"ambush": {
 		"axis": "doctrine",
 		"tag": "patience",

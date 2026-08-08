@@ -371,7 +371,26 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		"wait":
 			return _rule(unit, "대기", "hold", unit, 0, 0)
 		"defend":
-			return _rule(unit, "방어", "defend", unit, 0, 0)
+			# ── 버티는 것과 밀어내는 것 ──────────────────────────────────
+			# 방패병 궁극기 [최후의 방벽] 에만 있던 넉백을 여기로 끌어왔다.
+			# 궁극기는 페이즈당 한 번이라 "밀어낸다" 라는 개념 자체를 판에서
+			# 거의 볼 수 없었다 - 규칙은 있는데 플레이어가 그것으로 계획을
+			# 세울 일이 없으면 없는 규칙이다.
+			#
+			# 한 칸이다. 두 칸이면 방패병 하나가 전선을 통째로 되밀어서
+			# 근접 적이 영영 못 붙는다. 한 칸은 그 틱의 접근을 지우는
+			# 정도라, 원거리 아군이 한 번 더 쏠 시간을 사는 값으로 맞는다.
+			var dfn := _rule(unit, "방어", "defend", unit, 0, 0)
+			# **에워싸였을 때만** 민다. 붙은 적이 하나둘일 때도 밀면 매 틱
+			# 밀고 다시 붙는 일이 반복되어 판이 늘어지기만 한다 - 실측에서
+			# 이길 판이 정체 판정으로 넘어가 그대로 졌다. 미는 것 자체가
+			# 좋은 수인데 **양쪽 다 아무 일도 안 하는 시간**을 만든다.
+			#
+			# 셋 이상은 다르다. 그때는 이미 둘러싸여 다음 틱에 무너지는
+			# 자리이고, 한 칸을 벌리는 것이 그 한 틱을 되돌린다.
+			if _adjacent_enemies(unit, state) >= 3:
+				(dfn["card"] as Dictionary)["push"] = 1
+			return dfn
 		"ambush":
 			# ── 잠복 ─────────────────────────────────────────────────────
 			#   3틱간 멈춘다. 그동안 맞지도 때리지도 움직이지도 않는다.
@@ -400,6 +419,13 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		"bail":
 			var r := _retreat(unit, state, bonus + 2)
 			if not r.is_empty():
+				# 붙은 적을 밀치고 빠진다. 세 칸을 빼도 근접한 적이 같은 틱에
+				# 따라붙으면 이탈이 아니라 자리만 바꾼 것이 된다 - 한 칸을
+				# 벌려 놓아야 그 세 칸이 실제로 거리가 된다.
+				#
+				# 교전당 한 번뿐이라 [방어 태세] 때와 달리 판을 늘어뜨릴 수가
+				# 없다. 미는 것을 습관이 아니라 한 수로 쓰는 자리다.
+				(r["card"] as Dictionary)["push"] = 1
 				_spend_once(unit)
 			return r
 
@@ -810,6 +836,15 @@ static func _threat_mod(stance: String) -> int:
 	return 0
 
 
+## 지금 이 대원에게 붙어 있는 적의 수.
+static func _adjacent_enemies(unit: Unit, state) -> int:
+	var n: int = 0
+	for e in state.living_enemies_of(unit):
+		if Grid.manhattan(unit.pos, e.pos) <= 1:
+			n += 1
+	return n
+
+
 ## "교전당 1회" 모듈을 소모 처리한다. 실제로 행동이 나온 순간에만 부른다.
 static func _spend_once(unit: Unit) -> void:
 	if _ctx_once != "":
@@ -914,11 +949,7 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 			return unit.was_hit
 
 		"enemies_adjacent_at_least":
-			var n: int = 0
-			for e in state.living_enemies_of(unit):
-				if Grid.manhattan(unit.pos, e.pos) <= 1:
-					n += 1
-			return n >= arg
+			return _adjacent_enemies(unit, state) >= arg
 
 		"ally_hp_below":
 			for a in state.living_allies_of(unit):
