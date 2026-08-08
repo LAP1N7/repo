@@ -45,6 +45,14 @@ static var _ctx_target: Unit = null
 ## 이번 판단에서 고른 "교전당 1회" 모듈의 id. 실제로 실행되면 그때 소모된다.
 static var _ctx_once: String = ""
 
+## 이번 틱에 표적 축이 쓴 고르기 방식(pick). 조립부가 **사거리 안에서 다시
+## 고를 때** 같은 기준을 쓰기 위해 들고 있는다.
+##
+## 지정한 그 한 명이 멀어도, 그 모듈이 무엇을 원했는지는 남아 있어야 한다.
+## [후열 침투] 면 사거리 안에서 가장 깊은 적을, [처형] 이면 사거리 안에서
+## 가장 약한 적을 고르는 것이 그 모듈의 답이다.
+static var _ctx_pick: String = ""
+
 ## 위협도만 바꾸는 수칙. 행동을 정하지 않으므로 **아래 칸을 가리지 않는다.**
 ##
 ## core/shadow.gd 의 같은 목록과 짝이다. 한쪽만 고치면 화면 경고와 실제 동작이
@@ -101,6 +109,7 @@ static func select(unit: Unit, state) -> Dictionary:
 	# 1) TARGET - 누구를 쫓는가
 	var picked := _pick_target(unit, state, trace)
 	var target: Unit = picked.get("target", null)
+	_ctx_pick = String((picked.get("rule", {}) as Dictionary).get("pick", ""))
 	# 표적 **모듈**이 골랐는가, 아니면 기본 판단으로 떨어졌는가.
 	# 조립 단계에서 "쫓을지" 를 이 값으로 정한다. (_move_by_stand 참조)
 	# ── 표적 모듈을 **가지고 있으면** 능동적으로 움직인다 ────────────────
@@ -536,44 +545,42 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 					return _rule(unit, "간격 확보", "move_away", near, 0, bonus)
 			return _rule(unit, "공격", "attack", target, power, 0)
 
-	# ── 붙은 적을 등지고 자리를 잡지는 않는다 ────────────────────────────
-	# [후열 침투] + [방패 뒤] 를 같이 꽂으면 판이 망가졌다. 표적은 뒷줄의 적인데
-	# 거기까지 사거리가 안 닿으니 위치 축이 돌고, 위치 축은 "방패병 뒤로" 라고
-	# 답한다. 그래서 **코앞의 적을 그냥 두고 뒤로 걸어갔다.** 매 틱 공짜로
-	# 맞으면서.
+	# ── 지정한 표적이 멀다. 그럼 순서는 이렇게 간다 ──────────────────────
 	#
-	# 자리를 잡는 것은 다음 틱을 준비하는 일이다. 이미 붙어 있는 적이 있으면
-	# 다음 틱이 없을 수도 있다 - 그 순서를 뒤집는다.
+	#   1) 사거리 안에 칠 수 있는 적이 있나?
+	#        있으면 **표적 축과 같은 기준으로** 그중 하나를 골라 친다.
+	#   2) 없으면 위치 축이 어디로 갈지 정한다.
+	#   3) 위치 축도 갈 곳이 없으면 아군 기준으로 자리를 잡는다.
+	#   4) 그래도 없으면 그때 제자리다.
 	#
-	# 인접(1칸)만 본다. 2~3칸 떨어진 적까지 이걸 걸면 표적 축이 통째로 죽는다.
-	# [후열 침투] 는 앞줄을 지나쳐 들어가는 모듈인데, 지나칠 기회를 아예 안
-	# 주는 것이 되니까.
+	# 예전에는 2)가 맨 앞에 있었다. 그래서 [방패 뒤] 를 꽂은 총사가 "방패 뒤
+	# 유지" 만 반복하며 판이 끝날 때까지 한 발도 안 쐈다 - 앞지르지 않으려고
+	# 멈춰 선 채, 사거리 안에 적이 들어와 있는데도.
+	#
+	# 자리를 잡는 것은 **다음 틱을 준비하는 일**이다. 이번 틱에 할 일이 있으면
+	# 그게 먼저다. 위치 축은 갈 곳이 있을 때만 의미가 있다.
+	#
+	# ── 왜 아무나 치지 않고 다시 고르는가 ───────────────────────────────
+	# 지정한 그 한 명이 멀어도 그 모듈이 무엇을 원했는지는 남아 있다.
+	# [후열 침투] 면 사거리 안에서 가장 깊은 적을, [처형] 이면 가장 약한 적을
+	# 고른다. 가까운 것을 치는 것과는 다른 답이 나온다.
 	if act_kind == "attack":
-		var glued: Unit = null
+		var in_range: Array = []
 		for e in state.living_enemies_of(unit):
-			if Grid.manhattan(unit.pos, e.pos) <= 1 and state.has_shot(unit, e):
-				glued = e
-				break
-		if glued != null:
-			return _rule(unit, "붙은 적 처리", "attack", glued, power, 0)
+			if Grid.manhattan(unit.pos, e.pos) <= unit.atk_range 					and state.has_shot(unit, e):
+				in_range.append(e)
+		if not in_range.is_empty():
+			var pick := _ctx_pick if _ctx_pick != "" else "highest_threat_enemy"
+			var near := resolve_target(unit, pick, state, "attack", in_range)
+			if near == null:
+				near = in_range[0]
+			return _rule(unit, "사거리 안 사격", "attack", near, power, 0)
 
-	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
 	var moved := _move_by_stand(unit, state, target, stand, bonus, designated)
 
-	# ── 제자리는 마지막 선택지다 ────────────────────────────────────────
-	# [방패 뒤] 를 꽂은 총사가 "방패 뒤 유지" 만 반복하며 판이 끝날 때까지 한
-	# 발도 안 쏘는 일이 있었다. 앞지르지 않으려고 멈춘 것인데, 멈춰 있는 동안
-	# **사거리 안에 적이 들어와 있어도** 안 쐈다.
-	#
-	# 자리를 지키는 것은 다음 틱을 위한 일이다. 이번 틱에 할 일이 있으면 그게
-	# 먼저다. 순서는 셋이다 - 사거리 안의 적을 친다 → 아군 기준으로 자리를
-	# 잡는다 → 그래도 없으면 그때 제자리.
+	# 위치 축이 제자리를 냈다. 아군 기준으로 설 자리가 있으면 그쪽으로 걷는다 -
+	# 방패병·전사 뒤를 따라가는 경로다.
 	if String((moved.get("card", {}) as Dictionary).get("act", "")) == "hold":
-		if act_kind == "attack":
-			for e in state.living_enemies_of(unit):
-				if Grid.manhattan(unit.pos, e.pos) <= unit.atk_range 						and state.has_shot(unit, e):
-					return _rule(unit, "사거리 안 사격", "attack", e, power, 0)
-		# 칠 것이 없으면 걷는다. 방패병·전사 뒤를 따라가는 경로다.
 		var formed := _move_by_ally(unit, state, stand, bonus)
 		if not formed.is_empty():
 			return formed

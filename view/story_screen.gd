@@ -225,8 +225,10 @@ func setup(p_beats: Array) -> void:
 	_name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_name_tag)
 
-	_lbl_text = UiKit.label(_bubble, Vector2(PAD_IN, PAD_IN - 8),
-		Vector2(1280 - BUBBLE_X * 2 - PAD_IN * 2, BUBBLE_H - PAD_IN * 2 + 16),
+	# 첫 줄이 판 윗변에 붙어 있었다. 이름표를 판 밖으로 빼면서 위쪽에 생긴
+	# 자리를 글이 그대로 물려받은 탓이다. 10px 내린다.
+	_lbl_text = UiKit.label(_bubble, Vector2(PAD_IN, PAD_IN + 2),
+		Vector2(1280 - BUBBLE_X * 2 - PAD_IN * 2, BUBBLE_H - PAD_IN * 2 + 6),
 		"", 19, UiKit.TEXT, true)
 	# ── 대사만 서체가 다르다 ────────────────────────────────────────────
 	# 큰 글씨는 비트비트체(도트)를 쓴다. 게임의 인상이 거기서 나오니까.
