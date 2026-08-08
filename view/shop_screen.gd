@@ -38,9 +38,9 @@ var tut: Tutorial = null
 ##
 ##   왼쪽  x  40 ~ 528   상점 카드 (3 + 2)
 ##   오른쪽 x 560 ~ 1240  적 정보 · 조작 · 보유
-const SHOP_X: float = 26.0
+const SHOP_X: float = 40.0
 const SHOP_Y: float = 110.0
-const SHOP_GAP: float = 10.0
+const SHOP_GAP: float = 16.0
 const SHOP_COLS: int = 5
 
 ## 오른쪽 열이 시작하는 x.
@@ -50,7 +50,7 @@ const RIGHT_X: float = 40.0
 ## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
 ## 페이즈가 문제로 남는다.
 const PREVIEW_WAVES: int = 2
-const PREVIEW_Y: float = 348.0
+const PREVIEW_Y: float = 396.0
 const PREVIEW_W: float = 250.0
 ## 오른쪽 보유 목록(3줄)과 아랫선을 맞춘다. 두 기둥의 끝이 어긋나 있으면
 ## 화면이 정리가 안 된 것으로 보인다.
@@ -60,7 +60,7 @@ const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 268.0
+const BAR_Y: float = 292.0
 
 var run: RunState
 
@@ -127,7 +127,7 @@ func setup(p_run: RunState) -> void:
 	lbl_note.visible = false
 	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
 	_head(self, Vector2(SHOP_X, 84), UiText.t("shop.offer_head", "확보 가능"))
-	_head(self, Vector2(1012.0, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
+	_head(self, Vector2(960.0, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
 	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
 	for i in OWN_FILTERS.size():
 		var fid := String(OWN_FILTERS[i])
@@ -369,19 +369,6 @@ class _Slab extends Button:
 	func _draw() -> void:
 		var s := size
 		var on := is_hovered() and not disabled
-		if not primary:
-			var body2 := Color(0.10, 0.115, 0.15) if not disabled 				else Color(0.065, 0.07, 0.09)
-			if on:
-				body2 = Color(0.145, 0.165, 0.21)
-			draw_rect(Rect2(0, 0, s.x, s.y), body2)
-			var a2: float = 0.18 if disabled else (0.85 if on else 0.45)
-			draw_rect(Rect2(0, 0, s.x, s.y), Color(tint.r, tint.g, tint.b, a2), false, 1.0)
-			# 왼쪽 화살촉.
-			var cy := s.y * 0.5
-			draw_colored_polygon(PackedVector2Array([
-				Vector2(9, cy - 6), Vector2(16, cy), Vector2(9, cy + 6),
-			]), Color(tint.r, tint.g, tint.b, a2))
-			return
 		var shape := PackedVector2Array([
 			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
 			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
@@ -874,7 +861,7 @@ func _build_preview() -> void:
 	var waves: Array = Stages.waves(st)
 	var shown: int = mini(waves.size(), PREVIEW_WAVES)
 
-	var x := 1012.0
+	var x := 960.0
 	var y2 := PREVIEW_Y
 	for w in shown:
 		var b := _Preview.new()

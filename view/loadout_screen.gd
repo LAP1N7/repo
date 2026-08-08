@@ -63,11 +63,13 @@ const PICK_STEP: Vector2 = Vector2(118.0, 112.0)
 const PICK_COLS: int = 3
 
 ## 서류첩은 오른쪽 절반에만 선다. 왼쪽 칸을 침범하지 않는 자리다.
-const HAND_Y: float = 456.0
+const HAND_Y: float = 452.0
 const HAND_X: float = 470.0
 ## 두 줄이 들어갈 높이. 한 줄이면 넉 장밖에 못 보고 나머지는 전부 스크롤 뒤에
 ## 숨는다. 아랫선은 화면 아래 테두리(y 690)와 맞춘다.
-const HAND_H: float = 236.0
+## 판 아랫선이 화면 가름선(y 690)과 정확히 맞는 값이다.
+## folder 아랫변 = HAND_Y - 34 + HAND_H + 46 = HAND_Y + HAND_H + 12
+const HAND_H: float = 226.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
@@ -608,7 +610,7 @@ func _build_hand() -> void:
 		# 두 줄로 쌓는다. 세로로 먼저 채워야 가로 스크롤이 자연스럽다 -
 		# 가로로 먼저 채우면 스크롤할 때 두 줄이 따로 논다.
 		card.place(Vector2(x0 + float(i / rows) * step,
-			44.0 + float(i % rows) * (mini_h + 6.0)), 0.0)
+			36.0 + float(i % rows) * (mini_h + 4.0)), 0.0)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)

@@ -555,7 +555,12 @@ func _danger_cells(u: Unit) -> Array:
 	# 자폭 - 자신을 중심으로 한 3x3. **도화선에 불이 붙었을 때만** 그린다.
 	# 붙기 전에도 띄우면 판 위에 늘 붉은 상자가 깔려 있어서, 정작 급한 순간에
 	# 그것이 급한 줄을 모른다.
-	if Traits.has(u, Traits.VOLATILE) and u.fuse_ticks >= 0:
+	# 교전 시작 전에는 보여 준다 - 편성을 고칠 수 있는 유일한 시점이라,
+	# 이때 안 보여 주면 그 정보는 쓸 데가 없다.
+	#
+	# 시작한 뒤에는 도화선에 불이 붙었을 때만. 늘 띄우면 판에 붉은 상자가
+	# 상시로 깔려서 정작 급한 순간을 못 알아본다.
+	if Traits.has(u, Traits.VOLATILE) and (u.fuse_ticks >= 0 or phase == Phase.READY):
 		for dy in [-1, 0, 1]:
 			for dx in [-1, 0, 1]:
 				var p := u.pos + Vector2i(dx, dy)

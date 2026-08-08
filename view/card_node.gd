@@ -24,7 +24,7 @@ signal clicked(node: CardNode)
 ##   [축색띠] AXIS        (비용)
 ##            이름
 ##            조건 → 행동
-const W: float = 238.0
+const W: float = 210.0
 const H: float = 142.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
@@ -254,9 +254,9 @@ func _draw() -> void:
 	#   · 노치 안에 주황 사선 띠. 위아래를 선으로 마감하고 빛을 조금 흘린다
 	#   · 노치 오른쪽 끝에 3/4 원 배지(아래를 조금 자른다)
 	#   · 왼쪽 아래에 두꺼운 축색 선
-	var r := 20.0 * k                 # 바깥 모서리 반지름
-	var ir := 14.0 * k                # 노치 꺾임 반지름
-	var nh := 34.0 * k                # 노치 깊이
+	var r := 16.0 * k                 # 바깥 모서리 반지름
+	var ir := 11.0 * k                # 노치 꺾임 반지름
+	var nh := 30.0 * k                # 노치 깊이
 	var nx := s.x * 0.50              # 노치가 시작하는 x
 	var pts := PackedVector2Array()
 
@@ -278,9 +278,9 @@ func _draw() -> void:
 	draw_colored_polygon(pts, body)
 	var outline := PackedVector2Array(pts)
 	outline.append(pts[0])
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 6.0 * k, true)
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 5.0 * k, true)
 	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.35),
-		2.0 * k, true)
+		1.6 * k, true)
 
 	# ── 노치 안의 사선 띠 ────────────────────────────────────────────────
 	# 양 끝을 사선 방향으로 맞춰 잘라 마감하고, 위아래에 얇은 선을 둘러
@@ -303,27 +303,27 @@ func _draw() -> void:
 		]), hatch)
 		hx += bar_w + bar_gap
 	# ── 왼쪽 아래 두꺼운 선 ──────────────────────────────────────────────
-	draw_line(Vector2(r, s.y - 3.5 * k), Vector2(r + s.x * 0.32, s.y - 3.5 * k),
-		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 6.0 * k)
+	draw_line(Vector2(r, s.y - 3.0 * k), Vector2(r + s.x * 0.32, s.y - 3.0 * k),
+		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 5.0 * k)
 
 	# ── 글 ───────────────────────────────────────────────────────────────
-	var pad := 16.0 * k
-	var axis_size: int = int(13.0 * k) + 1
-	var name_size: int = int(27.0 * k) + 1
-	var text_size: int = int(16.0 * k) + 1
+	var pad := 14.0 * k
+	var axis_size: int = int(11.0 * k) + 1
+	var name_size: int = int(20.0 * k) + 1
+	var text_size: int = int(13.0 * k) + 1
 
 	# 축 라벨. 궁극기는 축이 없으므로 소유 대원을 적는다 - 누구 것인지가
 	# 이 블록을 살지 말지 정하는 가장 큰 정보다.
 	var top_label := axis_label
 	if axis == "":
 		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
-	draw_string(UiKit.font_role("large"), Vector2(pad, 27.0 * k), top_label,
+	draw_string(UiKit.font_role("large"), Vector2(pad, 25.0 * k), top_label,
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 34.0 * k, axis_size,
 		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
 	# 3/4 원. 아래를 조금 잘라 띠에 얹힌 것처럼 보이게 한다.
-	var badge_r := 19.0 * k
+	var badge_r := 16.0 * k
 	var badge_at := Vector2(s.x - badge_r - 10.0 * k, badge_r - 1.0 * k)
 	var bcol: Color = ccol if enabled else Color(0.3, 0.32, 0.38)
 	# 아래 1/4(90도)만 잘라낸다. 남는 호는 3/4 이고, 잘린 두 끝을 이으면
@@ -337,20 +337,20 @@ func _draw() -> void:
 		wedge.append(badge_at + Vector2(cos(wa), sin(wa)) * badge_r)
 	draw_colored_polygon(wedge, bcol)
 	var cost_txt := str(cost)
-	var cost_size: int = int(16.0 * k) + 1
+	var cost_size: int = int(14.0 * k) + 1
 	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size).x
 	draw_string(fs, badge_at + Vector2(-cw * 0.5, 6.0 * k), cost_txt,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(0.06, 0.07, 0.1))
 
 	# 이름.
-	draw_string(f, Vector2(pad, 56.0 * k), String(c["name"]),
+	draw_string(f, Vector2(pad, 50.0 * k), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
 
 	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
 	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var ty := 78.0 * k
+	var ty := 66.0 * k
 	var body_w := s.x - pad * 2.0
 	var line_h := float(text_size) + 3.0
 	var room: float = s.y - ty - 8.0 * k
