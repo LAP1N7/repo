@@ -99,7 +99,8 @@ func setup(p_stage_id: int, party: Array) -> void:
 			Grid.PLAYER_SLOTS[slot], member["cards"],
 			String(member.get("special", "")), int(member.get("upgrade", 0)),
 			bool(member.get("special_first", false)),
-			member.get("card_levels", {})
+			member.get("card_levels", {}),
+			int(member.get("special_level", 0))
 		))
 		# 보조 지휘 강화는 편성이 확정된 이 순간 한 번만 얹는다.
 		units[units.size() - 1].apply_command(member.get("cmd", {}))
@@ -628,6 +629,10 @@ func step() -> bool:
 
 		_execute(u, choice)
 
+	# [불굴의 의지] 가 이번 틱에 발동했으면 여기서 컷인을 낸다. 유닛은 사건을
+	# 못 내므로 표시만 남겨 두고 안전한 지점에서 한 번에 흘린다.
+	_flush_undying()
+
 	# ── 도화선 ───────────────────────────────────────────────────────────
 	# 붙은 자폭체는 스스로 타들어 간다. 행동이 다 끝난 뒤에 센다 - 이번 틱에
 	# 물러나 떨어졌으면 도화선이 꺼져야 하기 때문이다.
@@ -759,7 +764,7 @@ func _resolve_barrage() -> void:
 		var v: Unit = units[int(h["target"])]
 		if not v.alive:
 			_emit({ "type": "death", "unit": v.index })
-			_recharge_on_death()
+			_recharge_on_kill(null)
 	_check_result()
 
 
@@ -808,7 +813,7 @@ func _tick_fuses() -> void:
 			u.alive = false
 			team_loss_pending[u.team] = true
 			_emit({ "type": "death", "unit": u.index })
-			_recharge_on_death()
+			_recharge_on_kill(null)
 
 
 func _explode(src: Unit) -> void:
@@ -829,7 +834,7 @@ func _explode(src: Unit) -> void:
 		var t: Unit = units[int(h["target"])]
 		if not t.alive:
 			_emit({ "type": "death", "unit": t.index })
-			_recharge_on_death()
+			_recharge_on_kill(null)
 
 
 ## 인접한 적을 n 칸 밀어낸다. 밀린 목록을 돌려준다.
@@ -881,7 +886,7 @@ func _execute(u: Unit, choice: Dictionary) -> void:
 				team_kill_pending[u.team] = true
 				team_loss_pending[target.team] = true
 				_emit({ "type": "death", "unit": target.index })
-				_recharge_on_death()
+				_recharge_on_kill(u)
 
 		"heal":
 			# 규칙이 heal_amount 를 지정하면 그 값을 쓴다. 무료 기본기를
@@ -1007,7 +1012,7 @@ func _splash(u: Unit, target: Unit, _main: int) -> void:
 			team_kill_pending[u.team] = true
 			team_loss_pending[e.team] = true
 			_emit({ "type": "death", "unit": e.index })
-			_recharge_on_death()
+			_recharge_on_kill(u)
 
 
 ## [반격 회전] - 피격 다음 틱, 인접한 적 전원에게 되갚는다.
@@ -1028,7 +1033,7 @@ func _riposte(u: Unit) -> void:
 			team_kill_pending[u.team] = true
 			team_loss_pending[e.team] = true
 			_emit({ "type": "death", "unit": e.index })
-			_recharge_on_death()
+			_recharge_on_kill(u)
 
 
 func _hit(attacker: Unit, victim: Unit, percent: int, hits: Array) -> void:
@@ -1102,29 +1107,64 @@ func _push_cell(u: Unit, e: Unit, n: int) -> Vector2i:
 	return p
 
 
-func _emit_deaths(hits: Array) -> void:
+## killer 를 받는다. [비영천참] 재충전이 "제 손으로 끊었는가" 를 보기 때문이다.
+func _emit_deaths(hits: Array, killer: Unit = null) -> void:
 	for h in hits:
 		var v: Unit = units[int(h["target"])]
 		if not v.alive:
 			_emit({ "type": "death", "unit": v.index })
-			_recharge_on_death()
+			_recharge_on_kill(killer)
 
 
-## 누가 죽으면 [비영천참] 이 다시 찬다 - **강화한 암살자에 한해서다.**
-## 강화 전에는 개전 1회로 끝난다. 이 차이가 암살자의 후반 성장(growth 140)과
-## 같은 방향이라, "강화를 어디에 쓸 것인가" 의 답이 하나 생긴다.
-func _recharge_on_death() -> void:
+## ── [비영천참] 재충전 ────────────────────────────────────────────────────
+## **그 궁극기로 끊었을 때만** 다시 찬다.
+##
+## 예전에는 아무나 죽으면 찼다(유닛 강화 1단계 이상). 그러면 암살자가 가만히
+## 있어도 재충전되어, 잘 쓰는 것과 안 쓰는 것이 같아진다. 궁극기를 어디에
+## 꽂을지가 판단이 되려면 재충전도 판단의 결과여야 한다.
+##
+## 조건은 궁극기 합성 1단계 이상이다. 유닛 강화가 아니라 이쪽으로 옮겼다 -
+## 궁극기를 키우는 값은 궁극기 쪽에 붙어 있어야 읽힌다.
+func _recharge_on_kill(killer: Unit) -> void:
+	if killer == null or not killer.alive or not killer.special_used:
+		return
+	if killer.special_level <= 0:
+		return
+	if not Specials.TABLE.get(killer.special, {}).get("recharge_on_death", false):
+		return
+	killer.special_used = false
+
+
+## ── [불굴의 의지] 가 막 발동했다 ────────────────────────────────────────
+## 유닛은 사건을 못 내므로 표시만 남겨 두고 여기서 컷인을 띄운다.
+## 이게 없어서 발동 순간에는 컷인이 아예 안 떴다 - 3틱 뒤 부활할 때만 떴다.
+func _flush_undying() -> void:
 	for u in units:
-		if not u.alive or not u.special_used or u.upgrade <= 0:
+		if not u.undying_started:
 			continue
-		if not Specials.TABLE.get(u.special, {}).get("recharge_on_death", false):
-			continue
-		u.special_used = false
+		u.undying_started = false
+		var spec: Dictionary = Specials.TABLE["unyielding"]
+		_emit({
+			"type": "special", "unit": u.index, "skill": "unyielding",
+			"name": String(spec["name"]), "hits": [], "heals": [],
+			"from": u.pos, "to": u.pos,
+		})
 
 
 func _execute_special(u: Unit, card: Dictionary, target: Unit, act: String) -> void:
+	# ── 합성 단계를 여기서 한 번에 얹는다 ────────────────────────────────
+	# 궁극기마다 세지는 곳이 다르다. 총사·암살자는 위력, 궁수는 이후 가산치,
+	# 악사는 회복량, 방패병은 방어 단계다. 표에서 값만 꺼내 오고 어디에 얹을지는
+	# 여기서 정한다 - 표가 실행 순서를 알 필요는 없다.
+	var lv := Specials.merge_amount(u.special, u.special_level)
 	var power := int(card.get("power", 100))
 	var arg := int(card.get("act_arg", 0))
+	if lv > 0:
+		match u.special:
+			"keep_off", "shadow_rend":
+				power += lv
+			"focus_fire", "cantabile", "last_guard":
+				arg += lv
 	var hits: Array = []
 	var moved_from := u.pos
 	var move_path: Array[Vector2i] = []
@@ -1213,7 +1253,7 @@ func _execute_special(u: Unit, card: Dictionary, target: Unit, act: String) -> v
 		"name": String(card["name"]), "hits": hits, "heals": [],
 		"from": moved_from, "to": u.pos, "path": move_path,
 	})
-	_emit_deaths(hits)
+	_emit_deaths(hits, u)
 	u.special_used = true
 
 
@@ -1261,7 +1301,7 @@ func _tick_undying(u: Unit) -> bool:
 	if u.undying_ticks <= 0:
 		u.alive = false
 		_emit({ "type": "death", "unit": u.index })
-		_recharge_on_death()
+		_recharge_on_kill(null)
 		return false
 	return true
 

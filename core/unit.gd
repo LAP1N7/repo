@@ -69,6 +69,16 @@ var far_streak: int = 0
 
 ## [불굴의 의지] 로 HP 0 에서 버티는 중인가. 남은 틱 수와, 버티기 시작한 뒤
 ## 이 유닛이 적에게 누적으로 넣은 피해량.
+## 궁극기 합성 단계(0~3). 보조 지휘에서 산 값이 편성 때 실려 온다.
+var special_level: int = 0
+
+## 이번 틱에 [불굴의 의지] 가 막 발동했는가. 전투가 읽고 지운다.
+##
+## take_damage 는 유닛 안에 있어서 사건을 못 낸다. 그래서 표시만 남기고,
+## 전투가 안전한 지점에서 컷인을 띄운다. 이게 없어서 **발동 순간에는 컷인이
+## 아예 안 떴다** - 3틱 뒤 부활할 때만 떴다.
+var undying_started: bool = false
+
 var undying_ticks: int = 0
 var undying_damage: int = 0
 
@@ -222,7 +232,8 @@ func apply_traits(list: Array) -> void:
 ## 스탯만 보고, 강화 체계 자체는 전혀 모른다.
 static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i,
 		p_cards: Array, p_special: String = "", p_upgrade: int = 0,
-		p_special_first: bool = false, p_levels: Dictionary = {}) -> Unit:
+		p_special_first: bool = false, p_levels: Dictionary = {},
+		p_special_level: int = 0) -> Unit:
 	var u := Unit.new()
 	u.index = p_index
 	u.type_id = p_type_id
@@ -238,6 +249,9 @@ static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i
 	u.atk_range_base = int(s["range"])
 	u.atk_range = u.atk_range_base
 	u.move_range = s["move"]
+	# 직업이 상시로 지니는 위협도. 방패병처럼 "서 있는 것 자체가 일" 인
+	# 직업에 붙는다.
+	u.threat_base += int(s.get("threat", 0))
 	u.color = s["color"]
 
 	# 슬롯 수를 넘겨 꽂는 것은 허용하지 않는다.
@@ -266,6 +280,7 @@ static func create(p_index: int, p_type_id: String, p_team: int, p_pos: Vector2i
 	if p_special != "" and Specials.usable_by(p_special, p_type_id):
 		u.special = p_special
 		u.special_first = p_special_first
+		u.special_level = p_special_level
 	return u
 
 
@@ -323,8 +338,13 @@ func power_damage(percent: int) -> int:
 	#
 	# 잠복이 풀린 뒤 첫 공격. 멈춰 있던 값을 여기서 받는다.
 	var amb := Specials.AMBUSH_POWER if ambush_ready else 0
+	# [불굴의 의지] 합성. 버티는 3틱 동안만 얹힌다 - 부활 문턱(30 피해)을
+	# 넘기는 것이 이 궁극기의 승부처라 거기에 값을 준다.
+	var uny := 0
+	if undying_ticks > 0 and special == "unyielding":
+		uny = Specials.merge_amount("unyielding", special_level)
 	return maxi(1, atk * (percent + focus_bonus + passive_atk_pct
-		+ trait_atk_pct + amb) / 100)
+		+ trait_atk_pct + amb + uny) / 100)
 
 
 func is_enemy_of(other: Unit) -> bool:
@@ -382,6 +402,7 @@ func take_damage(amount: int, from: Unit) -> int:
 			special_used = true
 			undying_ticks = int(Specials.TABLE["unyielding"]["act_arg"])
 			undying_damage = 0
+			undying_started = true
 			return dealt
 		alive = false
 	return dealt

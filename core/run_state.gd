@@ -281,6 +281,7 @@ func start_run(p_stage_id: int = 1) -> void:
 	# 그대로 손패에 남아 있던 게 이것이다. hand.clear() 는 분명히 했는데,
 	# 그 직후 start() 가 튜토리얼 편성에서 두 장을 되돌려 놨다.
 	command_levels.clear()
+	special_levels.clear()
 	roster.clear()
 	unit_cards.clear()
 	unit_special.clear()
@@ -839,6 +840,7 @@ func to_party() -> Array:
 			"cards": (unit_cards[i] as Array).duplicate(),
 			"card_levels": card_levels.duplicate(),
 			"upgrade": upgrade_level(String(roster[i]["type"])),
+			"special_level": special_level(String(unit_special[i])),
 			# 보조 지휘 강화. 전투가 이 값으로 능력치를 얹는다.
 			"cmd": {
 				"atk": command_amount("atk"),
@@ -858,6 +860,33 @@ func to_party() -> Array:
 ## 런 내내 유지된다. 스테이지를 넘어도 안 풀린다 - 이건 부대를 키우는 것이지
 ## 이번 교전을 푸는 것이 아니다. (data/command.gd 참조)
 var command_levels: Dictionary = {}
+
+## ── 궁극기 합성 단계 ────────────────────────────────────────────────────
+## 궁극기 id -> 0~3. 보조 지휘에서 산다. 손패에 그 궁극기가 없어도 단계는
+## 남는다 - 부대가 익힌 것이지 카드에 붙은 것이 아니다.
+var special_levels: Dictionary = {}
+
+
+func special_level(sid: String) -> int:
+	return int(special_levels.get(sid, 0))
+
+
+func special_merge_price(sid: String) -> int:
+	return Specials.merge_price(special_level(sid))
+
+
+## 궁극기 한 단계를 올린다. 실패하면 이유를 돌려준다.
+func special_merge(sid: String) -> String:
+	if not Specials.TABLE.has(sid):
+		return UiText.t("state.no_special", "없는 궁극기입니다")
+	var price := special_merge_price(sid)
+	if price < 0:
+		return UiText.t("state.merge_max", "이미 최대 단계입니다")
+	if budget < price:
+		return UiText.t("state.merge_poor", "예산 %d 이 필요합니다 (현재 %d)") % [price, budget]
+	budget -= price
+	special_levels[sid] = special_level(sid) + 1
+	return ""
 
 
 func command_level(id: String) -> int:

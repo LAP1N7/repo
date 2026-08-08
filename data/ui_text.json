@@ -267,5 +267,12 @@
   "rule.blocked_why": "지정한 곳이 막혀 위협도 %d 로 넘어갔다",
   "rule.reroute_why": "지정한 곳이 막혀 갈 수 있는 대상으로 다시 골랐다",
   "rule.spent": "이미 썼다",
-  "battle.give_up": "작전 종료"
+  "battle.give_up": "작전 종료",
+  "cmd.ult_head": "궁극기 합성",
+  "cmd.ult_sub": "궁극기 하나를 %d단계까지 키웁니다. 꽂지 않아도 단계는 남습니다.",
+  "cmd.ult_step": "단계당: %s",
+  "cmd.ult_now": "현재 %d단계",
+  "cmd.ult_buy": "-%d",
+  "state.no_special": "없는 궁극기입니다",
+  "state.merge_max": "이미 최대 단계입니다"
 }

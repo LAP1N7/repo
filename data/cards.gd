@@ -406,10 +406,11 @@ const TABLE: Dictionary = {
 		"tier": 2,
 		"cost": 4,
 		"name": "충격 강타",
-		"cond": "enemies_adjacent_at_least",
-		"cond_arg": 1,
+		"cond": "self_hp_below",
+		"cond_arg": 30,
 		"stance": "shove",
-		"text": "인접한 적 \u2192 때리면서 한 칸 밀어낸다",
+		"once": true,
+		"text": "자신 HP < 30% \u2192 앞의 적을 두 칸 밀어낸다 (페이즈당 1회)",
 	},
 
 	"guard_stance": {
@@ -592,7 +593,7 @@ const TABLE: Dictionary = {
 		"cond_arg": 30,
 		"stance": "bail",
 		"once": true,
-		"text": "자신 HP < 30% \u2192 세 칸 물러난다 (교전당 1회)",
+		"text": "자신 HP < 30% \u2192 1틱 잠복 + 붙은 적을 밀치고 세 칸 물러난다 (페이즈당 1회)",
 	},
 	"regroup": {
 		"axis": "doctrine",
@@ -604,7 +605,7 @@ const TABLE: Dictionary = {
 		"cond_arg": 0,
 		"stance": "regroup",
 		"once": true,
-		"text": "아군이 쓰러진 직후 \u2192 남은 아군 곁으로 (교전당 1회)",
+		"text": "아군이 쓰러진 직후 \u2192 남은 아군 곁으로 (페이즈당 1회)",
 	},
 
 
