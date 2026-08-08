@@ -371,26 +371,22 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 		"wait":
 			return _rule(unit, "대기", "hold", unit, 0, 0)
 		"defend":
-			# ── 버티는 것과 밀어내는 것 ──────────────────────────────────
-			# 방패병 궁극기 [최후의 방벽] 에만 있던 넉백을 여기로 끌어왔다.
-			# 궁극기는 페이즈당 한 번이라 "밀어낸다" 라는 개념 자체를 판에서
-			# 거의 볼 수 없었다 - 규칙은 있는데 플레이어가 그것으로 계획을
-			# 세울 일이 없으면 없는 규칙이다.
-			#
-			# 한 칸이다. 두 칸이면 방패병 하나가 전선을 통째로 되밀어서
-			# 근접 적이 영영 못 붙는다. 한 칸은 그 틱의 접근을 지우는
-			# 정도라, 원거리 아군이 한 번 더 쏠 시간을 사는 값으로 맞는다.
-			var dfn := _rule(unit, "방어", "defend", unit, 0, 0)
-			# **에워싸였을 때만** 민다. 붙은 적이 하나둘일 때도 밀면 매 틱
-			# 밀고 다시 붙는 일이 반복되어 판이 늘어지기만 한다 - 실측에서
-			# 이길 판이 정체 판정으로 넘어가 그대로 졌다. 미는 것 자체가
-			# 좋은 수인데 **양쪽 다 아무 일도 안 하는 시간**을 만든다.
-			#
-			# 셋 이상은 다르다. 그때는 이미 둘러싸여 다음 틱에 무너지는
-			# 자리이고, 한 칸을 벌리는 것이 그 한 틱을 되돌린다.
-			if _adjacent_enemies(unit, state) >= 3:
-				(dfn["card"] as Dictionary)["push"] = 1
-			return dfn
+			return _rule(unit, "방어", "defend", unit, 0, 0)
+
+		# ── 때리면서 민다 ────────────────────────────────────────────────
+		# 밀기만 하는 태세로 만들어 봤다가 고쳤다. 미는 것은 상대의 다음 틱을
+		# 지우는 좋은 수인데, 미는 쪽도 그 틱에 아무것도 안 한다. 그래서 밀고
+		# 다시 붙는 일이 반복되면 판이 늘어지고, 실측에서 이길 판이 정체
+		# 판정으로 넘어가 그대로 졌다.
+		#
+		# 때리면서 밀면 그 문제가 없다. 딜을 포기하지 않으므로 정체가 안 되고,
+		# 대신 밀어낸 만큼 다음 틱에 상대가 되돌아오는 데 한 틱을 쓴다.
+		"shove":
+			if target != null and Grid.manhattan(unit.pos, target.pos) <= 1:
+				var sv := _rule(unit, "충격 강타", "attack", target, 100, 0)
+				(sv["card"] as Dictionary)["push"] = 1
+				return sv
+
 		"ambush":
 			# ── 잠복 ─────────────────────────────────────────────────────
 			#   3틱간 멈춘다. 그동안 맞지도 때리지도 움직이지도 않는다.
@@ -437,14 +433,6 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1 					and state.plan_move(unit, mate, true, bonus + 1, 1) != unit.pos:
 				_spend_once(unit)
 				return _rule(unit, "집결", "move_to_ally", mate, 0, bonus + 1)
-
-		# ── 최후 돌격 ────────────────────────────────────────────────────
-		# 장기전이 되면 한 번은 거리를 좁혀야 한다. 양쪽이 서로 카이팅하며
-		# 영영 안 붙는 것이 이 게임에서 세 번째로 흔한 결말이었다.
-		"final_push":
-			if target != null and Grid.manhattan(unit.pos, target.pos) > unit.atk_range:
-				_spend_once(unit)
-				return _approach(unit, state, target, bonus + 2, "최후 돌격")
 
 		# ── 붙어서 끝낸다 ────────────────────────────────────────────────
 		# 능력치를 안 준다. 하는 일은 둘이다 - 물러나는 판단을 이 틱에만 끄고,
@@ -564,8 +552,11 @@ static func _move_by_ally(unit: Unit, state, stand: String, bonus: int) -> Dicti
 		return {}
 
 	if stand == "cluster":
+		# 2칸이다. 1칸(인접)으로 재면 넷이 한 칸씩 붙어 서려고 서로 자리를
+		# 밀어내다가 진형이 매 틱 흔들린다. 광역기를 피하면서 뭉치는 거리로도
+		# 2칸이 맞다.
 		var near := _nearest_ally(unit, state)
-		if near != null and Grid.manhattan(unit.pos, near.pos) > 1 				and state.plan_move(unit, near, true, bonus, 1) != unit.pos:
+		if near != null and Grid.manhattan(unit.pos, near.pos) > 2 				and state.plan_move(unit, near, true, bonus, 1) != unit.pos:
 			return _rule(unit, "밀집", "move_to_ally", near, 0, bonus)
 		return {}
 
@@ -617,9 +608,9 @@ static func _move_by_stand(unit: Unit, state, target: Unit,
 			return _approach(unit, state, target, bonus, "전진")
 
 		"cluster":
-			# 아군과 떨어져 있으면 붙는다.
+			# 아군과 2칸 넘게 떨어져 있으면 붙는다.
 			var mate := _nearest_ally(unit, state)
-			if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1:
+			if mate != null and Grid.manhattan(unit.pos, mate.pos) > 2:
 				if state.plan_move(unit, mate, true, bonus, 1) != unit.pos:
 					return _rule(unit, "밀집", "move_to_ally", mate, 0, bonus)
 			return _approach(unit, state, target, bonus, "전진")
@@ -990,7 +981,9 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 			# 그 원인은 양쪽이 서로 카이팅하며 영영 안 붙는 것이다. 그런데 시간
 			# 조건이 `tick_below`(개전) 하나뿐이라 **후반에 태세를 바꾸는 수단이
 			# 어휘에 아예 없었다.** 이게 그 자리다.
-			return state.tick > arg
+			# 페이즈 기준이다. 2페이즈 개전에 절대 틱이 이미 20 을 넘어 있으면
+			# "개전" 조건이 그 페이즈에서 한 번도 참이 될 수 없다.
+			return state.phase_tick() > arg
 
 		"ally_died_last_tick":
 			# 아군을 잃었을 때. team_killed_last_tick(우리가 죽였다)의 거울이다.
@@ -999,7 +992,7 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 
 		"tick_below":
 			# 개전 직후에만 발동하는 규칙용. state.tick 은 1부터 센다.
-			return state.tick < arg
+			return state.phase_tick() < arg
 
 		"enemy_special_ready":
 			# 적 중에 궁극기가 준비된 자가 있는가. [선제 차단] 이 이걸 본다.

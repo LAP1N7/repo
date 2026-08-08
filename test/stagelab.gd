@@ -39,7 +39,7 @@ const KITS: Array = [
 	["cut_support", "forced_march", "guard_stance"],
 	# 실수하는 빌드도 하나 넣는다. 원거리만으로 기다리면 어떻게 되는지가
 	# 표에 안 보이면, 그 함정이 얼마나 깊은지 알 수 없다.
-	["near_first", "hold_fire"],
+	["near_first", "guard_stance"],
 ]
 
 

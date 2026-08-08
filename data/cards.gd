@@ -277,7 +277,7 @@ const TABLE: Dictionary = {
 		"cond": "always",
 		"cond_arg": 0,
 		"stand": "cluster",
-		"text": "아군과 1칸 이내를 유지한다",
+		"text": "아군과 2칸 이내를 유지한다",
 	},
 	"follow_guard": {
 		"axis": "position",
@@ -391,17 +391,27 @@ const TABLE: Dictionary = {
 		"stance": "avoid_boost",
 		"text": "적이 2칸 이내 → 이동 +1로 물러난다",
 	},
-	"delay_open": {
+
+	# ── 미는 것은 따로 산다 ──────────────────────────────────────────────
+	# [방어 태세] 에 얹어 봤다가 뺐다. 버티는 판단과 미는 판단은 값이 다르다 -
+	# 버티기는 그 틱을 포기하고 사는 것이고, 밀기는 상대의 다음 틱을 지우는
+	# 것이다. 하나에 둘을 묶으면 플레이어가 어느 쪽을 사는지 모른다.
+	#
+	# 그리고 밀기만 하면 판이 늘어진다. 밀고 다시 붙는 일이 반복되면 양쪽 다
+	# 아무 일도 안 하는 시간이 쌓여서, 실측에서 이길 판이 정체 판정으로 넘어가
+	# 그대로 졌다. 그래서 **때리면서** 민다 - 딜을 포기하지 않는 넉백이다.
+	"shield_bash": {
 		"axis": "doctrine",
-		"tag": "patience",
+		"tag": "charge",
 		"tier": 2,
-		"cost": 3,
-		"name": "개전 지연",
-		"cond": "tick_below",
-		"cond_arg": 4,
-		"stance": "wait",
-		"text": "4틱까지 → 진형을 갖추고 기다린다",
+		"cost": 4,
+		"name": "충격 강타",
+		"cond": "enemies_adjacent_at_least",
+		"cond_arg": 1,
+		"stance": "shove",
+		"text": "인접한 적 \u2192 때리면서 한 칸 밀어낸다",
 	},
+
 	"guard_stance": {
 		"axis": "doctrine",
 		"tag": "none",
@@ -411,7 +421,7 @@ const TABLE: Dictionary = {
 		"cond": "enemies_adjacent_at_least",
 		"cond_arg": 2,
 		"stance": "defend",
-		"text": "인접한 적 2명 이상 → 받는 피해를 줄인다. 3명 이상이면 밀어낸다",
+		"text": "인접한 적 2명 이상 → 받는 피해를 줄인다",
 	},
 	"berserk": {
 		"axis": "doctrine",
@@ -477,7 +487,7 @@ const TABLE: Dictionary = {
 		"cond": "self_hp_below",
 		"cond_arg": 30,
 		"stance": "ambush",
-		"text": "자신 HP < 30% \u2192 3틱 잠복(맞지도 때리지도 않음) \u2192 해제 후 첫 공격 +60% (교전당 1회)",
+		"text": "자신 HP < 30% \u2192 3틱 잠복(표적에서 빠진다) \u2192 해제 후 첫 공격 +60% (페이즈당 1회)",
 	},
 
 	"ambush": {
@@ -596,18 +606,7 @@ const TABLE: Dictionary = {
 		"once": true,
 		"text": "아군이 쓰러진 직후 \u2192 남은 아군 곁으로 (교전당 1회)",
 	},
-	"final_push": {
-		"axis": "doctrine",
-		"tag": "charge",
-		"tier": 3,
-		"cost": 4,
-		"name": "최후 돌격",
-		"cond": "tick_above",
-		"cond_arg": 30,
-		"stance": "final_push",
-		"once": true,
-		"text": "30틱 이후 \u2192 이동 +2로 표적에게 붙는다 (교전당 1회)",
-	},
+
 
 	"scatter": {
 		"axis": "passive",

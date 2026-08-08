@@ -81,7 +81,7 @@ const TABLE: Array[Dictionary] = [
 			# 모자라므로 새 개체를 여기서 섞으면 배우기 전에 물량으로 진다.
 			[
 				{ "type": "archer", "pos": Vector2i(5, 1),
-				  "cards": ["far_in_range", "keep_range", "hold_fire"] },
+				  "cards": ["far_in_range", "keep_range", "wary_step"] },
 				{ "type": "archer", "pos": Vector2i(5, 3),
 				  "cards": ["near_first", "run_down"] },
 			],

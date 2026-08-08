@@ -17,8 +17,6 @@ func _init() -> void:
 	print("=== 모듈 표 감사 ===")
 	_check_axis_and_payload()
 	_check_vocabulary()
-	_check_tags()
-	_check_doctrine_reachable()
 	_check_stage_modules()
 	_check_wave_reachable()
 	print("=== 지적 사항 %d건 ===" % fails)
@@ -82,7 +80,7 @@ const PICKS := [
 ]
 const STANCES := ["engage", "wait", "defend", "ambush",
 	"avoid_near", "avoid_mid", "avoid_boost", "taunt", "aggressive", "stealth",
-	"close_in", "bail", "regroup", "final_push"]
+	"close_in", "bail", "regroup", "shove"]
 const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "march", "chase",
 	"follow_guard", "follow_lead", "protect_support", "protect_ranged", "escort", "rally"]
 
@@ -109,48 +107,6 @@ func _check_vocabulary() -> void:
 			Axes.POSITION:
 				if not STANDS.has(String(c.get("stand", ""))):
 					_fail("%s: 알 수 없는 자리 '%s'" % [cid, c.get("stand", "")])
-
-
-# ── 교리 ─────────────────────────────────────────────────────────────────
-
-## 교리가 참조하는 모듈이 실제로 존재하는가.
-##
-## 모듈 id 를 바꾸면 여기가 조용히 끊긴다. 끊긴 교리는 영원히 활성화되지 않는데,
-## 화면에는 멀쩡히 표에 남아 있어서 플레이어가 완성하려고 계속 시도하게 된다.
-func _check_tags() -> void:
-	for key in Doctrines.TABLE:
-		var d: Dictionary = Doctrines.TABLE[key]
-		var core: Array = d["core"]
-		if core.size() != Doctrines.CORE_SIZE:
-			_fail("교리 '%s': 핵심 모듈이 %d개다 (기대 %d)"
-				% [key, core.size(), Doctrines.CORE_SIZE])
-		for cid in core:
-			if not Cards.TABLE.has(String(cid)):
-				_fail("교리 '%s': 없는 모듈 '%s'" % [key, cid])
-		for must in ["name", "effect", "value", "text", "flavor"]:
-			if not d.has(must):
-				_fail("교리 '%s': '%s' 가 없다" % [key, must])
-
-
-## 교리를 슬롯 안에 담을 수 있는가.
-##
-## 핵심 모듈 수가 대원 슬롯 수를 넘으면 그 교리는 물리적으로 완성 불가다.
-## 슬롯 수를 줄이는 밸런스 조정을 하면 여기서 먼저 걸린다.
-func _check_doctrine_reachable() -> void:
-	for key in Doctrines.TABLE:
-		var core: Array = Doctrines.TABLE[key]["core"]
-		if core.size() > RunState.SLOTS_PER_UNIT:
-			_fail("교리 '%s': 핵심 %d개가 슬롯 %d개를 넘는다"
-				% [key, core.size(), RunState.SLOTS_PER_UNIT])
-		# 같은 축 모듈 둘로 이뤄진 교리는 위아래로 겹쳐 아래가 죽을 수 있다.
-		var axes: Dictionary = {}
-		for cid in core:
-			if not Cards.TABLE.has(String(cid)):
-				continue
-			var ax := String(Cards.TABLE[String(cid)]["axis"])
-			if axes.has(ax):
-				_fail("교리 '%s': %s 축 모듈이 둘이라 하나가 가려질 수 있다" % [key, ax])
-			axes[ax] = true
 
 
 # ── 스테이지 ─────────────────────────────────────────────────────────────

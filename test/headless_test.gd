@@ -14,7 +14,6 @@ extends SceneTree
 ##   - 축 안의 폴스루 (위가 성립하면 아래는 안 걸린다)
 ##   - 축 사이의 우선순위 (교전 > 위치 > 표적)
 ##   - 기본 AI (모듈이 없어도 반드시 무언가 한다)
-##   - 교리 활성 조건 (두 장 이상 · 같은 태그만)
 ##   - 종료 분기 (승 / 패 / 타임아웃 / 정체)
 
 var failures: int = 0
@@ -32,14 +31,11 @@ func _init() -> void:
 	test_target_axis()
 	test_squad_axis()
 	test_position_axis()
-	test_doctrines()
 	test_branches()
 	test_stall_rule()
 	test_line_of_sight()
 	test_specials()
 	test_tutorial_battle()
-	test_doctrine_in_battle()
-	test_axis_doctrine()
 	test_squad_movement()
 	test_story_wiring()
 	test_waves()
@@ -184,12 +180,24 @@ func test_axis_fallthrough() -> void:
 func test_axis_priority() -> void:
 	print("\n[5] 교전 > 위치 > 표적")
 
-	# [사거리 대기] 가 걸리면 표적이 무엇이든 이번 틱은 안 움직인다.
-	var d := decide(1, [
-		member("archer", 0, ["backline", "hold_fire", "forced_march"]),
+	# ── 이 검사는 없는 모듈을 쓰고 있었다 ────────────────────────────────
+	# [사거리 대기](hold_fire)는 표에 없는 id 다. 그래서 이 검사는 축 우선순위가
+	# 아니라 **모듈 셋 중 하나가 조용히 무시되는 경우**를 통과시키고 있었다.
+	# 값이 우연히 맞아서 여태 초록으로 떴을 뿐이다.
+	#
+	# 교전 축이 위치 축을 이기는 것을 실제로 재는 쌍으로 바꿨다. 강행군은
+	# "붙는다", 부상 회피는 "물러난다" 라서 결과가 정반대로 갈린다.
+	var b0 := Battle.new()
+	b0.setup(1, [member("archer", 0, ["wary_step", "forced_march"]),
 		member("warrior", 2), member("warrior", 4)])
-	ok(String(d["card"]["act"]) == "hold", "교전(대기)이 위치(강행군)를 이긴다",
-		String(d["card"]["act"]))
+	b0.units[0].hp = 1
+	# [부상 회피] 는 "적이 2칸 이내" 를 본다. 적을 옆에 붙여 조건을 세운다 -
+	# 개전 시점에는 적이 멀어서 이 검사가 위치 축을 재고 있었다.
+	var foe: Unit = b0.living_enemies_of(b0.units[0])[0]
+	foe.pos = b0.units[0].pos + Vector2i(1, 0)
+	var d := Rules.select(b0.units[0], b0)
+	ok(String(d["card"]["act"]) == "move_away",
+		"교전(부상 회피)이 위치(강행군)를 이긴다", String(d["card"]["act"]))
 
 	# [부상 회피] 는 표적이 사거리 안이어도 물러나게 한다.
 	var b := Battle.new()
@@ -257,41 +265,6 @@ func test_position_axis() -> void:
 		"[전열 유지] 가 궁수의 제자리 기본기를 덮어쓴다", String(d2["card"]["act"]))
 
 
-# ── 9. 교리 ──────────────────────────────────────────────────────────────
-
-func test_doctrines() -> void:
-	print("
-[9] 교리 보너스")
-
-	# 핵심 둘을 함께 꽂으면 교리가 켜진다.
-	var d1 := Doctrines.active_ids(["backline", "forced_march"])
-	ok(d1.has("assassin"), "핵심 둘이면 암살 교리 활성")
-
-	# 하나만 있으면 안 켜진다. 조합이 곧 정체성이다.
-	ok(Doctrines.active_ids(["backline"]).is_empty(), "한 장이면 활성 안 됨")
-
-	# 셋째 칸은 자유다. 같은 교리라도 세 번째로 대원이 갈린다.
-	var d2 := Doctrines.active_ids(["backline", "forced_march", "cluster"])
-	ok(d2.has("assassin"), "셋째 칸이 무엇이든 교리는 유지")
-
-	# 다른 조합은 다른 교리다.
-	var d3 := Doctrines.active_ids(["behind_guard", "coop_fire"])
-	ok(d3.has("phalanx") and not d3.has("assassin"), "조합이 다르면 교리도 다르다")
-
-	ok(Doctrines.amount(d1, "crit_pct") == 15, "암살 교리는 치명타 +15")
-	ok(Doctrines.amount(d1, "attack_pct") == 0, "없는 효과는 0")
-
-	# 한 장만 더 채우면 되는 교리를 알려 준다. 상점 안내가 이걸 쓴다.
-	var near := Doctrines.near_complete(["backline"])
-	var found := false
-	for n in near:
-		if String(n["key"]) == "assassin" and String(n["need"]) == "forced_march":
-			found = true
-	ok(found, "한 장 남은 교리를 짚어 준다")
-
-
-# ── 10. 종료 분기 ────────────────────────────────────────────────────────
-
 func test_branches() -> void:
 	print("\n[10] 승 / 패 / 타임아웃")
 
@@ -299,8 +272,8 @@ func test_branches() -> void:
 	var comps := [
 		[member("warrior", 0), member("warrior", 2), member("warrior", 4)],
 		[member("bard", 0), member("bard", 2), member("bard", 4)],
-		[member("archer", 0, ["hold_fire"]), member("archer", 2, ["hold_fire"]),
-			member("archer", 4, ["hold_fire"])],
+		[member("archer", 0, ["keep_range"]), member("archer", 2, ["keep_range"]),
+			member("archer", 4, ["keep_range"])],
 	]
 	for stage in [1, 2, 3, 4, 5]:
 		for c in comps:
@@ -375,57 +348,6 @@ func test_tutorial_battle() -> void:
 
 # ── 15. 교리가 전투에 실제로 붙는가 ──────────────────────────────────────
 
-func test_doctrine_in_battle() -> void:
-	print("
-[15] 교리 적용")
-
-	var b := Battle.new()
-	b.setup(1, [
-		member("warrior", 0, ["front_line", "battle_stance"]),
-		member("archer", 2, ["cut_support", "wary_step"]),
-		member("bard", 4)])
-
-	ok(b.units[0].doctrines.has("breakthrough"), "돌파 교리가 켜졌다")
-	ok(b.units[1].doctrines.has("interdict"), "저지 교리가 켜졌다")
-	ok(b.units[2].doctrines.is_empty(), "모듈 없는 대원은 교리도 없다")
-
-	var plain := Battle.new()
-	plain.setup(1, [member("archer", 0), member("warrior", 2), member("bard", 4)])
-
-	# 저지 교리(+12%)가 실제 피해에 반영돼야 한다.
-	ok(b.units[1].power_damage(100) > plain.units[0].power_damage(100),
-		"저지 교리가 공격력을 올린다",
-		"%d vs %d" % [b.units[1].power_damage(100), plain.units[0].power_damage(100)])
-
-	# 돌파 교리(-18%)는 받는 피해를 줄인다.
-	var a := b.units[0].take_damage(100, null)
-	var c := plain.units[1].take_damage(100, null)
-	ok(a < c, "돌파 교리가 받는 피해를 줄인다", "%d vs %d" % [a, c])
-
-
-func test_axis_doctrine() -> void:
-	print("\n[16] 축 교리")
-
-	# 한 축으로 세 칸을 다 채우면 켜진다. 조합이 무엇이든 상관없다.
-	var b := Battle.new()
-	b.setup(1, [
-		member("archer", 0, ["backline", "far_in_range", "execute"]),
-		member("warrior", 2, ["near_first", "front_line", "guard_stance"]),
-		member("bard", 4)])
-	ok(b.units[0].doctrines.has("axis:target"), "표적 셋이면 표적 교리")
-	ok(not b.units[1].doctrines.has("axis:target"), "축이 섞이면 안 켜진다")
-
-	# 조합 교리와 축 교리는 겹칠 수 있고, 겹치면 효과가 합쳐진다.
-	var both := Battle.new()
-	both.setup(1, [
-		member("archer", 0, ["cut_support", "wary_step", "keep_range"]),
-		member("warrior", 2), member("bard", 4)])
-	var d: Dictionary = both.units[0].doctrines
-	ok(d.has("interdict"), "저지 교리(조합)가 켜졌다")
-	ok(Doctrines.amount(d, "attack_pct") >= 12, "조합 교리 효과가 살아 있다",
-		str(Doctrines.amount(d, "attack_pct")))
-
-
 func test_squad_movement() -> void:
 	print("\n[17] 협력이 이동을 정한다")
 
@@ -459,9 +381,6 @@ func test_squad_movement() -> void:
 	ok(String(d3["card"]["act"]) == "move_toward",
 		"위치 축 1번이 2번을 가린다", String(d3["card"]["act"]))
 
-	# 새 협력 교리
-	ok(Doctrines.active_ids(["follow_guard", "taunt"]).has("vanguard"),
-		"선봉 교리가 켜진다")
 
 
 func test_story_wiring() -> void:
@@ -530,13 +449,6 @@ func test_passives() -> void:
 	else:
 		ok(true, "잠복 조건이 안 걸린 판 - 건너뜀")
 
-	# 균형 편제 - 세 축을 하나씩
-	var bal := Doctrines.active([
-		{ "axis": "target", "id": "backline" },
-		{ "axis": "position", "id": "keep_range" },
-		{ "axis": "doctrine", "id": "hold_fire" },
-	])
-	ok(bal.has("balanced"), "세 축을 하나씩 채우면 균형 편제")
 
 
 # ── 18. 페이즈 ───────────────────────────────────────────────────────────

@@ -57,6 +57,14 @@ var tick: int = 0
 
 ## 마지막으로 피해가 발생한 틱. 정체 판정이 읽는다.
 var last_damage_tick: int = 0
+
+## 이번 페이즈가 시작한 절대 틱. "개전 몇 틱" 은 여기서부터 센다.
+var wave_start_tick: int = 0
+
+
+## 이번 페이즈에서 몇 틱째인가. 1 부터 센다.
+func phase_tick() -> int:
+	return tick - wave_start_tick
 var result: String = RESULT_ONGOING
 
 ## 헤드리스 검증/리플레이용 전체 이벤트 기록.
@@ -124,6 +132,14 @@ var wave: int = 0
 
 func _spawn_wave(n: int) -> void:
 	wave = n
+	# ── "개전" 은 페이즈마다 다시 온다 ───────────────────────────────────
+	# tick_below 조건이 절대 틱을 봤다. 그래서 [비영천참](개전 4틱 이내) 같은
+	# 궁극기는 페이즈가 넘어가 사용 횟수가 다시 차도 **조건이 영원히 거짓**
+	# 이었다 - 2페이즈 개전은 이미 절대 틱 20 이 넘어 있으니까.
+	#
+	# 페이즈당 1회로 바꿔 놓고 조건은 교전당 1회 시절 그대로였던 셈이다.
+	# 횟수만 채워 주고 쓸 수 있게는 안 해 준 상태였다.
+	wave_start_tick = tick
 	var spawned: Array[int] = []
 	for e in waves[n]:
 		var idx: int = units.size()
@@ -154,6 +170,10 @@ func _spawn_wave(n: int) -> void:
 		for u in units:
 			if u.team == Unit.TEAM_PLAYER and u.alive:
 				u.special_used = false
+				# 잠복도 같이 찬다. 궁극기와 같은 이유다 - 3페이즈짜리 판에서
+				# 1페이즈에 한 번 숨고 나면 나머지 두 판에서 그 모듈은 없는
+				# 것이 된다.
+				u.ambush_done = false
 		_emit({ "type": "wave", "wave": n, "units": spawned, "total": waves.size() })
 
 
