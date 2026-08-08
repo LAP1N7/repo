@@ -23,6 +23,17 @@ const COMPS: Dictionary = {
 	"딜3": [["archer", 0], ["musketeer", 2], ["assassin", 4]],
 }
 
+## ── 4판부터는 네 명이다 ─────────────────────────────────────────────────
+## 편성 표는 셋짜리인데 실제 게임은 4판부터 넷을 세운다. 셋으로 재면 4·5판을
+## 있지도 않은 난이도로 재게 된다 - 실제로 4판이 1% 로 찍혔다.
+## 편성마다 네 번째 자리를 하나씩 정해 둔다.
+const FOURTH: Dictionary = {
+	"총사2전사": ["shieldman", 1],
+	"궁전악": ["shieldman", 1],
+	"암방악": ["musketeer", 3],
+	"딜3": ["shieldman", 1],
+}
+
 ## 플레이어가 실제로 짤 법한 알고리즘들. 축을 골고루 섞는다.
 const KITS: Array = [
 	[],
@@ -60,7 +71,10 @@ func _init() -> void:
 				# 강화 1/3/5 로 훑는다. 0~2 로 재면 후반 스테이지를 실제보다
 				# 훨씬 어렵게 본다 - 4단계에 도달한 편성이 무강화일 리가 없다.
 				for up in [1, 3, 5]:
-					var b := _play(stage, COMPS[cn], kit, up)
+					var comp: Array = (COMPS[cn] as Array).duplicate()
+					if stage >= RunState.PARTY_LATE_FROM_STAGE:
+						comp.append(FOURTH[cn])
+					var b := _play(stage, comp, kit, up)
 					n += 1
 					ticks += b.tick
 					match _how(b):

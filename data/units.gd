@@ -253,7 +253,10 @@ const TABLE: Dictionary = {
 ## 끄는 것이 아니라 늘리는 쪽으로 두려면 딜보다 확실히 작아야 한다.
 ##
 ## 궁극기 [칸타빌레](한 번에 크게)는 그대로다. 지속 회복만 줄인다.
-const BARD_HEAL: int = 16
+## 16 -> 13. 셋 편성에서 악사 하나가 붙으면 적 딜의 상당 부분이 그대로
+## 지워져서, 판이 "누가 먼저 악사를 끊는가" 하나로 수렴했다. 4판부터 네 명이
+## 되면 회복원이 뒤에 숨을 자리까지 생기므로 더 그렇다.
+const BARD_HEAL: int = 13
 
 static func get_stat(unit_id: String, key: String) -> Variant:
 	return TABLE[unit_id][key]

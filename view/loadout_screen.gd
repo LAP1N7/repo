@@ -279,22 +279,39 @@ func _build_roster() -> void:
 			13, UiKit.MUTED)
 		return
 
+	var m := _card_metrics()
 	for i in run.roster.size():
-		_unit_card(i, Vector2(CARD_X + float(i) * CARD_STEP, CARD_Y))
+		_unit_card(i, Vector2(m.z + float(i) * m.y, CARD_Y), m.x)
 
 
 ## 대원 하나를 세로 카드 한 장으로 세운다.
 ##
 ## 위에서부터 얼굴 · 이름 · 능력치 · 슬롯 3칸 · 궁극기 · 기본기. 읽는 순서가
 ## 곧 "이 대원이 무엇이고, 무엇을 하게 될 것인가" 의 순서다.
-func _unit_card(i: int, at: Vector2) -> void:
+## 대원 카드의 (폭, 간격, 시작 x).
+##
+## 4판부터 네 명이 된다. 254px 짜리 카드 넷은 440 에서 시작하면 1492 에서
+## 끝나 화면(1280) 밖으로 나간다. 셋일 때는 지금 치수를 그대로 쓰고, 넷일
+## 때만 시작점을 왼쪽으로 당기고 폭을 줄인다 - 셋인 화면은 아무것도 안 바뀐다.
+func _card_metrics() -> Vector3:
+	var n: int = maxi(run.roster.size(), 1)
+	if n <= 3:
+		return Vector3(CARD_W, CARD_STEP, CARD_X)
+	# 왼쪽 대원 선택 판이 x=410 까지 온다. 그보다 왼쪽에서 시작하면 첫 카드가
+	# 그 판 밑으로 깔린다 - 실제로 겹쳤다.
+	var x0 := 424.0
+	var step: float = (1280.0 - x0 - 16.0) / float(n)
+	return Vector3(step - 12.0, step, x0)
+
+
+func _unit_card(i: int, at: Vector2, cw: float) -> void:
 	var tid: String = run.roster[i]["type"]
 	var s: Dictionary = UnitData.TABLE[tid]
 	var picked: bool = sel_member == i
 
 	var card := _UnitCard.new()
 	card.position = at
-	card.size = Vector2(CARD_W, CARD_H)
+	card.size = Vector2(cw, CARD_H)
 	card.tint = s["color"]
 	card.selected = picked
 	card.type_id = tid
@@ -312,7 +329,7 @@ func _unit_card(i: int, at: Vector2) -> void:
 		var by := at.y + IN_SLOT_Y + float(k) * IN_SLOT_H
 		if k >= slots.size():
 			var e := UiKit.label(roster_root, Vector2(at.x + 14, by + 6),
-				Vector2(CARD_W - 28, 20),
+				Vector2(cw - 28, 20),
 				UiText.t("loadout.m15", "%d.  비어 있음") % (k + 1), 11, UiKit.LINE)
 			e.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			continue
@@ -321,7 +338,7 @@ func _unit_card(i: int, at: Vector2) -> void:
 		var ax := String(c.get("axis", ""))
 		var row := _SlotRow.new()
 		row.position = Vector2(at.x + 10, by)
-		row.size = Vector2(CARD_W - 20 - 46, IN_SLOT_H - 4)
+		row.size = Vector2(cw - 20 - 46, IN_SLOT_H - 4)
 		row.idx = k
 		row.title = String(c["name"])
 		row.body = String(c["text"])
@@ -333,7 +350,7 @@ func _unit_card(i: int, at: Vector2) -> void:
 		roster_root.add_child(row)
 		rows[k] = row
 
-		var bx := at.x + CARD_W - 54.0
+		var bx := at.x + cw - 54.0
 		var up := UiKit.button(roster_root, Vector2(bx, by), Vector2(22, 26), "▲", 10, 2)
 		up.disabled = k == 0
 		up.tooltip_text = UiText.t("loadout.m13", "우선순위를 올린다")
@@ -355,8 +372,12 @@ func _unit_card(i: int, at: Vector2) -> void:
 	var sb_text := UiText.t("loadout.m06", "특수: 없음")
 	if sid != "":
 		sb_text = UiText.t("loadout.m07", "특수: %s") % Specials.TABLE[sid]["name"]
+	# 두 버튼이 카드 폭을 나눠 쓴다. 148/82 로 박아 두면 네 명 편성(카드 폭
+	# 210)에서 [전술 먼저] 가 옆 카드 위로 튀어나간다.
+	var ult_w: float = maxf(96.0, cw - 104.0)
+	var first_w: float = cw - 20.0 - ult_w - 4.0
 	var sb := UiKit.button(roster_root, Vector2(at.x + 10, at.y + IN_ULT_Y),
-		Vector2(148, 26), sb_text, 11)
+		Vector2(ult_w, 26), sb_text, 11)
 	sb.modulate = UiKit.ACCENT if sid != "" else Color(0.62, 0.64, 0.72)
 	if sid != "":
 		sb.tooltip_text = "%s\n%s" % [Specials.TABLE[sid]["text"],
@@ -369,8 +390,8 @@ func _unit_card(i: int, at: Vector2) -> void:
 		sb.disabled = true
 
 	var first: bool = bool(run.unit_special_first[i])
-	var fb := UiKit.button(roster_root, Vector2(at.x + 162, at.y + IN_ULT_Y),
-		Vector2(82, 26),
+	var fb := UiKit.button(roster_root, Vector2(at.x + 14.0 + ult_w, at.y + IN_ULT_Y),
+		Vector2(first_w, 26),
 		UiText.t("loadout.m10", "전술 먼저") if not first else UiText.t("loadout.m11", "특수 먼저"),
 		10, 3)
 	fb.disabled = sid == ""
@@ -386,13 +407,14 @@ func _unit_card(i: int, at: Vector2) -> void:
 	var txt := UiText.t("loadout.m16", "기본기 ↓  ")
 	txt += own_text if own_text != "" else UiText.t("loadout.m17", "(없음)")
 	var il := UiKit.label(roster_root, Vector2(at.x + 12, at.y + IN_INNATE_Y),
-		Vector2(CARD_W - 24, 40), txt, 9, UiKit.FAINT, true)
+		Vector2(cw - 24, 40), txt, 9, UiKit.FAINT, true)
 	il.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	if not dead.is_empty():
 		var note := Shadow.warnings(slots, int(s["range"]))[0]
-		var wl := UiKit.label(roster_root, Vector2(at.x + 12, at.y + CARD_H - 24),
-			Vector2(CARD_W - 24, 20), "[!] " + note, 9, UiKit.BAD)
+		# 접어서 그린다. 한 줄로 두면 카드 폭을 넘어 옆 카드 위로 흘렀다.
+		var wl := UiKit.label(roster_root, Vector2(at.x + 12, at.y + CARD_H - 34),
+			Vector2(cw - 24, 32), "[!] " + note, 9, UiKit.BAD, true)
 		wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 

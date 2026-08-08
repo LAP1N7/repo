@@ -323,7 +323,11 @@ func _draw() -> void:
 	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
 	# 미니 폭은 92px 다. 11 로 두면 "불굴의 의지" 가 "불굴의 의" 로 잘린다.
 	var name_size := 17 if not _is_mini() else 10
-	var text_size := 12 if not _is_mini() else 10
+	# ── 미니 카드는 한 급 더 작게 ────────────────────────────────────────
+	# 10px 로 세 줄까지밖에 못 담아서 조금만 긴 설명이면 "..." 로 끝났다.
+	# 손패는 **무엇을 살지 고르는 화면**이라, 끝을 잘라 놓으면 고를 수가 없다.
+	# 9px 로 내리면 같은 자리에 네 줄이 들어가고, 표의 거의 모든 문장이 다 찬다.
+	var text_size := 12 if not _is_mini() else 9
 	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
 
 	# 코스트 배지
@@ -388,8 +392,8 @@ func _draw() -> void:
 	# 화살표가 있으면 조건이 붙은 것이고 없으면 상시다. 그 차이는 문장 자체가
 	# 이미 말하므로 라벨이 필요 없다. 화살표 앞뒤로 색만 갈라 준다.
 	# 본문 시작 높이. 위 요소가 끝나는 지점은 고정값이므로 여기도 고정값이다.
-	var ty: float = s.y * (0.47 if _is_mini() else 0.0) + (0.0 if _is_mini() else pad + 64.0)
-	var line_h := float(text_size) + 3.0
+	var ty: float = s.y * (0.42 if _is_mini() else 0.0) + (0.0 if _is_mini() else pad + 64.0)
+	var line_h := float(text_size) + (2.0 if _is_mini() else 3.0)
 
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")

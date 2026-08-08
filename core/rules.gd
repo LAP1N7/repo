@@ -244,6 +244,14 @@ static func _pick_doctrine(unit: Unit, state, trace: Dictionary) -> Dictionary:
 
 
 ## 그 축의 모듈을 하나라도 꽂았는가. 조건이 걸렸는지는 안 본다.
+## 이 대원이 그 모듈을 꽂고 있는가. 축이 골랐는지와 무관하다.
+static func _has_card(unit: Unit, card_id: String) -> bool:
+	for r in unit.card_rules:
+		if String((r as Dictionary).get("id", "")) == card_id:
+			return true
+	return false
+
+
 static func _has_axis(unit: Unit, axis: String) -> bool:
 	for r in unit.card_rules:
 		if String((r as Dictionary).get("axis", "")) == axis:
@@ -362,8 +370,15 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 	var ai := Innates.base_ai(unit.type_id)
 	var act_kind := String(ai["act"])
 	var power := int(ai["power"])
-	# 강행군은 자리가 아니라 **이동력 보정**이다. 다른 자리 판단과 같이 걸린다.
-	var bonus := 1 if stand == "march" else 0
+	# ── 강행군은 자리가 아니라 이동력 보정이다 ───────────────────────────
+	# stand == "march" 일 때만 걸고 있었다. 그런데 위치 축은 **첫 성립 하나**만
+	# 고르므로, [전열 유지] 를 1번에 두고 [강행군] 을 2번에 두면 강행군은 판이
+	# 끝날 때까지 한 번도 안 걸린다. 카드에는 조건 없이 "이동 거리 +1" 이라고
+	# 적혀 있는데.
+	#
+	# 조건이 없는 보정은 어느 칸에 꽂혔든 들어야 한다. 자리를 정하는 일과
+	# 몇 칸 가느냐는 애초에 다른 층위다.
+	var bonus := 1 if (stand == "march" or _has_card(unit, "forced_march")) else 0
 
 	# ── 교전이 위치와 표적을 이긴다 ──────────────────────────────────────
 	var near_d: int = _nearest_distance(unit, state)

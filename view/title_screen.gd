@@ -133,6 +133,11 @@ class _MenuFace extends Control:
 				Color(0.55, 0.85, 1.0, 0.55 * a))
 			draw_rect(Rect2(0, s.y - 2, s.x * (0.25 + 0.75 * a), 1),
 				Color(0.55, 0.85, 1.0, 0.35 * a))
+			# 발광. 띠 뒤로 한 겹 더 깔아 줄 전체가 켜진 것처럼 보이게 한다.
+			for g in 3:
+				draw_rect(Rect2(-2.0 - float(g) * 2.0, 1.0 - float(g),
+					s.x * 0.55, s.y - 2.0 + float(g) * 2.0),
+					Color(1.0, 0.72, 0.28, 0.05 * a))
 
 		# 왼쪽 표시. 세로 막대 + 갈매기. 켜질수록 오른쪽으로 조금 나온다.
 		var px := -18.0 + 4.0 * a
@@ -147,9 +152,20 @@ class _MenuFace extends Control:
 		var f2 := UiKit.title_font()
 		var col := Color(0.86, 0.88, 0.94).lerp(Color(1, 1, 1), a)
 		var at := Vector2(14.0 + 6.0 * a, s.y * 0.5 + 10.0)
-		# 배경이 밝은 프레임에서도 읽히도록 그림자를 한 겹 깐다.
+		# 배경이 밝은 프레임에서도 읽히도록 그림자와 외곽선을 깐다.
 		draw_string(f2, at + Vector2(2, 2), label, HORIZONTAL_ALIGNMENT_LEFT,
 			-1, 26, Color(0, 0, 0, 0.65))
+		draw_string_outline(f2, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, 5,
+			Color(0.02, 0.03, 0.05, 0.85))
+		# ── 가리키면 색이 어긋난다 ───────────────────────────────────────
+		# 색수차 한 겹이면 글자가 "신호" 로 읽힌다. 두 겹을 반대 방향으로
+		# 아주 조금 어긋나게 깔고 그 위에 본문을 얹는다. 켜짐 정도에 비례하니
+		# 손을 떼면 저절로 사라진다.
+		if a > 0.02:
+			draw_string(f2, at + Vector2(-1.5 * a, 0), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1.0, 0.30, 0.36, 0.45 * a))
+			draw_string(f2, at + Vector2(1.5 * a, 0), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(0.30, 0.85, 1.0, 0.45 * a))
 		draw_string(f2, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, col)
 
 
@@ -267,14 +283,14 @@ func setup() -> void:
 		start_run.emit()
 	)
 
-	var b2 := _menu(Vector2(TEXT_X, 430), UiText.t("title.tutorial", "훈련 과정"), 30)
+	var b2 := _menu(Vector2(TEXT_X, 442), UiText.t("title.tutorial", "훈련 과정"), 30)
 	b2.pressed.connect(func(): start_tutorial.emit())
 
 	# ── 왜 규칙 요약 대신 스토리인가 ────────────────────────────────────
 	# 규칙 요약은 상점 화면에도 [게임 방법] 으로 있다. 같은 것을 두 군데 둘
 	# 이유가 없고, 지금 더 급한 건 대본을 고칠 때마다 다섯 판을 다시 이기지
 	# 않고 이야기만 확인하는 길이다.
-	var b3 := _menu(Vector2(TEXT_X, 488), UiText.t("title.story", "기록 열람"), 30)
+	var b3 := _menu(Vector2(TEXT_X, 512), UiText.t("title.story", "기록 열람"), 30)
 	b3.pressed.connect(func(): show_help.emit())
 
 	# 콘텐츠 개수(스테이지 5개 · 카드 18종 …)는 뺐다.
@@ -287,7 +303,10 @@ func setup() -> void:
 	# 브라우저에서는 조작 전까지 소리를 못 낸다. 가만히 기다리는 사람에게는
 	# 그냥 "음악이 없는 게임" 으로 보이므로, 왜 조용한지 한 줄 알린다.
 	# 잠금이 풀리면 스스로 사라진다.
-	_lbl_audio = UiKit.label(self, Vector2(TEXT_X, 568), Vector2(560, 20), "", 11, UiKit.MUTED)
+	# 11px MUTED 는 영상 위에서 사실상 안 보였다. 이건 "왜 조용한가" 를 알리는
+	# 유일한 줄이라 안 보이면 있으나 마나다.
+	_lbl_audio = UiKit.label(self, Vector2(TEXT_X, 596), Vector2(560, 24), "", 13,
+		Color(1.0, 0.80, 0.42))
 
 	# ── 출처 ─────────────────────────────────────────────────────────────
 	# 영상에 박혀 있던 워터마크는 잘라 냈다. 제목 화면 한복판에 생성 도구
@@ -359,6 +378,16 @@ class _Veil extends Control:
 	func _draw() -> void:
 		var dark := Color(0.03, 0.04, 0.06)
 		draw_rect(Rect2(0, 0, SOLID_X, size.y), Color(dark.r, dark.g, dark.b, 0.94))
+		# ── 위아래 띠 ────────────────────────────────────────────────────
+		# 왼쪽 기둥만 덮고 있었다. 그런데 제목은 화면 위쪽 끝까지 올라가고
+		# 안내 문구는 아래쪽 끝에 붙어서, 영상이 밝아지는 프레임마다 그
+		# 둘이 통째로 묻혔다. 가로 전체에 얇게 깔면 글이 뜬다.
+		for i in 26:
+			var f := float(i) / 26.0
+			draw_rect(Rect2(0, float(i) * 5.0, size.x, 5.0),
+				Color(dark.r, dark.g, dark.b, 0.55 * (1.0 - f)))
+			draw_rect(Rect2(0, size.y - float(i) * 6.0 - 6.0, size.x, 6.0),
+				Color(dark.r, dark.g, dark.b, 0.66 * (1.0 - f)))
 		var steps := 40
 		var span := FADE_X - SOLID_X
 		for i in steps:

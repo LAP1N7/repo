@@ -37,7 +37,14 @@ extends RefCounted
 ## 다만 세진 만큼 **답을 마련할 수단**도 줘야 한다. 예산을 올린다 - 모듈을
 ## 한두 장 더 사는 것은 강화가 아니라 선택지이므로, 새 답을 요구한다는 목적과
 ## 어긋나지 않는다.
-const STAGE_BUDGET: Array[int] = [10, 17, 32, 46, 62]
+## ── 뒤로 갈수록 너무 불었다 ─────────────────────────────────────────────
+## [10, 17, 32, 46, 62] 였다. 실측하면 3판에 6.6장, 5판에 10장을 살 수 있었고
+## 손패 누적은 슬롯 9칸 대비 362% 였다. 살 수 있는 것이 꽂을 수 있는 것의 세
+## 배 반이면 "무엇을 살까" 가 사라진다 - 그냥 다 산다.
+##
+## 이 수치는 적 강화 +1 을 보상하려고 26/37/50 에서 올린 것이었는데, 보상
+## 예산과 신속 제압까지 겹치면서 과보정이 됐다.
+const STAGE_BUDGET: Array[int] = [10, 15, 23, 31, 40]
 
 ## 1스테이지 시작 예산. 표의 첫 칸이다.
 const START_BUDGET: int = 10
@@ -50,7 +57,7 @@ static func stage_budget(stage: int) -> int:
 ## 스테이지를 깼을 때 [보급] 보상으로 고를 수 있는 금액.
 ## 뒤로 갈수록 커진다 - 상점의 고가치 카드도 뒤로 갈수록 열리므로,
 ## 살 수 있는 돈이 같이 늘어야 보이기만 하고 못 사는 일이 없다.
-const REWARD_BUDGET: Array[int] = [5, 7, 10, 14, 18]
+const REWARD_BUDGET: Array[int] = [4, 5, 7, 9, 12]
 const REWARD_TOKENS: Array[int] = [1, 1, 1, 2, 2]
 
 
@@ -80,7 +87,9 @@ static func reward_tokens(cleared_stage: int) -> int:
 ## 초반 예산은 복리로 불어나므로 같은 금액이라도 1스테이지가 훨씬 값지다.
 ## 그래서 **상한을 뒤로 갈수록 키운다.**
 const SPEED_BASE_TICKS: Array[int] = [16, 16, 40, 15, 38]
-const SPEED_CAP: Array[int] = [3, 4, 5, 6, 8]
+## 상한도 같이 내렸다. 스테이지 예산·보상·신속 제압이 셋 다 뒤로 갈수록
+## 커지는 구조라, 하나만 두고 봐서는 안 커 보이는데 겹치면 눈덩이가 된다.
+const SPEED_CAP: Array[int] = [2, 3, 4, 4, 6]
 
 
 static func speed_bonus(cleared_stage: int, ticks: int) -> int:
@@ -110,7 +119,10 @@ const TOTAL_OFFERS: int = SHOP_SIZE
 ##
 ## 슬롯 5칸이므로 상점 하나에 하나라도 뜰 확률은 1-(1-p)^5 이다.
 ##   5% → 23%   ·   8% → 34%   ·   12% → 47%   ·   16% → 58%   ·   22% → 71%
-const SPECIAL_CHANCE_PCT: Array[int] = [5, 8, 12, 16, 22]
+##   5% → 23%  ·  8% → 34%  ·  12% → 47%  ·  16% → 58%  ·  22% → 71%
+## 4판부터 상점 절반 이상이 궁극기를 물었다. 궁극기는 판을 뒤집는 한 수인데
+## 매 상점에 뜨면 그냥 살 것 중 하나가 된다.
+const SPECIAL_CHANCE_PCT: Array[int] = [4, 6, 9, 11, 14]
 
 
 static func special_chance(stage: int) -> int:
@@ -139,6 +151,16 @@ const REROLL_COST: int = 1
 ## 상한을 스테이지별로 따로 적어 줄 필요가 없다.
 const BUY_SURCHARGE: int = 1
 const PARTY_SIZE: int = 3
+
+## ── 4판부터 한 명 더 ────────────────────────────────────────────────────
+## 3~5판은 적이 강화 +1 을 달고 나오고 페이즈도 둘 이상이다. 셋으로는 앞을
+## 막으면 뒤가 비고 뒤를 채우면 앞이 뚫린다 - 편성이 아니라 양자택일이었다.
+##
+## 넷이 되면 "전열 둘 · 후열 둘" 이 처음으로 성립하고, 그때부터 위치 축이
+## 실제로 고를 것이 생긴다. 자리(Grid.PLAYER_SLOTS)는 원래 여섯 칸이라
+## 격자는 안 건드려도 된다.
+const PARTY_SIZE_LATE: int = 4
+const PARTY_LATE_FROM_STAGE: int = 4
 const SLOTS_PER_UNIT: int = 3
 
 ## 0 이 아니면 이 값으로 런 시드를 고정한다.
@@ -500,7 +522,9 @@ func reroll() -> bool:
 ## 실제로 막혔다. 그렇다고 대본을 3명으로 늘리면 배우는 양이 세 배가 되고,
 ## 첫 화면에서 가르쳐야 할 것(카드 순서)이 편성 노동에 묻힌다.
 func required_party() -> int:
-	return 1 if stage_id == Stages.TUTORIAL_ID else PARTY_SIZE
+	if stage_id == Stages.TUTORIAL_ID:
+		return 1
+	return PARTY_SIZE_LATE if stage_id >= PARTY_LATE_FROM_STAGE else PARTY_SIZE
 
 
 func party_full() -> bool:

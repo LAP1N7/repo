@@ -111,6 +111,9 @@ var _log: Label
 var _log_box: Control
 var _log_t: float = 0.0
 var _log_n: int = 0
+
+## 기록이 마지막 줄까지 나온 시각. 0 이면 아직 흐르는 중이다.
+var _log_full_ms: int = 0
 var _t: float = 0.0
 var _shake: float = 0.0
 
@@ -297,6 +300,14 @@ var _opened_ms: int = 0
 ## 이 시간 안에 들어온 입력은 앞 화면에서 새어 나온 것으로 본다.
 const INPUT_GUARD_MS: int = 250
 
+## ── 기록이 다 나온 뒤의 잠금 ────────────────────────────────────────────
+## 기록이 끝까지 나오는 순간과 손가락이 두 번째로 눌리는 순간이 겹쳤다.
+## 마지막 줄이 뜨자마자 그 클릭이 "다음 대사" 로 먹혀서, 이 이야기의 정체가
+## 밝혀지는 유일한 장면이 **읽기도 전에** 넘어갔다.
+##
+## 다 나온 뒤 이만큼은 안 넘어간다. 스크롤이 바닥까지 내려가는 시간이기도 하다.
+const LOG_HOLD_MS: int = 1400
+
 
 func _ready() -> void:
 	_opened_ms = Time.get_ticks_msec()
@@ -324,8 +335,17 @@ func _advance() -> void:
 	#
 	# 한 번은 "다 보여 줘", 두 번째가 "넘어가" 다. 건너뛸 수는 있되 모르고
 	# 지나칠 수는 없게 한다.
+	if _log_box != null and _log_box.visible:
+		# 다 나왔는데 아직 잠금 시간이 안 지났으면 아무 일도 안 한다.
+		# 스크롤이 바닥에 닿았는지도 같이 본다 - 시간만 재면 마지막 줄이
+		# 화면 밖에 있는 채로 넘어갈 수 있다.
+		if _log_n >= Story.LOG_LINES.size():
+			var held := Time.get_ticks_msec() - _log_full_ms
+			if _log_full_ms == 0 or held < LOG_HOLD_MS or not _log_settled():
+				return
 	if _log_box != null and _log_box.visible and _log_n < Story.LOG_LINES.size():
 		_log_n = Story.LOG_LINES.size()
+		_log_full_ms = Time.get_ticks_msec()
 		_log.text = "
 ".join(Story.LOG_LINES)
 		return
@@ -444,6 +464,7 @@ func _show(i: int) -> void:
 		# 글로 설명하지 않고 실제로 그렇게 흐르게 한다.
 		_log_t = 0.0
 		_log_n = 0
+		_log_full_ms = 0
 		_log.text = ""
 	(_fx as _Glitch).mode = fx
 	(_fx as _Glitch).t0 = _t
@@ -758,12 +779,23 @@ func _tick_log(delta: float) -> void:
 				_sfx.play("beep", 1.6 + float(_log_n % 5) * 0.06, 0.0)
 			_log.text = "
 ".join(Story.LOG_LINES.slice(0, _log_n))
+			if _log_n >= Story.LOG_LINES.size():
+				_log_full_ms = Time.get_ticks_msec()
 
 	# ── 스크롤은 따로, 부드럽게 ──────────────────────────────────────────
 	# 줄이 늘 때마다 위치를 툭 바꾸면 글이 한 칸씩 튄다. 목표 지점을 정해 두고
 	# 매 프레임 그쪽으로 조금씩 다가가면 종이가 밀려 올라가는 것처럼 흐른다.
-	var want: float = 8.0 - maxf(0.0, float(_log_n) * LOG_LINE_H - 348.0)
+	var want: float = _log_scroll_target()
 	_log.position.y = lerpf(_log.position.y, want, clampf(delta * 6.0, 0.0, 1.0))
+
+
+## 기록이 바닥까지 내려왔는가. 넘어가도 되는지 판단할 때 쓴다.
+func _log_settled() -> bool:
+	return absf(_log.position.y - _log_scroll_target()) <= 2.0
+
+
+func _log_scroll_target() -> float:
+	return 8.0 - maxf(0.0, float(_log_n) * LOG_LINE_H - 348.0)
 
 
 ## 파란 홀로그램 판. 스캔라인과 노이즈.

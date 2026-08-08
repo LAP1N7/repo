@@ -359,13 +359,16 @@ func take_damage(amount: int, from: Unit) -> int:
 		if dealt > cap:
 			dealt = cap + (dealt - cap) / 2
 	if defending:
-		# 정수 나눗셈. 기본은 절반이고, 합성 단계마다 한 몫씩 더 깎는다.
-		# 2 -> 3 -> 4 로 나누므로 50% -> 33% -> 25% 가 된다.
+		# ── 방어는 감쇄지 무효가 아니다 ──────────────────────────────────
+		# 나누는 값에 상한이 없었다. 합성 단계·패시브·보조 지휘가 겹치면
+		# 6, 7 로 나뉘어서 웬만한 공격이 전부 1 로 떨어졌고, 화면에는 그것이
+		# **무적**으로 보인다. 실제로 그렇게 보였다.
 		#
-		# 최소 1 은 남긴다. 안 그러면 [방어 태세] 3단계(4로 나눔) 앞에서 공격력
-		# 3 이하가 통째로 0 이 되어 **면역**이 된다. 뎀감은 줄이는 것이지
-		# 무효로 만드는 것이 아니다.
-		dealt = maxi(1, dealt / (2 + defend_level + passive_def + command_def))
+		# 4 에서 끊는다. 최대 75% 감쇄 - 아무리 쌓아도 네 대 중 한 대분은
+		# 들어온다. 그 이상은 수치가 아니라 상태(무적)라서, 이 게임이 다루는
+		# 종류의 값이 아니다.
+		var div: int = clampi(2 + defend_level + passive_def + command_def, 2, 4)
+		dealt = maxi(1, dealt / div)
 	hp -= dealt
 	hit_pending = true
 	last_attacker_index = from.index if from != null else -1

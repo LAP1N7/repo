@@ -102,7 +102,10 @@ static func attack_pct(u: Unit, state) -> int:
 ## 적 알고리즘만이 아니라 특성에도 그대로 적용된다.
 const TEXT: Dictionary = {
 	IMMOBILE: "고정 - 절대 움직이지 않는다",
-	VOLATILE: "자폭 - 붙으면 %d틱 뒤 폭발. 주위 3x3 에 %d 피해 (적아 무관)" % [
+	# 실측: 15 는 **계산 전 값**이다. 방어 태세면 절반, 압박이 붙으면 그만큼
+	# 늘어난 값이 실제로 들어간다. 죽어도 터지는 것까지 적어 둔다 - 사거리에서
+	# 끊었는데 터져서 "왜 맞았지" 가 되는 자리다.
+	VOLATILE: "자폭 - 붙으면 %d틱 뒤 폭발(먼저 쓰러져도 터진다). 주위 3x3 에 %d 피해, 방어·압박 계산 적용 (적아 무관)" % [
 		FUSE_TICKS, VOLATILE_DAMAGE],
 	BEACON: "유인 - 위협도 +%d. 표적 지정을 덮고 이쪽으로 끌어온다" % BEACON_THREAT,
 	OVERSEER: "감독 - 살아 있는 동안 같은 편 공격 +%d%%" % OVERSEER_ATK_PCT,

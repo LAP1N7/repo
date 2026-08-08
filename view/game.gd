@@ -345,7 +345,12 @@ func _do_goto_battle() -> void:
 			tut.advance()
 			return
 		run.on_stage_cleared(s.battle.tick)
-		goto_reward()
+		# ── 승리 대사가 한 번도 안 나오고 있었다 ──────────────────────────
+		# post_N 을 재생하는 곳이 개발용 훅(GG_SCREEN=reward) 하나뿐이었다.
+		# 그래서 ACT 1 의 동기화 연출, ACT 2 의 글리치, ACT 3 의 설원·지하
+		# 배경 전환이 **실제 플레이에서는 단 한 번도 안 떴다.** 대본과 배경은
+		# 다 있는데 부르는 줄이 없었던 것이다.
+		play_story("post", run.stage_id, goto_reward)
 	)
 
 

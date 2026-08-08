@@ -80,6 +80,15 @@ const SWITCH_MARGIN: int = 125
 
 ## chooser 가 볼 때 candidate 가 얼마나 위협적인가.
 static func score(chooser: Unit, candidate: Unit) -> int:
+	# ── 잠복 중이면 위협도가 없다 ────────────────────────────────────────
+	# 표적 후보에서는 이미 빠져 있었다(Battle.living_enemies_of). 그런데
+	# 위협도는 그대로 계산돼서, 전황판의 위협 막대와 어그로 네모에는 숨은
+	# 대원이 여전히 **가장 위협적인 대원**으로 떠 있었다.
+	#
+	# 화면이 "이 대원이 표적이다" 라고 말하는데 엔진은 그 대원을 못 고르는
+	# 상태였던 것이다. 어느 쪽이 맞느냐가 아니라 둘이 다르다는 것이 문제다.
+	if candidate.ambush_ticks > 0:
+		return 0
 	var n := BASE
 	n += Grid.manhattan(chooser.pos, candidate.pos) * PER_TILE
 	if candidate.last_target != null and candidate.last_target.index == chooser.index:
