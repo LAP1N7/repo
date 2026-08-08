@@ -28,6 +28,7 @@ func _init() -> void:
 	_taunt_moves_damage()
 	_stealth_moves_damage()
 	_no_flapping()
+	_forced_reaches_locked()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -121,6 +122,44 @@ func _no_flapping() -> void:
 	var pct: int = 0 if ticks == 0 else switches * 100 / ticks
 	print("  적이 표적을 바꾼 틱 비율:   %d / %d  (%d%%)" % [switches, ticks, pct])
 	_ok(pct <= 25, "표적 전환이 25%% 이하 (떨림 없음)")
+
+
+## 5. 표적 모듈을 든 적에게도 도발이 통하는가.
+##
+## 여기가 이번 변경의 핵심이다. 스테이지 전체 적 42 중 16(38%)이 표적 모듈을
+## 들고 있고, 예전에는 그 적들에게 도발이 통하지 않았다 - 우리 방패병이
+## 투명인간이었다.
+func _forced_reaches_locked() -> void:
+	var locked_hits_base := 0
+	var locked_hits_taunt := 0
+	var locked_all_base := 0
+	var locked_all_taunt := 0
+	for spec in [["", 0], ["taunt", 1]]:
+		for stage in STAGES:
+			var b := _battle(stage, [String(spec[0]), "", ""])
+			b.run()
+			for e in b.events:
+				if String(e.get("type", "")) != "attack":
+					continue
+				var src := int(e.get("unit", -1))
+				var t := int(e.get("target", -1))
+				if src < 0 or t < 0 or b.units[src].team != Unit.TEAM_ENEMY:
+					continue
+				if not _has_target_module(b.units[src]):
+					continue
+				if int(spec[1]) == 0:
+					locked_all_base += 1
+					if t == 0:
+						locked_hits_base += 1
+				else:
+					locked_all_taunt += 1
+					if t == 0:
+						locked_hits_taunt += 1
+	var a: int = 0 if locked_all_base == 0 else locked_hits_base * 100 / locked_all_base
+	var c: int = 0 if locked_all_taunt == 0 else locked_hits_taunt * 100 / locked_all_taunt
+	print("  표적 모듈 든 적이 방패병을 친 비중: 기본 %d%% -> [도발] %d%%" % [a, c])
+	_ok(locked_all_base > 20, "표본이 충분하다")
+	_ok(c > a, "도발이 표적 모듈을 든 적에게도 통한다")
 
 
 # ── 도구 ─────────────────────────────────────────────────────────────────

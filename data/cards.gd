@@ -433,7 +433,7 @@ const TABLE: Dictionary = {
 		"cond": "enemies_adjacent_at_least",
 		"cond_arg": 1,
 		"stance": "taunt",
-		"text": "적이 붙으면 → 위협도를 크게 올린다",
+		"text": "적이 인접하면 위협도 급상승 → 적의 표적 지정을 덮는다",
 	},
 	"battle_stance": {
 		"axis": "doctrine",

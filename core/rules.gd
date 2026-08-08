@@ -240,17 +240,45 @@ static func _pick_target(unit: Unit, state, trace: Dictionary) -> Dictionary:
 		if won.is_empty():
 			won = { "target": t, "rule": rule, "slot": slot }
 
+	var out := won
+	if out.is_empty():
+		# 기본값. 악사는 아군을 살리는 게 기본이므로 표적도 아군 쪽이다.
+		var ai := Innates.base_ai(unit.type_id)
+		if String(ai["act"]) == "heal":
+			trace[Axes.TARGET] = rows
+			return { "target": resolve_target(unit, "lowest_hp_ally", state, "heal") }
+		# 표적 모듈이 없으면 **위협도가 가장 높은 적**을 친다. 예전 기본값은
+		# "가장 가까운 적" 이었는데 그러면 도발도 은신도 아무 의미가 없다.
+		out = { "target": resolve_target(unit, "highest_threat_enemy", state, "attack") }
+
+	# ── 강제 유인은 지정을 덮는다 ────────────────────────────────────────
+	# 여기가 위협도와 표적 축이 만나는 유일한 자리다.
+	#
+	# 예전에는 둘이 아예 안 만났다. 표적 모듈이 있으면 그것이 이기고, 위협도는
+	# **모듈이 없을 때의 기본값**일 뿐이었다. 그래서 표적 모듈을 든 적에게는
+	# 도발이 통하지 않았다 - 실측으로 스테이지 전체 적 42 중 16(38%)이 표적
+	# 모듈을 들고 있다. 그 적들에게 우리 방패병은 투명인간이었다.
+	#
+	# 그러면 "방패병이 붙잡는 동안 원거리가 갉는다" 는 전술 자체가 반쯤만
+	# 성립한다. 어떤 적에게는 되고 어떤 적에게는 안 되는데, 화면에는 그 차이가
+	# 안 나온다.
+	#
+	# 그래서 **도발만 예외로** 둔다. 선언한 강제 유인은 지정을 덮는다.
+	# 나머지 위협(거리 · 최근 타격 · 누적 피해)은 지금처럼 기본값으로만 쓴다.
+	# 전부 덮게 하면 표적 축 16개가 통째로 장식이 된다.
+	var cur: Unit = out.get("target", null)
+	if cur == null or cur.team != unit.team:
+		var forced := _forced_target(unit, state)
+		if forced != null and (cur == null or cur.index != forced.index):
+			rows.append({ "slot": -1, "name": UiText.t("rule.forced", "강제 유인"),
+				"hit": true, "why": UiText.t("rule.forced_why", "적의 도발이 지정을 덮었다") })
+			# rule 과 slot 은 그대로 둔다. 표적만 바뀌었을 뿐 "이 대원은 적을
+			# 찾아간다" 는 선언은 유효하고, 화면도 그 슬롯이 걸린 것으로 읽는다.
+			out["target"] = forced
+			out["forced"] = true
+
 	trace[Axes.TARGET] = rows
-	if not won.is_empty():
-		return won
-	# 기본값. 악사는 아군을 살리는 게 기본이므로 표적도 아군 쪽이다.
-	var ai := Innates.base_ai(unit.type_id)
-	if String(ai["act"]) == "heal":
-		return { "target": resolve_target(unit, "lowest_hp_ally", state, "heal") }
-	# 표적 모듈이 없으면 **위협도가 가장 높은 적**을 친다. 예전 기본값은 "가장
-	# 가까운 적" 이었는데 그러면 도발도 은신도 아무 의미가 없다. 위협 관리가
-	# 성립하려면 기본 판단이 위협을 보고 있어야 한다.
-	return { "target": resolve_target(unit, "highest_threat_enemy", state, "attack") }
+	return out
 
 
 ## 아군이 이번 판에 노리고 있는 적. 없으면 null.
@@ -539,6 +567,27 @@ static func follow_anchor(unit: Unit, state) -> Unit:
 		if mate != null and mate.alive:
 			return mate
 	return null
+
+
+## 지금 강제 유인을 선언한 적. 없으면 null.
+##
+## 여럿이면 위협도가 가장 높은 쪽. 동점은 index 로 끊는다 - 난수는 없다.
+##
+## 판정은 **선언한 태세**로만 한다(threat_mod). 유인 신호기처럼 상시로 붙는
+## 값(threat_base)은 포함하지 않는다 - 그건 "높다" 이지 "강제" 가 아니고,
+## 신호기가 표적 모듈까지 덮으면 그 판은 신호기를 부수는 것 말고 할 일이
+## 없어진다.
+static func _forced_target(unit: Unit, state) -> Unit:
+	var best: Unit = null
+	var bs: int = -(1 << 30)
+	for e in state.living_enemies_of(unit):
+		if e.threat_mod < Threat.TAUNT:
+			continue
+		var sc := Threat.score(unit, e)
+		if sc > bs:
+			bs = sc
+			best = e
+	return best
 
 
 ## 협력 축이 기준으로 삼는 아군. 없으면 null.

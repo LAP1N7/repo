@@ -260,5 +260,8 @@
   "shop.preview_wave": "%d 페이즈",
   "shop.preview_hidden": "미공개",
   "shop.preview_nomod": "모듈",
-  "shop.preview_bare": "없음 - 기본기만"
+  "shop.preview_bare": "없음 - 기본기만",
+  "rule.forced": "강제 유인",
+  "rule.forced_why": "적의 도발이 지정을 덮었다",
+  "card.taunt_text": "적이 인접할 때 위협도를 크게 올린다 (표적 지정도 덮는다)"
 }
