@@ -472,6 +472,10 @@ func show_rule(text: String, innate: bool = false) -> void:
 ## 재생부(view/battle_view.gd)가 사건마다 이 값을 옮겨 준다.
 var hp_shown: int = -1
 
+## 진영 표시가 남은 정도. 1 이면 또렷하고 0 이면 안 그린다.
+## 페이즈가 시작할 때 1 로 켜고 두 틱에 걸쳐 0 으로 내린다.
+var mark_alpha: float = 1.0
+
 
 ## 지금 그려야 할 HP.
 func shown_hp() -> int:
@@ -530,11 +534,19 @@ func _draw() -> void:
 	#
 	# 진영은 발밑에, 직업은 몸통에 둔다. 자리가 갈리면 둘 다 읽힌다.
 	# 아군은 채운 호, 적은 점선 호다. 색을 못 가리는 사람에게도 모양이 남는다.
-	var seg: int = 28 if unit.team == Unit.TEAM_PLAYER else 12
-	draw_set_transform(Vector2(0, FOOT_Y), 0.0, Vector2(1.0, FOOT_SQUASH))
-	draw_arc(Vector2.ZERO, FOOT_R, 0.0, TAU, seg,
-		Color(ring.r, ring.g, ring.b, 0.95), 3.0 / FOOT_SQUASH)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# 페이즈가 시작하고 두 틱 동안만 켠다. 상시로 깔아 두면 판이 늘 색으로
+	# 차 있어서 표적선과 사거리가 그 위에서 안 읽힌다.
+	if mark_alpha > 0.01:
+		var hw := 16.0
+		var hh := 8.0
+		var box := PackedVector2Array([
+			Vector2(-hw, FOOT_Y - hh), Vector2(hw, FOOT_Y - hh),
+			Vector2(hw, FOOT_Y + hh), Vector2(-hw, FOOT_Y + hh),
+			Vector2(-hw, FOOT_Y - hh),
+		])
+		draw_polyline(box, Color(ring.r, ring.g, ring.b, 0.10 * mark_alpha), 5.0, true)
+		draw_polyline(box, Color(ring.r, ring.g, ring.b, 0.28 * mark_alpha), 2.5, true)
+		draw_polyline(box, Color(ring.r, ring.g, ring.b, 0.95 * mark_alpha), 1.0, true)
 
 	if has_art():
 		# 아트가 있으면 본체는 스프라이트가 그린다. 팀 구분은 발밑 고리로만 남긴다.

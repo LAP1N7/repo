@@ -378,11 +378,11 @@ func _draw() -> void:
 			var under := PackedVector2Array()
 			for pt in line:
 				under.append(pt + Vector2(0, 3))
-			draw_polyline(under, Color(0, 0, 0, 0.55), 2.0, true)
+			draw_polyline(under, Color(0, 0, 0, 0.55), 1.6, true)
 			# 글로우 두 겹 + 본선.
 			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.07), 5.0, true)
 			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.16), 3.0, true)
-			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.72), 1.4, true)
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.72), 1.0, true)
 
 
 ## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
@@ -410,7 +410,7 @@ func _draw_overlay(c: CanvasItem) -> void:
 			c.draw_colored_polygon(q, Color(1.0, 0.26, 0.20, 0.12 + 0.20 * pulse))
 			var ql := PackedVector2Array(q)
 			ql.append(q[0])
-			c.draw_polyline(ql, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), 2.0, true)
+			c.draw_polyline(ql, Color(1.0, 0.45, 0.32, 0.55 + 0.45 * pulse), 1.2, true)
 			# 빗금. 깜빡임만으로는 정지 화면에서 안 읽힌다.
 			# 칸이 눕었으므로 빗금도 칸의 네 귀를 기준으로 긋는다.
 			for i in 4:
@@ -492,28 +492,38 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 			# XCOM 계열이 쓰는 방법을 가져왔다 - **선으로 짠 상자**. 아주 옅은
 			# 채움 위에 밝은 테두리와 네 귀 갈고리만 남긴다. 색이 겹쳐도 선은
 			# 살아남고, 무엇보다 칸 경계가 또렷해 몇 칸인지 셀 수 있다.
-			# ── 살짝 띄운다 ─────────────────────────────────────────────
-			# 판에 딱 붙어 있으면 격자의 일부로 읽힌다. 4px 올리고 그 아래
-			# 그림자를 깔면 **판 위에 얹힌 표시**가 된다.
-			var lift := Vector2(0, -4.0)
+			# ── 판 위로 떠 있는 판때기 ───────────────────────────────────
+			# 명일방주 배치 화면의 사거리 표시는 격자 위에 **한 겹 더 놓인
+			# 판**이다. 옆면 두께가 보이고 그 아래로 그림자가 진다. 그래서
+			# 격자와 섞이지 않는다.
+			#
+			# 여기서도 같은 방법을 쓴다 - 8px 올리고, 올린 만큼 옆면을 채우고,
+			# 바닥에 그림자를 깐다. 선은 1px 로 얇게 - 굵으면 그 자체가 격자가
+			# 된다.
+			var lift := Vector2(0, -8.0)
 			for p in cells:
-				var q := cell_quad(p.x, p.y, 2.0)
-				for qi in q.size():
-					q[qi] += shift + lift
+				var base_q := cell_quad(p.x, p.y, 3.0)
+				for qi in base_q.size():
+					base_q[qi] += shift
+				var q := PackedVector2Array()
+				for pt in base_q:
+					q.append(pt + lift)
+				# 바닥 그림자.
 				var sh := PackedVector2Array()
-				for pt in q:
-					sh.append(pt + Vector2(0, 4.0))
-				c.draw_colored_polygon(sh, Color(0, 0, 0, 0.30))
-				c.draw_colored_polygon(q, Color(fill.r, fill.g, fill.b, fill.a * 0.5))
+				for pt in base_q:
+					sh.append(pt + Vector2(0, 3.0))
+				c.draw_colored_polygon(sh, Color(0, 0, 0, 0.35))
+				# 옆면. 아래 두 변과 위 판을 잇는 띠 - 이게 두께다.
+				var side := Color(u.color.r, u.color.g, u.color.b, 0.20 * pulse)
+				c.draw_colored_polygon(PackedVector2Array([
+					q[3], q[2], base_q[2], base_q[3]]), side)
+				# 윗면.
+				c.draw_colored_polygon(q, Color(fill.r, fill.g, fill.b, fill.a * 0.7))
 				var lc := Color(u.color.r, u.color.g, u.color.b,
-					(0.85 if hot else 0.5) * pulse)
-				# 네 귀 갈고리. 변을 통째로 그으면 칸이 격자로 보여 판과 섞인다.
-				for ci in 4:
-					var a0: Vector2 = q[ci]
-					var b1: Vector2 = q[(ci + 1) % 4]
-					var b2: Vector2 = q[(ci + 3) % 4]
-					c.draw_line(a0, a0.lerp(b1, 0.3), lc, 2.0)
-					c.draw_line(a0, a0.lerp(b2, 0.3), lc, 2.0)
+					(0.9 if hot else 0.55) * pulse)
+				var ql := PackedVector2Array(q)
+				ql.append(q[0])
+				c.draw_polyline(ql, lc, 1.0, true)
 			continue
 
 		# ── 바깥 테두리만 ────────────────────────────────────────────────
@@ -536,7 +546,8 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 			c.draw_string(fs, at + Vector2(-tw * 0.5, 6), txt,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UiKit.BAD)
 
-		var w := 3.5 if hot else 2.0
+		# 선을 얇게. 굵으면 그 자체가 격자로 보인다.
+		var w := 1.6 if hot else 1.0
 		var col := Color(edge.r, edge.g, edge.b, (0.95 if hot else 0.6) * pulse)
 		for p in cells:
 			var q2 := cell_quad(p.x, p.y, 0.0)
@@ -1769,6 +1780,12 @@ func _play_events(evs: Array, my_id: int) -> void:
 			return
 		match e["type"]:
 			"tick_begin":
+				# ── 진영 표시는 페이즈 시작 두 틱 ────────────────────────
+				# 매 틱 줄여서 두 틱이 지나면 사라진다. 페이즈가 바뀌면
+				# ("wave") 다시 1 로 켠다.
+				for v0 in unit_views:
+					if v0 != null:
+						v0.mark_alpha = maxf(0.0, v0.mark_alpha - 0.5)
 				lbl_tick.text = UiText.t("battle.m10", "틱 %d / %d") % [
 					e["tick"], battle.max_ticks()]
 				_refresh_contrib()
@@ -1913,6 +1930,9 @@ func _play_events(evs: Array, my_id: int) -> void:
 				# 다음 페이즈. 새로 등장한 개체의 노드를 여기서 만든다.
 				# 전투 시작에 다 만들어 두면 아직 안 온 적이 판 위에 서 있게 된다.
 				_spawn_wave_views(e.get("units", []))
+				for v1 in unit_views:
+					if v1 != null:
+						v1.mark_alpha = 1.0
 				sfx.play("special", 1.1)
 				await _wave_banner(int(e["wave"]) + 1, int(e["total"]))
 

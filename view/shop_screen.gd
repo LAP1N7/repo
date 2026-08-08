@@ -39,8 +39,8 @@ var tut: Tutorial = null
 ##   왼쪽  x  40 ~ 528   상점 카드 (3 + 2)
 ##   오른쪽 x 560 ~ 1240  적 정보 · 조작 · 보유
 const SHOP_X: float = 40.0
-const SHOP_Y: float = 122.0
-const SHOP_GAP: float = 10.0
+const SHOP_Y: float = 134.0
+const SHOP_GAP: float = 14.0
 const SHOP_COLS: int = 5
 
 ## 오른쪽 열이 시작하는 x.
@@ -50,17 +50,17 @@ const RIGHT_X: float = 700.0
 ## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
 ## 페이즈가 문제로 남는다.
 const PREVIEW_WAVES: int = 2
-const PREVIEW_Y: float = 330.0
-const PREVIEW_W: float = 302.0
+const PREVIEW_Y: float = 372.0
+const PREVIEW_W: float = 250.0
 ## 오른쪽 보유 목록(3줄)과 아랫선을 맞춘다. 두 기둥의 끝이 어긋나 있으면
 ## 화면이 정리가 안 된 것으로 보인다.
-const PREVIEW_H: float = 258.0
+const PREVIEW_H: float = 226.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
 const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 232.0
+const BAR_Y: float = 254.0
 
 var run: RunState
 
@@ -70,6 +70,11 @@ var lbl_note: Label
 ## 보유 목록을 자르는 창과 스크롤. 막대 없이 휠로만 굴린다.
 var own_clip: Control
 var own_scroll: float = 0.0
+
+## 보유 목록 분류. 편성 화면과 같은 어법이다.
+const OWN_FILTERS: Array = ["all", Axes.TARGET, Axes.POSITION, Axes.DOCTRINE, "ult"]
+var own_filter: int = 0
+var own_tabs: Array = []
 var own_max: float = 0.0
 ## 아래쪽 적 배치판. 무엇이 어디에 서는지를 사는 자리에서 보여 준다.
 var preview_root: Control
@@ -116,12 +121,29 @@ func setup(p_run: RunState) -> void:
 	# 숨기면 시행착오 게임이 되고, 공개하면 추리 게임이 된다. (DESIGN 2.4)
 	# 적 정보는 더 이상 글줄이 아니다. 아래 배치판이 통째로 맡는다 -
 	# "접근 → 교전 / 자폭 개체 2" 같은 요약은 이미 아는 사람에게만 읽힌다.
-	lbl_note = UiKit.label(self, Vector2(RIGHT_X + 116.0, PREVIEW_Y - 28), Vector2(420, 22),
-		"", 12, UiKit.MUTED)
+	# 상태줄은 없앴다. 분류 탭과 같은 자리를 다퉜고, 무엇을 몇 개 가졌는지는
+	# 바로 아래 목록이 그대로 보여 준다.
+	lbl_note = UiKit.label(self, Vector2(-999, -999), Vector2(10, 10), "", 12, UiKit.MUTED)
+	lbl_note.visible = false
 	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
 	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
 	_head(self, Vector2(SHOP_X, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
 	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
+	for i in OWN_FILTERS.size():
+		var fid := String(OWN_FILTERS[i])
+		var fb := LoadoutScreen._FilterTab.new()
+		fb.position = Vector2(RIGHT_X + 96.0 + float(i) * 66.0, PREVIEW_Y - 32)
+		fb.size = Vector2(62, 22)
+		fb.idx = i
+		fb.label = UiText.t("loadout.filter_all", "전체") if fid == "all" 			else (UiText.t("loadout.filter_ult", "궁극기") if fid == "ult" 			else Axes.label(fid))
+		fb.tint = Color(0.55, 0.88, 1.0) if fid == "all" or fid == "ult" 			else Axes.color(fid)
+		fb.pressed_idx.connect(func(k: int):
+			own_filter = k
+			own_scroll = 0.0
+			refresh()
+		)
+		add_child(fb)
+		own_tabs.append(fb)
 
 	UiKit.deco(self, 3, 1.0)
 
@@ -147,13 +169,13 @@ func setup(p_run: RunState) -> void:
 
 	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다.
 	# 카드 아래 여백을 넉넉히 둬야 호버로 카드가 떠오를 때 버튼과 안 겹친다.
-	btn_reroll = _slab(bar, Vector2(SHOP_X, BAR_Y), Vector2(236, 50), "", UiKit.TEXT)
+	btn_reroll = _slab(bar, Vector2(SHOP_X, BAR_Y), Vector2(196, 40), "", UiKit.TEXT, 14)
 	btn_reroll.pressed.connect(_on_reroll)
 
 
 	# 재검색 바로 옆이다. 둘 다 "예산을 어디에 쓸까" 라서 나란히 놓여야 같은
 	# 저울에 올려놓고 고르게 된다.
-	btn_command = _slab(bar, Vector2(SHOP_X + 248.0, BAR_Y), Vector2(236, 50),
+	btn_command = _slab(bar, Vector2(SHOP_X + 208.0, BAR_Y), Vector2(196, 40),
 		UiText.t("shop.command", "보조 지휘  →"), Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func():
 		sfx.play("click")
@@ -250,6 +272,10 @@ func _build_shop() -> void:
 
 	for i in total:
 		var cid: String = run.offers[i]
+		# 산 자리는 빈 블록을 남기지 않는다. 빈 판이 서 있으면 "여기 뭔가
+		# 있었는데 사라졌다" 가 아니라 "여기 뭔가 있다" 로 읽힌다.
+		if cid == "":
+			continue
 		var card := CardNode.new()
 		shop_root.add_child(card)
 		card.setup(cid, i, false)
@@ -340,9 +366,28 @@ class _Slab extends Button:
 
 	const CUT: float = 13.0
 
+	## ── 단추는 블록과 달라야 한다 ────────────────────────────────────────
+	## 사선으로 깎은 판에 글자 하나. 그건 모듈 블록과 같은 모양이라, 다섯 개
+	## 블록 아래에 두 개가 더 서 있는 것처럼 보였다 - 누를 것과 살 것이 안 갈린다.
+	##
+	## 주 버튼이 아닌 것은 **반듯한 사각에 왼쪽 화살촉**으로 둔다. 깎지 않으면
+	## 블록과 실루엣이 갈리고, 화살촉이 "이건 누르는 것" 이라고 말한다.
 	func _draw() -> void:
 		var s := size
 		var on := is_hovered() and not disabled
+		if not primary:
+			var body2 := Color(0.10, 0.115, 0.15) if not disabled 				else Color(0.065, 0.07, 0.09)
+			if on:
+				body2 = Color(0.145, 0.165, 0.21)
+			draw_rect(Rect2(0, 0, s.x, s.y), body2)
+			var a2: float = 0.18 if disabled else (0.85 if on else 0.45)
+			draw_rect(Rect2(0, 0, s.x, s.y), Color(tint.r, tint.g, tint.b, a2), false, 1.0)
+			# 왼쪽 화살촉.
+			var cy := s.y * 0.5
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(9, cy - 6), Vector2(16, cy), Vector2(9, cy + 6),
+			]), Color(tint.r, tint.g, tint.b, a2))
+			return
 		var shape := PackedVector2Array([
 			Vector2(CUT, 0), Vector2(s.x, 0), Vector2(s.x, s.y - CUT),
 			Vector2(s.x - CUT, s.y), Vector2(0, s.y), Vector2(0, CUT),
@@ -400,41 +445,13 @@ func _build_hand() -> void:
 	# 옆에 세워 두고, 손을 올리면 펼쳐진다. 서류첩에서 서류를 꺼내 보는 것과
 	# 같은 동작이라 설명이 필요 없다.
 	var n := owned.size()
-	var tab := _Dossier.new()
-	# rect 는 서랍을 다 편 크기로 잡는다. 안 그러면 펼쳐진 부분의 클릭·휠이
-	# Control 밖이라 이벤트가 오지 않는다. 닫혀 있을 때 뒤를 안 먹는 것은
-	# _has_point 가 막는다.
-	# 탭을 아래로 내린다. 위쪽 줄은 블록 다섯이 화면 폭을 다 쓰므로, 거기 서면
-	# 마지막 블록을 덮는다.
-	tab.position = Vector2(1240 - _Dossier.TAB_W - _Dossier.OPEN_W, PREVIEW_Y - 34)
-	tab.size = Vector2(_Dossier.TAB_W + _Dossier.OPEN_W, 300)
-	# 카드보다 위에 떠야 서랍이 카드에 잘리지 않는다.
-	tab.z_index = 40
-	tab.top_level = false
-	tab.count = n
-	tab.special_n = run.special_hand.size()
-	tab.view_ids = owned.duplicate()
-	# 휠 스크롤과 분류 탭 클릭을 받아야 한다. IGNORE 면 서랍이 아무 입력도
-	# 못 받는다.
-	tab.mouse_filter = Control.MOUSE_FILTER_STOP
-	tab.clip_contents = false
 
-	# ── 뒤를 덮는 판 ────────────────────────────────────────────────────
-	# 서랍이 열리면 그 아래 상점 카드가 마우스를 먹고 튀어 오른다. 카드가
-	# 판 위로 떠오르니 무엇이 앞인지 알 수 없고, 잘못 누르면 사 버린다.
-	# 어둡게 덮고 입력도 막는다. 탭보다 먼저 붙여야 탭이 위에 남는다.
-	var shield := ColorRect.new()
-	shield.color = Color(0.02, 0.03, 0.05, 0.62)
-	shield.position = Vector2.ZERO
-	shield.size = Vector2(1280, 720)
-	shield.z_index = 30
-	shield.visible = false
-	shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hand_root.add_child(shield)
-	tab.shield = shield
-
-	hand_root.add_child(tab)
-
+	# ── 서랍을 없앴다 ───────────────────────────────────────────────────
+	# 오른쪽에서 밀려 나오는 서랍에 보유 목록을 숨겨 뒀다. 그런데 그 서랍이
+	# 아래 목록 창과 겹쳐서 분류 탭 클릭이 통째로 삼켜졌고, 무엇보다 가진
+	# 것을 보려고 손을 옮겨야 했다.
+	#
+	# 목록을 그냥 펴 두고 그 위에 분류 탭을 단다. 숨길 이유가 없다.
 	# ── 보유 목록 ───────────────────────────────────────────────────────
 	# 서랍(탭)에 숨겨 놨더니 "무엇을 가졌는지 확인하기 어렵다" 가 됐다. 살
 	# 것을 고르는 화면에서 가진 것이 안 보이면 고를 수가 없다.
@@ -442,6 +459,20 @@ func _build_hand() -> void:
 	# 블록으로 바뀌면서 자리가 생겼다. 오른쪽 아래에 2열로 편다. 다 못 담으면
 	# 마지막 줄에 남은 수를 적는다 - 전부 보여 주는 것보다 "더 있다" 를 아는
 	# 것이 중요하다.
+	# 분류로 거른다.
+	var ff := String(OWN_FILTERS[own_filter])
+	if ff != "all":
+		var keep: Array[String] = []
+		for cid in owned:
+			var is_ult := RunState.is_special(String(cid))
+			if ff == "ult":
+				if is_ult:
+					keep.append(String(cid))
+			elif not is_ult and String(Cards.TABLE.get(cid, {}).get("axis", "")) == ff:
+				keep.append(String(cid))
+		owned = keep
+		n = owned.size()
+
 	var own_cols := 2
 	var own_rows := 3
 	var own_k := 0.86
@@ -451,6 +482,10 @@ func _build_hand() -> void:
 	# "그 외 N개" 라고 적어 두면 그것을 보려면 화면을 옮겨야 한다. 여기서 바로
 	# 굴려 볼 수 있으면 그 한 줄이 필요 없다. 막대는 안 그린다 - 목록이 짧고,
 	# 막대가 붙으면 그 폭만큼 블록이 좁아진다.
+	for i in own_tabs.size():
+		if is_instance_valid(own_tabs[i]):
+			own_tabs[i].on = i == own_filter
+			own_tabs[i].queue_redraw()
 	if own_clip == null:
 		own_clip = Control.new()
 		own_clip.position = Vector2(RIGHT_X, PREVIEW_Y)
@@ -845,27 +880,29 @@ func _build_preview() -> void:
 	var x := SHOP_X
 	for w in shown:
 		var b := _Preview.new()
-		b.position = Vector2(x, PREVIEW_Y)
-		b.size = Vector2(PREVIEW_W, PREVIEW_H)
-		b.wave = w
 		b.entries = waves[w]
+		var bb := b.bounds_of(waves[w])
+		b.position = Vector2(x, PREVIEW_Y)
+		b.size = Vector2(float(bb.size.x) * _Preview.CELL + 30.0,
+			float(bb.size.y) * _Preview.CELL + _Preview.TOP + 16.0)
+		b.wave = w
 		b.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(b)
-		x += PREVIEW_W + 16.0
+		x += b.size.x + 18.0
 
 	# 남은 파는 자리만 남긴다. 아예 안 그리면 "이게 전부" 로 읽힌다.
 	for w in range(shown, waves.size()):
 		var h := _Preview.new()
 		h.position = Vector2(x, PREVIEW_Y)
-		h.size = Vector2(PREVIEW_W, PREVIEW_H)
+		h.size = Vector2(150, 140)
 		h.wave = w
 		h.entries = []
 		h.hidden_wave = true
 		h.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(h)
-		x += PREVIEW_W + 18.0
+		x += h.size.x + 18.0
 
 
 func _on_buy(card: CardNode) -> void:
@@ -913,14 +950,48 @@ class _Preview extends Control:
 		if was != _hot:
 			queue_redraw()
 
-	## 격자 원점. 8x6 을 칸 폭에 맞춰 가운데로 넣는다.
+	## ── 적이 있는 곳만 그린다 ────────────────────────────────────────
+	## 8x6 을 통째로 그리니 판의 절반이 늘 빈 칸이었다. 적은 오른쪽 두세 열에만
+	## 서므로 그 범위에 한 칸씩 여유를 준 만큼만 그린다. 판이 절반으로 줄고,
+	## 줄어든 만큼 칸이 커져 무엇이 어디 있는지가 더 잘 읽힌다.
+	## 밖에서 판 크기를 잡을 때 쓴다.
+	func bounds_of(list: Array) -> Rect2i:
+		var keep := entries
+		entries = list
+		var r := _bounds()
+		entries = keep
+		return r
+
+	func _bounds() -> Rect2i:
+		if entries.is_empty():
+			return Rect2i(Grid.W - 3, 0, 3, Grid.H)
+		var x0 := Grid.W
+		var x1 := 0
+		var y0 := Grid.H
+		var y1 := 0
+		for e in entries:
+			var p: Vector2i = (e as Dictionary)["pos"]
+			x0 = mini(x0, p.x)
+			x1 = maxi(x1, p.x)
+			y0 = mini(y0, p.y)
+			y1 = maxi(y1, p.y)
+		x0 = maxi(0, x0 - 1)
+		x1 = mini(Grid.W - 1, x1 + 1)
+		y0 = maxi(0, y0 - 1)
+		y1 = mini(Grid.H - 1, y1 + 1)
+		return Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+
+	## 격자 원점. 잘라 낸 범위를 판 가운데에 넣는다.
 	func _origin() -> Vector2:
-		return Vector2((size.x - Grid.W * CELL) * 0.5, TOP)
+		var b := _bounds()
+		return Vector2((size.x - float(b.size.x) * CELL) * 0.5
+			- float(b.position.x) * CELL, TOP)
 
 	func _cell_rect(e) -> Rect2:
 		var p: Vector2i = (e as Dictionary)["pos"]
-		return Rect2(_origin() + Vector2(p.x * CELL, p.y * CELL),
-			Vector2(CELL, CELL))
+		var b := _bounds()
+		return Rect2(Vector2(_origin().x + p.x * CELL,
+			TOP - float(b.position.y) * CELL + p.y * CELL), Vector2(CELL, CELL))
 
 	func _draw() -> void:
 		# 속내 판은 버튼 바 위로 뻗는다. 그냥 두면 버튼과 안내문이 그 위에
@@ -945,19 +1016,23 @@ class _Preview extends Control:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.90, 0.55, 0.52))
 
 		var o := _origin()
-		# 진영 바탕. 왼쪽이 우리, 오른쪽이 적 - 전투 화면과 같은 방향이다.
-		for p in Grid.PLAYER_SLOTS:
-			draw_rect(Rect2(o + Vector2(p.x * CELL, p.y * CELL), Vector2(CELL, CELL)),
-				Color(0.22, 0.44, 0.66, 0.16))
+		var b := _bounds()
+		var oy := TOP - float(b.position.y) * CELL
 		for p in Grid.ENEMY_SLOTS:
-			draw_rect(Rect2(o + Vector2(p.x * CELL, p.y * CELL), Vector2(CELL, CELL)),
-				Color(0.66, 0.26, 0.28, 0.14))
-		for x in Grid.W + 1:
-			draw_line(o + Vector2(x * CELL, 0), o + Vector2(x * CELL, Grid.H * CELL),
-				Color(0.30, 0.34, 0.42, 0.5), 1.0)
-		for y in Grid.H + 1:
-			draw_line(o + Vector2(0, y * CELL), o + Vector2(Grid.W * CELL, y * CELL),
-				Color(0.30, 0.34, 0.42, 0.5), 1.0)
+			if p.x < b.position.x or p.x >= b.position.x + b.size.x:
+				continue
+			draw_rect(Rect2(Vector2(o.x + p.x * CELL, oy + p.y * CELL),
+				Vector2(CELL, CELL)), Color(0.66, 0.26, 0.28, 0.14))
+		for x in b.size.x + 1:
+			var gx := o.x + float(b.position.x + x) * CELL
+			draw_line(Vector2(gx, oy + float(b.position.y) * CELL),
+				Vector2(gx, oy + float(b.position.y + b.size.y) * CELL),
+				Color(0.30, 0.34, 0.42, 0.45), 1.0)
+		for y in b.size.y + 1:
+			var gy := oy + float(b.position.y + y) * CELL
+			draw_line(Vector2(o.x + float(b.position.x) * CELL, gy),
+				Vector2(o.x + float(b.position.x + b.size.x) * CELL, gy),
+				Color(0.30, 0.34, 0.42, 0.45), 1.0)
 
 		if hidden_wave:
 			# 미공개. 자리는 남기되 안을 안 보여 준다 - 아예 없으면 "이게

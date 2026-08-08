@@ -385,9 +385,11 @@ static func frame(host: Control, accent: Color = Color(0.38, 0.80, 0.86)) -> Con
 ##
 ## 사이버펑크 HUD 무늬의 문법은 넷이다.
 ##   동심 호   - 반쯤 끊긴 고리 여럿. 계측기의 눈금판이다.
-##   미세 격자 - 작은 정사각 격자 덩어리. 데이터 판이다.
 ##   눈금 열   - 한 변을 따라 늘어선 짧은 선들. 자(尺)다.
-##   다각 윤곽 - 육각·오각 테두리. 회로 블록이다.
+##   다각 윤곽 - 육각 테두리. 회로 블록이다.
+##
+## 미세 격자는 뺐다. 화면에 이미 격자가 있는데(교전 판·적 배치 미리보기)
+## 배경에까지 격자를 깔면 그 둘과 섞여 어느 것이 판인지 흐려진다.
 ##
 ## 전부 알파 0.05 아래로 깐다. 이건 배경이고, 배경이 읽히기 시작하면 그건
 ## 이미 배경이 아니다. 좌표는 고정 시드 LCG 로 만든다 - 볼 때마다 달라지면
@@ -409,7 +411,7 @@ class Deco extends Control:
 	func _draw() -> void:
 		_rng = seed_v * 7919 + 13
 		var s := size
-		var a := 0.045 * strength
+		var a := 0.07 * strength
 
 		# 동심 호 셋.
 		for i in 3:
@@ -420,21 +422,6 @@ class Deco extends Control:
 				var a0 := _r() * TAU
 				draw_arc(c, rr, a0, a0 + 1.2 + _r() * 2.4, 40,
 					Color(tint.r, tint.g, tint.b, a * (1.0 - 0.15 * float(k))), 1.5)
-
-		# 미세 격자 둘.
-		for i in 2:
-			var at := Vector2(_r() * (s.x - 200.0), _r() * (s.y - 160.0))
-			var cols := 8 + int(_r() * 6.0)
-			var rows := 6 + int(_r() * 4.0)
-			var step := 11.0
-			for gx in cols + 1:
-				draw_line(at + Vector2(float(gx) * step, 0),
-					at + Vector2(float(gx) * step, float(rows) * step),
-					Color(tint.r, tint.g, tint.b, a * 0.7), 1.0)
-			for gy in rows + 1:
-				draw_line(at + Vector2(0, float(gy) * step),
-					at + Vector2(float(cols) * step, float(gy) * step),
-					Color(tint.r, tint.g, tint.b, a * 0.7), 1.0)
 
 		# 눈금 열. 화면 오른쪽 변을 따라.
 		var tx := s.x - 26.0

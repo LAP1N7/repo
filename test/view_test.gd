@@ -255,9 +255,10 @@ func test_card_fit() -> void:
 	host.size = Vector2(1280, 720)
 	root.add_child(host)
 
-	var f := UiKit.font(10)
-	var line_h := 13.0
-
+	# ── 블록 레이아웃 기준으로 잰다 ─────────────────────────────────────
+	# 세로 카드 시절 좌표(0.42 · line_h 13)로 재고 있었다. 카드가 가로 블록이
+	# 되면서 본문 시작점과 줄 높이가 전부 달라졌으므로 여기도 같이 바뀌어야
+	# 한다 - 안 그러면 있지도 않은 자리를 재고 통과·실패를 말한다.
 	var worst := ""
 	var worst_over := 0.0
 	for cid in Cards.deck_order() + Specials.ORDER:
@@ -266,32 +267,35 @@ func test_card_fit() -> void:
 		host.add_child(card)
 		card.setup(String(cid), 0, true)
 		var sz := card.card_size()
-
-		# _draw 와 같은 식으로 본문이 끝나는 y 를 계산한다.
-		var special := Specials.TABLE.has(cid)
-		var ty: float = sz.y * (0.48 if special else 0.42)
-		var room: float = sz.y - 10.0 - ty - 6.0
-		var cap: int = maxi(1, int(room / line_h) / 2)
+		var k: float = sz.x / CardNode.W
+		var pad := 14.0 * k
+		var text_size: int = int(10.0 * k) + 1
+		var line_h := float(text_size) + 3.0
+		var f := UiKit.font(11)
+		var ty := 53.0 * k
+		var body_w := sz.x - pad * 2.0
+		var room: float = sz.y - ty - 8.0 * k
+		var cap: int = maxi(1, int(room / line_h))
 
 		var parts: PackedStringArray = String(c["text"]).split("→")
+		var used := 0
 		for idx in 2:
 			var t: String = parts[idx].strip_edges() if parts.size() > idx else ""
+			if t == "":
+				continue
 			var lines := 0
 			var cur := ""
 			for w in t.split(" "):
 				var probe := w if cur == "" else cur + " " + w
-				if f.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x 						> sz.x - 18.0 and cur != "":
+				if f.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, text_size).x 						> body_w and cur != "":
 					lines += 1
 					cur = w
 				else:
 					cur = probe
 			if cur != "":
 				lines += 1
-			ty += float(mini(lines, cap)) * line_h
-			if idx == 0:
-				ty += 6.0
-
-		var over: float = ty - sz.y
+			used += mini(lines, 1 if idx == 0 and parts.size() > 1 else cap)
+		var over: float = ty + float(used) * line_h - sz.y
 		if over > worst_over:
 			worst_over = over
 			worst = "%s (%.0fpx 넘침)" % [c["name"], over]

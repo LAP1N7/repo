@@ -24,8 +24,8 @@ signal clicked(node: CardNode)
 ##   [축색띠] AXIS        (비용)
 ##            이름
 ##            조건 → 행동
-const W: float = 232.0
-const H: float = 92.0
+const W: float = 196.0
+const H: float = 84.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
 const BANNER_RATIO: float = 0.38
@@ -106,9 +106,7 @@ var mini_scale: float = 0.72
 
 
 func card_size() -> Vector2:
-	if mini:
-		return Vector2(W, H) * (1.0 if _expanded else mini_scale)
-	return Vector2(W, H) * (EXPAND if _expanded else 1.0)
+	return Vector2(W, H) * (mini_scale if mini else 1.0)
 
 
 ## 원래 크기 카드를 펼칠 배율. 폭이 늘어나면 한 줄에 더 들어가고,
@@ -126,14 +124,15 @@ const EXPAND: float = 1.0
 
 ## 지금 미니 레이아웃으로 그려야 하는가. 펼쳐졌으면 아니다.
 func _is_mini() -> bool:
-	return mini and not _expanded
+	return mini
 
 
-func place(pos: Vector2, rot: float = 0.0) -> void:
+func place(pos: Vector2, _rot: float = 0.0) -> void:
+	# 회전은 안 쓴다. 목록에서 블록이 기울면 줄이 안 맞아 보인다.
 	base_pos = pos
-	base_rot = rot
+	base_rot = 0.0
 	position = pos
-	rotation = rot
+	rotation = 0.0
 
 
 func _on_gui_input(e: InputEvent) -> void:
@@ -144,57 +143,19 @@ func _on_gui_input(e: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	_t += delta
-
 	var want_hover := _hover and enabled
 
-	# 마우스를 올리면 카드가 펼쳐진다. 손패의 미니든 상점의 원래 크기든,
-	# 잘린 설명의 전문을 읽는 수단이 이것뿐이다.
-	var want_expand := want_hover
-	if want_expand != _expanded:
-		_expanded = want_expand
-		var sz := card_size()
-		size = sz
-		pivot_offset = sz * 0.5
-		# 펼치면 [제외] 버튼도 같이 내려가야 한다. 안 옮기면 카드 한가운데에
-		# 남아 본문을 가린다.
-		queue_redraw()
-
-	# [제외] 버튼은 매 프레임 현재 크기 기준으로 다시 놓는다. setup 에서 한 번만
-	# 놓으면 트리에 들어가기 전 크기로 굳어 프레임 밖으로 삐져나간다.
-
-	var target_lift: float = -34.0 if want_hover else 0.0
-	# 레이아웃이 이미 커졌으므로 확대는 살짝만 얹는다. 둘 다 크게 주면
-	# 옆 카드를 통째로 덮는다.
-	var target_scale: float = 1.12 if want_hover else 1.0
-	var target_tilt: float = 0.045 if want_hover else 0.0
-
-	# 지수 감쇠 보간 - 프레임레이트에 안 흔들린다.
-	var k := 1.0 - exp(-16.0 * delta)
+	# ── 호버는 크기를 안 바꾼다 ──────────────────────────────────────────
+	# 예전에는 마우스를 올리면 블록이 커지고 기울었다. 목록에서는 그것이
+	# 옆 블록을 덮고 글자가 겹친다. 지금은 3px 들리고 앞으로 나오는 것뿐이다.
+	var target_lift: float = -3.0 if want_hover else 0.0
+	var k := 1.0 - exp(-18.0 * delta)
 	_lift = lerp(_lift, target_lift, k)
-	_scale = lerp(_scale, target_scale, k)
-	_tilt = lerp(_tilt, target_tilt, k)
-
-	var sway := 0.0
-	# 펼쳐지면 커진 만큼 좌우로 밀어 원래 자리에 중심이 남게 한다.
-	# 안 그러면 카드가 오른쪽 아래로 자라나 이웃을 덮는다.
-	var grow := Vector2.ZERO
-	if _expanded:
-		grow = (Vector2(W, H) - Vector2(W, H) * mini_scale) * -0.5
-	position = base_pos + grow + Vector2(0.0, _lift + sway)
-	rotation = base_rot + _tilt
-	scale = Vector2(_scale, _scale)
+	position = base_pos + Vector2(0.0, _lift)
+	rotation = 0.0
+	scale = Vector2.ONE
 	z_index = 50 if want_hover else index
 
-	# ── 매 프레임 다시 그리지 않는다 ──────────────────────────────────────
-	# position·rotation·scale 은 노드 변환이라 바뀌면 엔진이 알아서 다시 렌더한다.
-	# queue_redraw() 가 필요한 건 **그려지는 내용**이 바뀔 때뿐이고, 여기서 내용을
-	# 좌우하는 건 호버 여부(밝기)와 enabled(흐림) 둘뿐이다.
-	#
-	# 그런데 매 프레임 무조건 부르고 있었다. _draw() 는 draw_string 이 여러 번
-	# 도는 무거운 함수인데, 손패와 상점을 합치면 카드가 20장 넘게 떠 있다 -
-	# 프레임마다 스무 번씩 전부 다시 그리고 있었다. 카드가 13장에서 18장으로
-	# 늘면서 그 비용이 체감될 만큼 커졌다.
 	if want_hover != _drawn_hover or enabled != _drawn_enabled:
 		_drawn_hover = want_hover
 		_drawn_enabled = enabled
@@ -287,6 +248,20 @@ func _draw() -> void:
 	# 기둥 옆으로 흘러나오는 빛 한 겹.
 	draw_rect(Rect2(4.0 * k, 0, 10.0 * k, s.y), Color(neon.r, neon.g, neon.b, 0.07))
 
+	# ── 위쪽 사선 평행사변형 열 ──────────────────────────────────────────
+	# 블록 윗변을 따라 축색 평행사변형을 늘어놓는다. 축이 무엇인지 글자를
+	# 읽기 전에 갈리고, 늘어선 사선이 그 자체로 계기판 어법이 된다.
+	var pw := 9.0 * k        # 평행사변형 한 조각 폭
+	var pslant := 5.0 * k    # 기울기
+	var ph := 5.0 * k        # 높이
+	var px := 6.0 * k
+	while px + pw + pslant < s.x - cut - 2.0 * k:
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(px + pslant, 2.0 * k), Vector2(px + pslant + pw, 2.0 * k),
+			Vector2(px + pw, 2.0 * k + ph), Vector2(px, 2.0 * k + ph),
+		]), Color(neon.r, neon.g, neon.b, 0.55 if enabled else 0.2))
+		px += pw + 4.0 * k
+
 	# ── 오른쪽 끝 해칭 띠 ────────────────────────────────────────────────
 	# 블록이 반듯한 사각이라 오른쪽 끝이 그냥 잘린 것처럼 보였다. 사선 빗금을
 	# 좁게 두르면 그 끝이 **마감**이 된다 - 산업 장비 표찰에 쓰는 어법이다.
@@ -321,13 +296,13 @@ func _draw() -> void:
 	var top_label := axis_label
 	if axis == "":
 		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
-	draw_string(UiKit.font_role("large"), Vector2(pad, 16.0 * k), top_label,
+	draw_string(UiKit.font_role("large"), Vector2(pad, 20.0 * k), top_label,
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 34.0 * k, axis_size,
 		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
 	var badge_r := 11.0 * k
-	var badge_at := Vector2(s.x - pad - badge_r + 2.0, 16.0 * k + badge_r - 5.0)
+	var badge_at := Vector2(s.x - pad - badge_r + 2.0, 20.0 * k + badge_r - 6.0)
 	draw_circle(badge_at, badge_r, ccol if enabled else Color(0.3, 0.32, 0.38))
 	var cost_txt := str(cost)
 	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1,
@@ -336,14 +311,14 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, int(12.0 * k) + 1, Color(0.06, 0.07, 0.1))
 
 	# 이름.
-	draw_string(f, Vector2(pad, 38.0 * k), String(c["name"]),
+	draw_string(f, Vector2(pad, 41.0 * k), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
 
 	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
 	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var ty := 54.0 * k
+	var ty := 53.0 * k
 	var body_w := s.x - pad * 2.0
 	var line_h := float(text_size) + 3.0
 	var room: float = s.y - ty - 8.0 * k
