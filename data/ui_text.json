@@ -282,5 +282,7 @@
   "cmd.merge_none": "같은 것을 두 장 가진 모듈이 없습니다.",
   "cmd.merge_do": "2장을 1장으로 합칩니다 (-%d)",
   "shop.preview_head2": "적 배치",
-  "shop.offer_head": "확보 가능"
+  "shop.offer_head": "확보 가능",
+  "shop.own_head": "보유 모듈",
+  "shop.own_more": "그 외 %d개 - 오른쪽 [보유] 탭에서 전부 봅니다"
 }

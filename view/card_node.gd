@@ -11,15 +11,21 @@ signal clicked(node: CardNode)
 
 ## 카드 한 장의 기준 크기.
 ##
-## ── 왜 키웠는가 ──────────────────────────────────────────────────────────
-## 128x168 은 손패에 여러 장 늘어놓기에는 알맞았지만 상점에서는 너무 작았다.
-## 상점은 한 번에 예닐곱 장만 뜨고, 그 중 무엇을 사느냐가 이 게임에서 가장 큰
-## 결정이다. 결정이 큰 화면일수록 물건이 커야 한다.
+## ── 카드를 그만두고 블록으로 ─────────────────────────────────────────────
+## 152x196 세로 카드였다. 카드 어법(사선 프레임 · 일러스트 배너 · 호버로 들리고
+## 기울어짐)은 손맛이 좋았지만, 이 게임에서 카드가 하는 일은 결국 **한 줄짜리
+## 규칙을 보여 주는 것**이다. 세로로 긴 판의 절반은 늘 비어 있었고, 그 빈자리
+## 때문에 화면마다 다섯 장을 놓을 데가 없어 배치가 계속 꼬였다.
 ##
-## 축 라벨과 이름이 한눈에 들어와야 "이번 상점에 표적이 둘 나왔다" 가 훑기만
-## 해도 읽힌다. 손패는 mini 로 0.72배 줄여 쓰므로 거기 밀도는 그대로다.
-const W: float = 152.0
-const H: float = 196.0
+## 가로로 눕힌 블록으로 바꾼다. 같은 폭에 다섯이 나란히 서고, 세로를 3분의 1만
+## 쓰므로 아래에 다른 것을 놓을 자리가 생긴다. 정보는 오히려 늘었다 - 이름과
+## 조건과 행동이 한 덩어리로 붙어 읽힌다.
+##
+##   [축색띠] AXIS        (비용)
+##            이름
+##            조건 → 행동
+const W: float = 232.0
+const H: float = 92.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
 const BANNER_RATIO: float = 0.38
@@ -255,149 +261,95 @@ func _draw() -> void:
 	var f := UiKit.font()
 	var fs := UiKit.font(11)
 
-	var body := Color(0.20, 0.17, 0.12) if special else Color(0.16, 0.18, 0.23)
+	var body := Color(0.115, 0.130, 0.170) if not special else Color(0.175, 0.150, 0.105)
 	var border := ccol
 	if not enabled:
-		body = Color(0.11, 0.12, 0.15)
+		body = Color(0.075, 0.082, 0.100)
 		border = Color(0.24, 0.26, 0.32)
 
+	var k: float = s.x / W          # 미니 배율
+	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
+	var neon := _neon(border)
+
 	# ── 프레임 ───────────────────────────────────────────────────────────
-	# 둥근 모서리 대신 왼쪽 위·오른쪽 아래를 사선으로 깎는다. 네 귀퉁이를 다 깎으면
-	# 팔각형이 되어 카드로 안 읽히고, 대각으로 둘만 깎으면 방향이 생긴다.
-	# 궁극기 컷인의 사선 프레임과 같은 어법이다.
-	var cut: float = 13.0 * (s.x / W)
+	# 오른쪽 위만 깎는다. 네 귀를 다 깎으면 팔각형이 되고, 대각으로 둘을 깎으면
+	# 카드처럼 보인다 - 지금은 카드가 아니라 **패널에 꽂힌 모듈**이어야 한다.
+	# 한 귀만 깎으면 방향이 생기면서도 사각형으로 남는다.
+	var cut: float = 14.0 * k
 	var shape := PackedVector2Array([
-		Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
-		Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		Vector2(0, 0), Vector2(s.x - cut, 0), Vector2(s.x, cut),
+		Vector2(s.x, s.y), Vector2(0, s.y),
 	])
 	draw_colored_polygon(shape, body)
 
+	# 왼쪽 축 색 기둥. 이 블록이 무슨 축인지 글자를 읽기 전에 갈린다.
+	draw_rect(Rect2(0, 0, 4.0 * k, s.y), neon)
+	# 기둥 옆으로 흘러나오는 빛 한 겹.
+	draw_rect(Rect2(4.0 * k, 0, 10.0 * k, s.y), Color(neon.r, neon.g, neon.b, 0.07))
 
-	# 네온 외곽선. 채도를 낮춰 쓴다 - 원색 그대로 두르면 카드가 20장 깔렸을 때
-	# 화면이 통째로 형광펜이 된다. 밝기만 올리고 채도는 깎는다.
-	var neon := _neon(border)
 	var outline := PackedVector2Array(shape)
 	outline.append(shape[0])
-	draw_polyline(outline, neon, 1.6, true)
-	# 안쪽으로 한 겹 더 희미하게. 선 하나만으로는 발광으로 안 읽힌다.
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.22), 4.0, true)
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.85 if enabled else 0.35),
+		1.4, true)
+	# 바깥으로 한 겹 더 옅게. 선 하나만으로는 발광으로 안 읽힌다.
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.14), 4.0, true)
 
-	# ── 일러스트 배너 (레이어: 배경판 위, 텍스트 아래)
-	# assets/art/cards/<id>.png 가 있으면 상단 띠에 깔린다. 없으면 그냥 비어 있다.
-	var banner := _banner_tex()
-	if banner != null:
-		var bh := s.y * BANNER_RATIO
-		draw_texture_rect(banner, Rect2(Vector2(1, 6), Vector2(s.x - 2, bh)), false)
-		# 아래쪽을 어둡게 덮어 글자가 그림 위에서도 읽히게 한다.
-		draw_rect(Rect2(Vector2(1, 5 + bh * 0.45), Vector2(s.x - 2, bh * 0.55)),
-			Color(body.r, body.g, body.b, 0.75))
+	# ── 글 ───────────────────────────────────────────────────────────────
+	var pad := 14.0 * k
+	var axis_size: int = int(9.0 * k) + 1
+	var name_size: int = int(15.0 * k) + 1
+	var text_size: int = int(10.0 * k) + 1
 
-	# 코스트 색 띠 - 멀리서도 비싼 카드가 구분된다.
-	# 왼쪽 위가 깎였으므로 띠도 같이 깎아야 프레임 밖으로 안 삐져나온다.
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(cut + 1, 1), Vector2(s.x - 1, 1),
-		Vector2(s.x - 1, 5), Vector2(cut - 3, 5),
-	]), neon)
-
-	var pad := 9.0
-	# 미니 카드는 폭이 92px 뿐이라 12px 로 두면 "거리 유지" 가 한 글자 잘린다.
-	# 미니 폭은 92px 다. 11 로 두면 "불굴의 의지" 가 "불굴의 의" 로 잘린다.
-	var name_size := 17 if not _is_mini() else 10
-	# ── 미니 카드는 한 급 더 작게 ────────────────────────────────────────
-	# 10px 로 세 줄까지밖에 못 담아서 조금만 긴 설명이면 "..." 로 끝났다.
-	# 손패는 **무엇을 살지 고르는 화면**이라, 끝을 잘라 놓으면 고를 수가 없다.
-	# 9px 로 내리면 같은 자리에 네 줄이 들어가고, 표의 거의 모든 문장이 다 찬다.
-	var text_size := 12 if not _is_mini() else 10
-	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
-
-	# 코스트 배지
-	# 미니 배지를 11 → 9 로 줄였다. "최후의 수호" 가 "최후의 수" 로 잘리던
-	# 2글자분 폭이 여기서 나온다.
-	var badge_r := 13.0 if not _is_mini() else 8.0
-	var badge_at := Vector2(s.x - pad - badge_r, pad + badge_r + 4.0)
-	draw_circle(badge_at, badge_r, ccol)
-	var cost_txt := str(cost)
-	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	draw_string(fs, badge_at + Vector2(-cw * 0.5, 5), cost_txt,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.06, 0.07, 0.1))
-
-	# 이름. 코스트 배지가 차지하는 폭만 정확히 비켜 준다.
-	# 넉넉히 빼면 미니 카드에서 "거리 유지" 같은 이름이 잘린다.
-	# 영문 축 라벨. 전부 영문이면 한국어 톤과 충돌하고 전부 한글이면 축이
-	# 안 보인다. 축만 영문으로 두면 계기판처럼 읽히면서 본문은 그대로다.
-	# 궁극기는 축이 없다. 대신 ULTIMATE 을 같은 자리에 적는다. 이 줄이 없으면
-	# 그 자리가 비어서 이름이 위로 붙고, 아래 부제와 글자가 겹친다.
-	# 궁극기는 축 대신 소유 대원을 적는다. ULTIMATE 만으로는 누구 것인지 모르고,
-	# 그건 이 카드를 살지 말지를 정하는 가장 큰 정보다.
+	# 축 라벨. 궁극기는 축이 없으므로 소유 대원을 적는다 - 누구 것인지가
+	# 이 블록을 살지 말지 정하는 가장 큰 정보다.
 	var top_label := axis_label
 	if axis == "":
 		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
-	draw_string(UiKit.font_role("large"), Vector2(pad, pad + 11.0), top_label,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 10 if not _is_mini() else 8,
-			Color(ccol.r, ccol.g, ccol.b, 0.95))
+	draw_string(UiKit.font_role("large"), Vector2(pad, 16.0 * k), top_label,
+		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 34.0 * k, axis_size,
+		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
-	draw_string(f if not _is_mini() else fs, Vector2(pad, pad + 32.0), String(c["name"]),
-		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2 - (badge_r * 2.0 + 2.0),
-		name_size, UiKit.TEXT * dim)
+	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
+	var badge_r := 11.0 * k
+	var badge_at := Vector2(s.x - pad - badge_r + 2.0, 16.0 * k + badge_r - 5.0)
+	draw_circle(badge_at, badge_r, ccol if enabled else Color(0.3, 0.32, 0.38))
+	var cost_txt := str(cost)
+	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		int(12.0 * k) + 1).x
+	draw_string(fs, badge_at + Vector2(-cw * 0.5, 4.5 * k), cost_txt,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, int(12.0 * k) + 1, Color(0.06, 0.07, 0.1))
 
-	# 궁극기는 어느 직업 전용인지가 구매 판단의 전부다. 발동은 전투당 1회로 통일이라
-	# 카드마다 다른 값이 아니고, 그래서 표기에서 뺐다.
-	# ── 발동 횟수를 카드에 적는다 ────────────────────────────────────────
-	# 전술과 궁극기를 가르는 유일한 규칙인데 화면 어디에도 안 적혀 있었다.
-	# [구호](아군 HP<50% -> 회복)가 전투당 한 번인지, 조건이 유지되는 동안 매 틱인지
-	# 카드만 봐서는 알 수 없었다. 답은 후자다 - 전술은 조건이 맞을 때마다 발동한다.
-	#
-	# 중첩 걱정은 없다. 조건을 매 틱 다시 보므로 회복해서 50%를 넘기는 순간
-	# 저절로 꺼지고, 대상 선택이 만피 아군을 제외하므로 헛도는 일도 없다.
-	# 미니 카드에는 부제를 안 적는다. 위에 ULTIMATE / TARGET 라벨이 이미 있어
-	# 같은 뜻을 두 번 적는 셈이고, 폭이 좁아 이름과 글자가 겹쳤다.
-	if not _is_mini():
-		var tag := ""
-		var tcol := UiKit.ACCENT
-		if special:
-			# 어느 대원 것인지가 제일 먼저 필요하다. 남의 궁극기를 사면 그 판
-			# 내내 못 쓴다 - 산 뒤에 알면 늦는다.
-			tag = UiText.t("card.special_tag", "%s 전용 · 페이즈당 1회") % UnitData.TABLE[c["unit"]]["name"]
-		else:
-			tag = UiText.t("card.tactic_tag", "전술 · 조건이 맞는 한 매 틱 발동")
-			tcol = UiKit.MUTED
-		draw_string(fs, Vector2(pad, pad + 50.0), tag,
-			HORIZONTAL_ALIGNMENT_LEFT, s.x - pad * 2, 10, tcol * dim)
+	# 이름.
+	draw_string(f, Vector2(pad, 38.0 * k), String(c["name"]),
+		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
 
-	# ── 규칙 문장 ────────────────────────────────────────────────────────
-	# 한 덩어리로 그린다. 예전에는 [조건]/[행동] 두 칸으로 쪼갰는데, 축을
-	# 나누면서 모듈의 절반이 "원거리 적을 먼저 쫓는다" 같은 한 문장이 됐다.
-	# 그런 모듈은 [행동] 칸이 텅 빈 채로 나왔다.
-	#
-	# 화살표가 있으면 조건이 붙은 것이고 없으면 상시다. 그 차이는 문장 자체가
-	# 이미 말하므로 라벨이 필요 없다. 화살표 앞뒤로 색만 갈라 준다.
-	# 본문 시작 높이. 위 요소가 끝나는 지점은 고정값이므로 여기도 고정값이다.
-	var ty: float = s.y * (0.47 if _is_mini() else 0.0) + (0.0 if _is_mini() else pad + 64.0)
-	var line_h := float(text_size) + 3.0
-
+	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
+	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var cap := 0
-	if _is_mini():
-		var room: float = s.y - 10.0 - ty - 6.0
-		cap = maxi(1, int(room / line_h))
-
+	var ty := 54.0 * k
+	var body_w := s.x - pad * 2.0
+	var line_h := float(text_size) + 3.0
+	var room: float = s.y - ty - 8.0 * k
+	var cap: int = maxi(1, int(room / line_h))
 	if arrow >= 0:
 		var cond_line := rule_text.substr(0, arrow).strip_edges()
 		var act_line := rule_text.substr(arrow + 1).strip_edges()
-		ty += _wrapped(fs, cond_line, Vector2(pad, ty), s.x - pad * 2, text_size,
-			UiKit.MUTED * dim, cap)
-		ty += 4.0
-		_wrapped(fs, act_line, Vector2(pad, ty), s.x - pad * 2, text_size,
-			UiKit.ACCENT * dim, cap)
+		var used := _wrapped(fs, cond_line, Vector2(pad, ty), body_w, text_size,
+			Color(0.62, 0.66, 0.74) * dim, 1)
+		ty += used + 2.0
+		_wrapped(fs, act_line, Vector2(pad, ty), body_w, text_size,
+			UiKit.ACCENT * dim, maxi(1, cap - 1))
 	else:
-		_wrapped(fs, rule_text, Vector2(pad, ty), s.x - pad * 2, text_size,
-			UiKit.TEXT * dim, cap)
+		_wrapped(fs, rule_text, Vector2(pad, ty), body_w, text_size,
+			Color(0.80, 0.84, 0.90) * dim, cap)
 
+	# 상태 문구. 오른쪽 아래에 붙인다 - 규칙 글과 자리를 다투지 않는다.
 	if note != "":
-		var ny := s.y - 9.0
-		draw_string(fs, Vector2(pad, ny), note, HORIZONTAL_ALIGNMENT_LEFT,
-			s.x - pad * 2, 10, UiKit.BAD)
+		var nw := fs.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			int(10.0 * k) + 1).x
+		draw_string(fs, Vector2(s.x - pad - nw, s.y - 7.0 * k), note,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, int(10.0 * k) + 1, UiKit.BAD)
 
 
 ## 단어 단위로 접어 그리고, 소비한 세로 높이를 돌려준다.

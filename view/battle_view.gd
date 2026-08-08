@@ -367,17 +367,8 @@ func _draw() -> void:
 			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.13), 3.0, true)
 			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.46), 1.0, true)
 
-	# 네 귀 브래킷. 판이 화면에 놓인 장비로 읽힌다.
-	var bl := 20.0
-	var corners := [Vector2(0, 0), Vector2(bw, 0), Vector2(0, bh), Vector2(bw, bh)]
-	for corner in corners:
-		var sx: float = 1.0 if corner.x == 0.0 else -1.0
-		var sy: float = 1.0 if corner.y == 0.0 else -1.0
-		var o2 := lay_at(corner + Vector2(-6.0 * sx, -6.0 * sy))
-		var hx := lay_at(corner + Vector2(-6.0 * sx + bl * sx, -6.0 * sy))
-		var vy := lay_at(corner + Vector2(-6.0 * sx, -6.0 * sy + bl * sy))
-		draw_line(o2, hx, Color(0.55, 0.80, 1.0, 0.55), 2.0)
-		draw_line(o2, vy, Color(0.55, 0.80, 1.0, 0.55), 2.0)
+	# 네 귀 브래킷은 뺐다. 판 테두리와 겹쳐 모서리마다 선이 두 겹으로 꺾여
+	# 보였다 - 장식이 구조를 흉내 내면 그건 노이즈다.
 
 
 ## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
@@ -389,10 +380,16 @@ func _draw_overlay(c: CanvasItem) -> void:
 	# 진영 표시만 크기에 배율을 안 걸어서, 칸은 74px 인데 표시는 64px 로 그려져
 	# 반 칸씩 밀린 것처럼 보였다. 유닛이 어긋난 게 아니라 이 사각형이 어긋난
 	# 것이었다 - 눈에는 똑같이 "격자와 안 맞는다" 로 보인다.
+	# ── 진영은 아주 옅게 ────────────────────────────────────────────────
+	# 진영 칸을 색으로 채워 놓으니 그 위에 얹히는 사거리 표시가 통째로 묻혔다.
+	# 진영은 개전 전에 한 번 확인하는 정보고, 사거리는 매 틱 보는 정보다.
+	# 매 틱 보는 쪽이 이겨야 한다.
 	for p in Grid.PLAYER_SLOTS:
-		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD), COL_PLAYER_ZONE)
+		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD),
+			Color(COL_PLAYER_ZONE.r, COL_PLAYER_ZONE.g, COL_PLAYER_ZONE.b, 0.055))
 	for p in Grid.ENEMY_SLOTS:
-		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD), COL_ENEMY_ZONE)
+		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD),
+			Color(COL_ENEMY_ZONE.r, COL_ENEMY_ZONE.g, COL_ENEMY_ZONE.b, 0.055))
 
 	_draw_zones(c)
 
@@ -482,18 +479,27 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 			# 빗금은 **무늬**라 색이 겹쳐도 살아남는다.
 			var fill := Color(u.color.r, u.color.g, u.color.b,
 				(0.22 if hot else 0.12) * pulse)
+			# ── 채우지 않는다 ───────────────────────────────────────────
+			# 칸을 색으로 채우고 빗금까지 그었더니 그 아래 진영 표시와 겹쳐
+			# 둘 다 안 보였다. 겹치는 색을 하나 더 얹는 것으로는 절대 안 풀린다.
+			#
+			# XCOM 계열이 쓰는 방법을 가져왔다 - **선으로 짠 상자**. 아주 옅은
+			# 채움 위에 밝은 테두리와 네 귀 갈고리만 남긴다. 색이 겹쳐도 선은
+			# 살아남고, 무엇보다 칸 경계가 또렷해 몇 칸인지 셀 수 있다.
 			for p in cells:
-				var q := cell_quad(p.x, p.y, 0.0)
+				var q := cell_quad(p.x, p.y, 2.0)
 				for qi in q.size():
 					q[qi] += shift
-				c.draw_colored_polygon(q, fill)
-				# 빗금도 칸의 네 귀를 기준으로. 판이 눕었으므로 축 정렬 사각으로
-				# 그으면 칸을 벗어난다.
-				var hc := Color(u.color.r, u.color.g, u.color.b,
-					(0.42 if hot else 0.22) * pulse)
-				for hi in 2:
-					var t: float = 0.33 + 0.34 * float(hi)
-					c.draw_line(q[0].lerp(q[3], t), q[1].lerp(q[2], t), hc, 2.0)
+				c.draw_colored_polygon(q, Color(fill.r, fill.g, fill.b, fill.a * 0.5))
+				var lc := Color(u.color.r, u.color.g, u.color.b,
+					(0.85 if hot else 0.5) * pulse)
+				# 네 귀 갈고리. 변을 통째로 그으면 칸이 격자로 보여 판과 섞인다.
+				for ci in 4:
+					var a0: Vector2 = q[ci]
+					var b1: Vector2 = q[(ci + 1) % 4]
+					var b2: Vector2 = q[(ci + 3) % 4]
+					c.draw_line(a0, a0.lerp(b1, 0.3), lc, 2.0)
+					c.draw_line(a0, a0.lerp(b2, 0.3), lc, 2.0)
 			continue
 
 		# ── 바깥 테두리만 ────────────────────────────────────────────────
@@ -852,7 +858,12 @@ func _live_pos(u: Unit) -> Vector2:
 ##
 ## 값이 커지면 아래쪽 칸이 눈에 띄게 넓어져 칸 크기가 제각각으로 보인다.
 ## 0.16 은 "눕혔다" 가 보이면서 칸이 아직 같은 크기로 읽히는 선이다.
-const PERSP: float = 0.16
+## 0 이면 정면이다. 눕혀 봤다가 되돌렸다 - 아래로 갈수록 칸이 넓어지니
+## 같은 크기의 칸이 다른 크기로 보였고, 그 위에 얹히는 범위 표시와 표적선이
+## 전부 사다리꼴이 되면서 무엇이 몇 칸인지 세기 어려워졌다.
+##
+## 함수는 남긴다. 다시 눕히고 싶으면 이 값 하나만 올리면 된다.
+const PERSP: float = 0.0
 
 ## 판 로컬 좌표 하나를 눕힌 자리로.
 static func lay(p: Vector2) -> Vector2:

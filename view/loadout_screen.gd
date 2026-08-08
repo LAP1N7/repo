@@ -160,8 +160,10 @@ func setup(p_run: RunState) -> void:
 	add_child(folder)
 
 	hand_clip = Control.new()
-	hand_clip.position = Vector2(HAND_X - 4.0, HAND_Y - 6.0)
-	hand_clip.size = Vector2(1280.0 - HAND_X - 20.0, HAND_H + 12.0)
+	# 카드가 호버로 위로 들린다(_lift). 창을 딱 맞게 잘라 두면 들린 윗부분이
+	# 통째로 잘려서 "먹히는" 것처럼 보인다. 위아래로 여유를 준다.
+	hand_clip.position = Vector2(HAND_X - 4.0, HAND_Y - 18.0)
+	hand_clip.size = Vector2(1280.0 - HAND_X - 20.0, HAND_H + 30.0)
 	hand_clip.clip_contents = true
 	# 휠을 받아야 하므로 STOP 이다. IGNORE 면 이 영역 위에서 굴려도 안 잡힌다.
 	hand_clip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -461,9 +463,12 @@ func _unit_card(i: int, at: Vector2, cw: float) -> void:
 	# ── 기본기 ──────────────────────────────────────────────────────────
 	# "모듈 셋이 전부 어긋나면 여기로 떨어진다" 는 관계가 화면에 그대로 보여야
 	# 한다. 그래서 슬롯 **바로 아래**에 붙인다.
+	# ── "기본기" 라벨을 뺐다 ────────────────────────────────────────────
+	# 라벨 넉 자가 앞에 붙으면서 문장이 카드 폭을 넘어 두 줄이 되고, 두 번째
+	# 줄이 카드 밖으로 흘렀다. 이 줄이 슬롯 **아래**에 있다는 자리 자체가
+	# 이미 "모듈이 다 어긋나면 여기" 를 말한다.
 	var own_text := Innates.describe(tid)
-	var txt := UiText.t("loadout.m16", "기본기 ↓  ")
-	txt += own_text if own_text != "" else UiText.t("loadout.m17", "(없음)")
+	var txt := own_text if own_text != "" else UiText.t("loadout.m17", "(없음)")
 	var il := UiKit.label(roster_root, Vector2(at.x + 12, at.y + IN_INNATE_Y),
 		Vector2(cw - 24, 40), txt, 9, UiKit.FAINT, true)
 	il.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -553,7 +558,7 @@ func _build_hand() -> void:
 		var offset := float(i) - mid
 		# 좌표는 창(hand_clip) 기준이다. 창이 이미 HAND_Y 에 있으므로 여기서는
 		# 0 을 기준으로 놓는다.
-		card.place(Vector2(x0 + i * step, 12.0 + absf(offset) * 3.0), offset * 0.02)
+		card.place(Vector2(x0 + i * step, 24.0 + absf(offset) * 2.0), offset * 0.02)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)

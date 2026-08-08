@@ -13,7 +13,21 @@ signal command()
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다. 없으면 전부 무시된다.
 var tut: Tutorial = null
 
-## ── 화면을 좌우로 가른다 ────────────────────────────────────────────────
+## ── 좌우 분할을 되돌렸다 ────────────────────────────────────────────────
+## 왼쪽에 카드, 오른쪽에 정보로 갈라 봤다가 되돌렸다. 이유는 둘이다.
+##   1) 상점 칸은 예산·재검색·보조 지휘와 **한 덩어리**다. 이것들이 서로 다른
+##      기둥에 서면 "얼마 남았고 무엇을 할 수 있나" 가 한 눈에 안 들어온다.
+##   2) 왼쪽 절반은 다섯 칸을 놓기에 좁아서 카드가 두 줄로 접혔고, 그러면
+##      "이번에 뜬 것" 을 한 번에 훑을 수가 없다.
+##
+## 카드를 가로 블록으로 바꾸면서 자리 문제가 풀렸다. 다섯이 한 줄에 서고,
+## 세로를 3분의 1만 쓰므로 그 아래가 통째로 남는다.
+##
+##   y 120  확보 가능 - 블록 다섯
+##   y 232  재검색 · 보조 지휘 · 보유 모듈  (한 란)
+##   y 300  적 배치 (왼쪽) · 보유 목록 (오른쪽)
+##
+## ── 옛 주석 ─────────────────────────────────────────────────────────────
 ## 카드 다섯 장이 화면 폭을 가로질러 한 줄로 누워 있었다. 그러면 남는 세로가
 ## 전부 아래로 밀려서, 적 정보도 버튼도 손패도 아래쪽에 층층이 쌓인다.
 ## 실제로 상점은 위에서 아래로 다섯 층짜리 화면이었다.
@@ -25,26 +39,26 @@ var tut: Tutorial = null
 ##   왼쪽  x  40 ~ 528   상점 카드 (3 + 2)
 ##   오른쪽 x 560 ~ 1240  적 정보 · 조작 · 보유
 const SHOP_X: float = 40.0
-const SHOP_Y: float = 128.0
-const SHOP_GAP: float = 16.0
-const SHOP_COLS: int = 3
+const SHOP_Y: float = 122.0
+const SHOP_GAP: float = 10.0
+const SHOP_COLS: int = 5
 
 ## 오른쪽 열이 시작하는 x.
-const RIGHT_X: float = 560.0
+const RIGHT_X: float = 700.0
 
 ## ── 적 배치 미리보기 ────────────────────────────────────────────────────
 ## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
 ## 페이즈가 문제로 남는다.
 const PREVIEW_WAVES: int = 2
-const PREVIEW_Y: float = 158.0
-const PREVIEW_W: float = 292.0
-const PREVIEW_H: float = 300.0
+const PREVIEW_Y: float = 330.0
+const PREVIEW_W: float = 302.0
+const PREVIEW_H: float = 266.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
 const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 500.0
+const BAR_Y: float = 232.0
 
 var run: RunState
 
@@ -95,9 +109,12 @@ func setup(p_run: RunState) -> void:
 	# 숨기면 시행착오 게임이 되고, 공개하면 추리 게임이 된다. (DESIGN 2.4)
 	# 적 정보는 더 이상 글줄이 아니다. 아래 배치판이 통째로 맡는다 -
 	# "접근 → 교전 / 자폭 개체 2" 같은 요약은 이미 아는 사람에게만 읽힌다.
-	lbl_note = UiKit.label(self, Vector2(RIGHT_X, 96), Vector2(680, 22), "", 13, UiKit.MUTED)
+	lbl_note = UiKit.label(self, Vector2(RIGHT_X + 116.0, PREVIEW_Y - 28), Vector2(420, 22),
+		"", 12, UiKit.MUTED)
 	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
 	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
+	_head(self, Vector2(SHOP_X, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
+	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
 
 	shop_root = Control.new()
 	shop_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -121,13 +138,13 @@ func setup(p_run: RunState) -> void:
 
 	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다.
 	# 카드 아래 여백을 넉넉히 둬야 호버로 카드가 떠오를 때 버튼과 안 겹친다.
-	btn_reroll = _slab(bar, Vector2(RIGHT_X, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
+	btn_reroll = _slab(bar, Vector2(SHOP_X, BAR_Y), Vector2(236, 50), "", UiKit.TEXT)
 	btn_reroll.pressed.connect(_on_reroll)
 
 
 	# 재검색 바로 옆이다. 둘 다 "예산을 어디에 쓸까" 라서 나란히 놓여야 같은
 	# 저울에 올려놓고 고르게 된다.
-	btn_command = _slab(bar, Vector2(RIGHT_X + 248.0, BAR_Y), Vector2(236, 54),
+	btn_command = _slab(bar, Vector2(SHOP_X + 248.0, BAR_Y), Vector2(236, 50),
 		UiText.t("shop.command", "보조 지휘  →"), Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func():
 		sfx.play("click")
@@ -141,7 +158,7 @@ func setup(p_run: RunState) -> void:
 	if tut != null:
 		tut.register_anchor("shop_command", btn_command)
 
-	lbl_hint = UiKit.label(bar, Vector2(RIGHT_X, BAR_Y + 60), Vector2(680, 22),
+	lbl_hint = UiKit.label(bar, Vector2(SHOP_X, BAR_Y + 56), Vector2(1000, 22),
 		"", 12, UiKit.MUTED)
 
 	# 이 화면의 주 버튼이다. 채우고 빛을 흘려 목록의 한 칸이 아니게 만든다.
@@ -235,12 +252,10 @@ func _build_shop() -> void:
 			# "얼마가 더 있어야 사는가" 하나다.
 			card.note = UiText.t("shop.note_poor", "예산 %d 부족") % (
 				run.price_of(cid) - run.budget)
-		# 3 + 2 두 줄. 한 줄로 늘어놓으면 왼쪽 열을 넘어간다.
-		var col := i % SHOP_COLS
-		var row := i / SHOP_COLS
+		# 다섯이 한 줄. 블록이라 232*5 + 10*4 = 1200 으로 화면에 딱 들어간다.
 		card.place(Vector2(
-			SHOP_X + float(col) * (CardNode.W + SHOP_GAP),
-			SHOP_Y + float(row) * (CardNode.H + SHOP_GAP)))
+			SHOP_X + float(i % SHOP_COLS) * (CardNode.W + SHOP_GAP),
+			SHOP_Y + float(i / SHOP_COLS) * (CardNode.H + SHOP_GAP)))
 		card.clicked.connect(_on_buy)
 		if tut != null:
 			tut.register_anchor("shop_card_%d" % i, card)
@@ -380,7 +395,9 @@ func _build_hand() -> void:
 	# rect 는 서랍을 다 편 크기로 잡는다. 안 그러면 펼쳐진 부분의 클릭·휠이
 	# Control 밖이라 이벤트가 오지 않는다. 닫혀 있을 때 뒤를 안 먹는 것은
 	# _has_point 가 막는다.
-	tab.position = Vector2(1240 - _Dossier.TAB_W - _Dossier.OPEN_W, SHOP_Y - 10)
+	# 탭을 아래로 내린다. 위쪽 줄은 블록 다섯이 화면 폭을 다 쓰므로, 거기 서면
+	# 마지막 블록을 덮는다.
+	tab.position = Vector2(1240 - _Dossier.TAB_W - _Dossier.OPEN_W, PREVIEW_Y - 34)
 	tab.size = Vector2(_Dossier.TAB_W + _Dossier.OPEN_W, 300)
 	# 카드보다 위에 떠야 서랍이 카드에 잘리지 않는다.
 	tab.z_index = 40
@@ -409,7 +426,36 @@ func _build_hand() -> void:
 
 	hand_root.add_child(tab)
 
-	# ── 여기서는 손패를 펴지 않는다 ─────────────────────────────────────
+	# ── 보유 목록 ───────────────────────────────────────────────────────
+	# 서랍(탭)에 숨겨 놨더니 "무엇을 가졌는지 확인하기 어렵다" 가 됐다. 살
+	# 것을 고르는 화면에서 가진 것이 안 보이면 고를 수가 없다.
+	#
+	# 블록으로 바뀌면서 자리가 생겼다. 오른쪽 아래에 2열로 편다. 다 못 담으면
+	# 마지막 줄에 남은 수를 적는다 - 전부 보여 주는 것보다 "더 있다" 를 아는
+	# 것이 중요하다.
+	var own_cols := 2
+	var own_rows := 3
+	var own_k := 0.86
+	var bw := CardNode.W * own_k
+	var bh := CardNode.H * own_k
+	for i in mini(n, own_cols * own_rows):
+		var b := CardNode.new()
+		hand_root.add_child(b)
+		b.mini_scale = own_k
+		b.setup(owned[i], i, true, false)
+		b.level = run.special_level(String(owned[i])) + 1 \
+			if RunState.is_special(String(owned[i])) else run.card_level(String(owned[i]))
+		b.enabled = false
+		b.place(Vector2(RIGHT_X + float(i % own_cols) * (bw + 10.0),
+			PREVIEW_Y + float(i / own_cols) * (bh + 8.0)))
+	if n > own_cols * own_rows:
+		UiKit.label(hand_root, Vector2(RIGHT_X, PREVIEW_Y + float(own_rows) * (bh + 8.0)),
+			Vector2(400, 22),
+			UiText.t("shop.own_more", "그 외 %d개 - 오른쪽 [보유] 탭에서 전부 봅니다")
+				% (n - own_cols * own_rows), 12, UiKit.FAINT)
+	return
+
+	# ── 옛 주석 ─────────────────────────────────────────────────────────
 	# 오른쪽 세로 탭이 장수를 말하고, 실제로 무엇을 가졌는지는 편성 화면에서
 	# 서류첩으로 편다. 상점에서까지 펴면 아래 적 배치판 위로 카드가 겹친다 -
 	# 실제로 그렇게 겹쳤다.
@@ -758,10 +804,7 @@ func _build_preview() -> void:
 	var waves: Array = Stages.waves(st)
 	var shown: int = mini(waves.size(), PREVIEW_WAVES)
 
-	_head(preview_root, Vector2(RIGHT_X, PREVIEW_Y - 30),
-		UiText.t("shop.preview_head2", "적 배치"))
-
-	var x := RIGHT_X
+	var x := SHOP_X
 	for w in shown:
 		var b := _Preview.new()
 		b.position = Vector2(x, PREVIEW_Y)
