@@ -33,9 +33,11 @@ const PAD := 64.0
 ## 안쪽 여백을 24 에서 34 로 넓혔다. 글자가 상자에 바짝 붙어 있으면 대사가
 ## 아니라 표에 적힌 문장처럼 읽힌다.
 const BUBBLE_X := 96.0
-const BUBBLE_Y := 470.0
-const BUBBLE_H := 170.0
-const PAD_IN := 34.0
+## 170 -> 136. 한두 줄짜리 대사가 대부분인데 판이 너무 커서 아래쪽 절반이
+## 통째로 비어 있었다. 빈 판은 여백이 아니라 그냥 빈 판이다.
+const BUBBLE_Y := 492.0
+const BUBBLE_H := 136.0
+const PAD_IN := 30.0
 
 ## ── 카메라 연출 ─────────────────────────────────────────────────────────
 ## 정지 화면에 글자만 바뀌면 그건 슬라이드 쇼다. 아주 조금만 움직여도 화면이
@@ -184,8 +186,11 @@ func setup(p_beats: Array) -> void:
 	# 얼굴만 크게 잡으면 누가 말하는지는 알아도 **어떤 인물인지**가 안 남는다.
 	# 컷인이 반신을 세로로 길게 보여 주는 것과 같은 이유로, 여기서도 인물을
 	# 통째로 세운다. 아래는 대사판이 가리므로 잘려도 좋다.
+	# ── 일러스트의 발치는 화면 끝이다 ───────────────────────────────────
+	# 652 에서 끊겨 있었다. 그림 아래로 68px 짜리 빈 띠가 남아서 인물이 바닥에
+	# 서 있는 게 아니라 공중에 잘려 붙어 있는 것처럼 보였다.
 	_portrait.position = Vector2(PAD + 4, 52)
-	_portrait.size = Vector2(400, 600)
+	_portrait.size = Vector2(400, 668)
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait.visible = false
 	add_child(_portrait)
@@ -209,14 +214,22 @@ func setup(p_beats: Array) -> void:
 	# 안에 두면 첫 줄이 이름에 밀려 본문 자리가 좁아지고, 이름과 대사가 같은
 	# 상자 안에서 경쟁한다. 위로 빼면 "누가" 와 "무슨 말" 이 한눈에 갈린다.
 	_name_tag = _NameTag.new()
-	_name_tag.position = Vector2(BUBBLE_X + 6, BUBBLE_Y - 30)
-	_name_tag.size = Vector2(300, 30)
+	# 이름표를 키웠다. 화자가 누구인지는 대사보다 먼저 읽혀야 하는 정보인데
+	# 15px 짜리 태그는 배경 무늬처럼 보였다.
+	_name_tag.position = Vector2(BUBBLE_X + 6, BUBBLE_Y - 36)
+	_name_tag.size = Vector2(340, 36)
 	_name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_name_tag)
 
-	_lbl_text = UiKit.label(_bubble, Vector2(PAD_IN, PAD_IN - 6),
-		Vector2(1280 - BUBBLE_X * 2 - PAD_IN * 2, BUBBLE_H - PAD_IN * 2 + 12),
-		"", 17, UiKit.TEXT, true)
+	_lbl_text = UiKit.label(_bubble, Vector2(PAD_IN, PAD_IN - 8),
+		Vector2(1280 - BUBBLE_X * 2 - PAD_IN * 2, BUBBLE_H - PAD_IN * 2 + 16),
+		"", 18, UiKit.TEXT, true)
+	# ── 대사만 서체가 다르다 ────────────────────────────────────────────
+	# 큰 글씨는 비트비트체(도트)를 쓴다. 게임의 인상이 거기서 나오니까.
+	# 그런데 대사는 한 화면에서 두세 줄을 **이어 읽는** 글이고, 도트 폰트는
+	# 획이 붙어서 그 읽기를 방해한다. 인상은 제목과 UI 가 이미 만들고 있다.
+	_lbl_text.add_theme_font_override("font", UiKit.font_role("story"))
+	_lbl_text.add_theme_font_size_override("font_size", 18)
 	# 줄간격 1.35배. 긴 대사가 붙어 있으면 읽는 속도가 뚝 떨어진다.
 	_lbl_text.add_theme_constant_override("line_spacing", 8)
 
@@ -579,8 +592,9 @@ class _NameTag extends Control:
 	func _draw() -> void:
 		if who == "":
 			return
-		var f := UiKit.font(15)
-		var w: float = f.get_string_size(who, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 34.0
+		var f := UiKit.font_role("story")
+		var fsz := 18
+		var w: float = f.get_string_size(who, HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x + 38.0
 		var h := size.y
 		var cut := 8.0
 		var shape := PackedVector2Array([
@@ -590,9 +604,9 @@ class _NameTag extends Control:
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
 		draw_polyline(line, Color(tint.r, tint.g, tint.b, 0.55), 1.0, true)
-		draw_rect(Rect2(cut, 0, 3, h), tint)
-		draw_string(f, Vector2(cut + 12.0, h - 9.0), who,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, tint)
+		draw_rect(Rect2(cut, 0, 4, h), tint)
+		draw_string(f, Vector2(cut + 14.0, h - 11.0), who,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fsz, tint)
 
 
 ## ── 비네팅 ───────────────────────────────────────────────────────────────

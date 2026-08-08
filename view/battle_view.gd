@@ -116,8 +116,13 @@ const LOG_H: float = 178.0
 ## 기록 글이 쓰는 폭. 나머지는 판단 표가 쓴다.
 const LOG_TEXT_W: float = 186.0
 
-const COL_TILE_A := Color(0.16, 0.17, 0.22)
-const COL_TILE_B := Color(0.13, 0.14, 0.19)
+## ── 판 바닥은 어두워야 한다 ─────────────────────────────────────────────
+## 0.16/0.13 이었다. 그 위에 SD 스프라이트(대개 어두운 옷)와 진영 링과 HP 막대와
+## 표적선이 얹히면 바닥과 대원의 밝기 차가 거의 없어서 **판이 안 보인다.**
+##
+## 바닥은 무대다. 배우보다 밝으면 안 된다.
+const COL_TILE_A := Color(0.085, 0.092, 0.125)
+const COL_TILE_B := Color(0.062, 0.068, 0.098)
 
 ## 지형 사진의 진하기.
 ##
@@ -805,9 +810,15 @@ func _build_ui() -> void:
 	#
 	# 그래서 말로 푼다. 자리는 판 바로 아래 왼쪽이다 - 눈이 판에서 떨어질 때
 	# 가장 먼저 닿는 곳이고, 전투 중에 다시 볼 일이 있는 정보이기 때문이다.
+	# ── 왜 뺐는가 ────────────────────────────────────────────────────────
+	# 판 아래 왼쪽에 적 개요를 줄글로 깔았다. 읽을 사람에게는 좋은 글이었는데,
+	# **전투 중에는 아무도 안 읽는다.** 틱이 흐르는 동안 눈은 판에 붙어 있고,
+	# 이 판은 그 아래에서 84px 를 차지한 채 대원 바를 아래로 밀어냈다.
+	#
+	# 같은 내용은 개체에 마우스를 올리면 호버 판이 말해 준다. 그쪽은 궁금할 때
+	# 보는 것이라 읽힌다 - 항상 떠 있는 글은 배경이 된다.
 	brief_panel = _Brief.new()
-	# 판은 y=512 에서 끝나고 대원 바는 y=596 에서 시작한다. 그 사이 84px 가
-	# 이 판이 쓸 수 있는 전부다.
+	brief_panel.visible = false
 	brief_panel.position = Vector2(40, 518)
 	brief_panel.size = Vector2(836, 74)
 	brief_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -878,7 +889,9 @@ func _build_ui() -> void:
 	# 알고리즘 전문은 여기 안 적는다 - 세 명분을 다 적으면 결국 지금과 같은
 	# 글자 벽이 된다. 얼굴에 마우스를 올리면 그때 사선 판으로 펼친다.
 	squad_root = Control.new()
-	squad_root.position = Vector2(36, 596)
+	# 적 개요 판이 비운 자리를 받는다. 위로 20px 올리고 카드를 16px 키웠다 -
+	# 여기가 전투 중에 실제로 계속 보는 자리다.
+	squad_root.position = Vector2(36, 576)
 	ui.add_child(squad_root)
 
 	rules_root = Control.new()
@@ -1135,8 +1148,8 @@ func _build_squad_bar() -> void:
 		var card := _SquadCard.new()
 		card.unit = u
 		card.position = Vector2(i * 284.0, 0)
-		card.size = Vector2(272, 76)
-		card.pivot_offset = Vector2(136, 38)
+		card.size = Vector2(272, 92)
+		card.pivot_offset = Vector2(136, 46)
 		squad_root.add_child(card)
 		squad_cards[u.index] = card
 		i += 1
