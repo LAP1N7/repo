@@ -377,3 +377,93 @@ static func frame(host: Control, accent: Color = Color(0.38, 0.80, 0.86)) -> Con
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.add_child(f)
 	return f
+
+
+## ── 배경 장식 ────────────────────────────────────────────────────────────
+## HUD 배경이 순수한 검정이라 화면이 "비어 있다" 로 읽혔다. 무늬를 깔면 같은
+## 여백이 **여백으로** 읽힌다 - 아무것도 없는 것과 조용한 것은 다르다.
+##
+## 사이버펑크 HUD 무늬의 문법은 넷이다.
+##   동심 호   - 반쯤 끊긴 고리 여럿. 계측기의 눈금판이다.
+##   미세 격자 - 작은 정사각 격자 덩어리. 데이터 판이다.
+##   눈금 열   - 한 변을 따라 늘어선 짧은 선들. 자(尺)다.
+##   다각 윤곽 - 육각·오각 테두리. 회로 블록이다.
+##
+## 전부 알파 0.05 아래로 깐다. 이건 배경이고, 배경이 읽히기 시작하면 그건
+## 이미 배경이 아니다. 좌표는 고정 시드 LCG 로 만든다 - 볼 때마다 달라지면
+## 무늬가 아니라 잡음이 된다.
+class Deco extends Control:
+	## 무늬 색. 화면마다 조금씩 다르게 줄 수 있다.
+	var tint: Color = Color(0.30, 0.72, 1.0)
+	## 전체 진하기 배수.
+	var strength: float = 1.0
+	## 무늬 배치 시드. 화면마다 다른 값을 주면 같은 무늬가 안 반복된다.
+	var seed_v: int = 7
+
+	var _rng: int = 0
+
+	func _r() -> float:
+		_rng = (_rng * 1103515245 + 12345) & 0x7FFFFFFF
+		return float(_rng % 10000) / 10000.0
+
+	func _draw() -> void:
+		_rng = seed_v * 7919 + 13
+		var s := size
+		var a := 0.045 * strength
+
+		# 동심 호 셋.
+		for i in 3:
+			var c := Vector2(_r() * s.x, _r() * s.y)
+			var r0 := 60.0 + _r() * 120.0
+			for k in 4:
+				var rr := r0 + float(k) * 9.0
+				var a0 := _r() * TAU
+				draw_arc(c, rr, a0, a0 + 1.2 + _r() * 2.4, 40,
+					Color(tint.r, tint.g, tint.b, a * (1.0 - 0.15 * float(k))), 1.5)
+
+		# 미세 격자 둘.
+		for i in 2:
+			var at := Vector2(_r() * (s.x - 200.0), _r() * (s.y - 160.0))
+			var cols := 8 + int(_r() * 6.0)
+			var rows := 6 + int(_r() * 4.0)
+			var step := 11.0
+			for gx in cols + 1:
+				draw_line(at + Vector2(float(gx) * step, 0),
+					at + Vector2(float(gx) * step, float(rows) * step),
+					Color(tint.r, tint.g, tint.b, a * 0.7), 1.0)
+			for gy in rows + 1:
+				draw_line(at + Vector2(0, float(gy) * step),
+					at + Vector2(float(cols) * step, float(gy) * step),
+					Color(tint.r, tint.g, tint.b, a * 0.7), 1.0)
+
+		# 눈금 열. 화면 오른쪽 변을 따라.
+		var tx := s.x - 26.0
+		var n := int(s.y / 26.0)
+		for i in n:
+			var long_tick: bool = i % 5 == 0
+			draw_line(Vector2(tx, 20.0 + float(i) * 26.0),
+				Vector2(tx + (14.0 if long_tick else 7.0), 20.0 + float(i) * 26.0),
+				Color(tint.r, tint.g, tint.b, a * (1.4 if long_tick else 0.8)), 1.0)
+
+		# 육각 윤곽 둘.
+		for i in 2:
+			var hc := Vector2(_r() * s.x, _r() * s.y)
+			var hr := 40.0 + _r() * 70.0
+			var pts := PackedVector2Array()
+			for k in 7:
+				var ang := TAU * float(k) / 6.0
+				pts.append(hc + Vector2(cos(ang), sin(ang)) * hr)
+			draw_polyline(pts, Color(tint.r, tint.g, tint.b, a * 0.9), 1.4, true)
+
+
+## 배경 장식 한 겹을 화면에 깐다. bg 바로 위, 내용 아래에 들어간다.
+static func deco(parent: Node, seed_v: int = 7, strength: float = 1.0,
+		tint: Color = Color(0.30, 0.72, 1.0)) -> Control:
+	var d := Deco.new()
+	d.seed_v = seed_v
+	d.strength = strength
+	d.tint = tint
+	d.size = Vector2(1280, 720)
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(d)
+	return d

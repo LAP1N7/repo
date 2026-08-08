@@ -41,10 +41,14 @@ const GRID_AT := Vector2(48, 128)
 const CARD_X: float = 440.0
 const CARD_W: float = 254.0
 const CARD_STEP: float = 266.0
-const CARD_Y: float = 116.0
+## ── 위아래 선을 맞춘다 ──────────────────────────────────────────────────
+## 오른쪽 대원 카드가 왼쪽 경고문("대원을 3명 배치해야 합니다") 보다 아래에서
+## 시작해 두 기둥의 윗선이 어긋나 있었다. 선을 맞추면 그것만으로 화면이
+## 정돈된다 - 요소를 줄이지 않고도.
+const CARD_Y: float = 106.0
 ## 360 -> 330. 카드 아래쪽 절반이 "비어 있음" 세 줄과 여백뿐이라, 그만큼
 ## 서류첩이 화면 밖으로 밀려났다.
-const CARD_H: float = 330.0
+const CARD_H: float = 322.0
 
 ## ── 대원 선택 ───────────────────────────────────────────────────────────
 ## 3열 2행. 한 줄에 여섯을 늘어놓으면 칸 하나가 62px 까지 좁아져 얼굴이
@@ -59,9 +63,11 @@ const PICK_STEP: Vector2 = Vector2(118.0, 112.0)
 const PICK_COLS: int = 3
 
 ## 서류첩은 오른쪽 절반에만 선다. 왼쪽 칸을 침범하지 않는 자리다.
-const HAND_Y: float = 496.0
+const HAND_Y: float = 486.0
 const HAND_X: float = 470.0
-const HAND_H: float = 196.0
+## 두 줄이 들어갈 높이. 한 줄이면 넉 장밖에 못 보고 나머지는 전부 스크롤 뒤에
+## 숨는다. 아랫선은 화면 아래 테두리(y 690)와 맞춘다.
+const HAND_H: float = 186.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
@@ -93,6 +99,13 @@ var hand_root: Control
 ##
 ## 카드 크기를 고정하고 **줄 자체를 민다.** 화면에 여덟 장쯤 보이고 나머지는
 ## 옆으로 흐른다 - 서류첩에서 종이를 밀어 넘기는 동작이다.
+## ── 분류 ────────────────────────────────────────────────────────────────
+## 손패가 스무 장을 넘어가면 가로로 굴려도 원하는 축을 찾는 데 한참 걸린다.
+## 축으로 걸러 두면 "지금 위치 축을 하나 더 꽂겠다" 가 두 번 클릭으로 끝난다.
+## 상점 서랍이 쓰는 것과 같은 분류다.
+const HAND_FILTERS: Array = ["all", Axes.TARGET, Axes.POSITION, Axes.DOCTRINE, "ult"]
+var hand_filter: int = 0
+
 var hand_scroll: float = 0.0
 var hand_scroll_max: float = 0.0
 
@@ -104,6 +117,9 @@ var hand_folder: Control
 
 ## 잘린 자리 표시. 카드 위에 그린다.
 var hand_edge: Control
+
+## 분류 단추들. 지금 고른 것을 표시하려고 들고 있는다.
+var hand_tabs: Array = []
 var lbl_warn: Label
 var btn_fight: Button
 
@@ -152,6 +168,8 @@ func setup(p_run: RunState) -> void:
 	# 손패가 화면 아래에 그냥 떠 있으면 "카드 몇 장" 이지 **보유 목록**으로
 	# 안 읽힌다. 왼쪽에 세로 탭을 세우고 그 오른쪽을 창으로 잘라 내면, 카드가
 	# 창 안에서 흐르는 것이 되어 서류첩을 넘기는 동작이 된다.
+	UiKit.deco(self, 11, 0.9)
+
 	hand_folder = _Folder.new()
 	var folder := hand_folder
 	folder.position = Vector2(HAND_X - 16.0, HAND_Y - 34.0)
@@ -173,6 +191,23 @@ func setup(p_run: RunState) -> void:
 	hand_root = Control.new()
 	hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hand_clip.add_child(hand_root)
+
+	# 분류 단추. 머리띠 오른쪽에 나란히 세운다.
+	for i in HAND_FILTERS.size():
+		var fid := String(HAND_FILTERS[i])
+		var fb := _FilterTab.new()
+		fb.position = Vector2(HAND_X + 90.0 + float(i) * 74.0, HAND_Y - 30.0)
+		fb.size = Vector2(70, 22)
+		fb.idx = i
+		fb.label = UiText.t("loadout.filter_all", "전체") if fid == "all" 			else (UiText.t("loadout.filter_ult", "궁극기") if fid == "ult" 			else Axes.label(fid))
+		fb.tint = Color(0.55, 0.88, 1.0) if fid == "all" or fid == "ult" 			else Axes.color(fid)
+		fb.pressed_idx.connect(func(k: int):
+			hand_filter = k
+			hand_scroll = 0.0
+			refresh()
+		)
+		add_child(fb)
+		hand_tabs.append(fb)
 
 	hand_edge = _HandEdge.new()
 	hand_edge.position = hand_clip.position
@@ -490,10 +525,14 @@ func _build_hand() -> void:
 	# 규칙 카드와 특수 스킬을 한 줄에 같이 깐다. 특수를 누르면 특수 슬롯으로,
 	# 카드를 누르면 규칙 슬롯으로 들어간다. 어디로 갈지는 카드 종류가 정한다.
 	var owned: Array[String] = []
+	var f := String(HAND_FILTERS[hand_filter])
 	for cid in run.hand:
-		owned.append(cid)
+		if f == "all" or (f != "ult"
+				and String(Cards.TABLE.get(cid, {}).get("axis", "")) == f):
+			owned.append(cid)
 	for sid in run.special_hand:
-		owned.append(sid)
+		if f == "all" or f == "ult":
+			owned.append(sid)
 
 	# ── 안내문을 지웠다 ─────────────────────────────────────────────────
 	# "보유 모듈 (전술 1 · 궁극기 0) · 총사 에게 장착합니다. 전술 모듈은 다음
@@ -521,20 +560,27 @@ func _build_hand() -> void:
 	# 간격을 고정하고 넘치는 만큼 옆으로 흐르게 둔다. 카드 하나의 크기는
 	# 손패가 몇 장이든 같아야 한다.
 	var mini_w := CardNode.W * HAND_SCALE
-	var step := mini_w + 14.0
-	var span := mini_w + step * maxf(0.0, float(n - 1))
+	var mini_h := CardNode.H * HAND_SCALE
+	var rows := 2
+	var step := mini_w + 12.0
+	var cols: int = int(ceil(float(n) / float(rows)))
+	var span := mini_w + step * maxf(0.0, float(cols - 1))
 	var view_w: float = hand_clip.size.x
 	hand_scroll_max = maxf(0.0, span - view_w + 24.0)
 	hand_scroll = clampf(hand_scroll, 0.0, hand_scroll_max)
 	if hand_folder != null:
 		(hand_folder as _Folder).count = n
 		hand_folder.queue_redraw()
+	for i in hand_tabs.size():
+		if is_instance_valid(hand_tabs[i]):
+			(hand_tabs[i] as _FilterTab).on = i == hand_filter
+			hand_tabs[i].queue_redraw()
 	if hand_edge != null:
 		(hand_edge as _HandEdge).more_left = hand_scroll > 1.0
 		(hand_edge as _HandEdge).more_right = hand_scroll < hand_scroll_max - 1.0
 		hand_edge.queue_redraw()
 	# 다 들어가면 가운데로 모으고, 넘치면 왼쪽에서 시작해 밀어 본다.
-	var x0: float = (view_w - span) * 0.5 if hand_scroll_max <= 0.0 else 12.0
+	var x0: float = 12.0
 	x0 -= hand_scroll
 	var mid := (n - 1) * 0.5
 
@@ -555,10 +601,12 @@ func _build_hand() -> void:
 		else:
 			card.enabled = (run.unit_cards[sel_member] as Array).size() < RunState.SLOTS_PER_UNIT
 
-		var offset := float(i) - mid
 		# 좌표는 창(hand_clip) 기준이다. 창이 이미 HAND_Y 에 있으므로 여기서는
 		# 0 을 기준으로 놓는다.
-		card.place(Vector2(x0 + i * step, 24.0 + absf(offset) * 2.0), offset * 0.02)
+		# 두 줄로 쌓는다. 세로로 먼저 채워야 가로 스크롤이 자연스럽다 -
+		# 가로로 먼저 채우면 스크롤할 때 두 줄이 따로 논다.
+		card.place(Vector2(x0 + float(i / rows) * step,
+			22.0 + float(i % rows) * (mini_h + 8.0)), 0.0)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)
@@ -666,6 +714,40 @@ class _Folder extends Control:
 			Color(0.02, 0.03, 0.05, 0.55))
 		draw_rect(Rect2(10, s.y - 9.0, s.x - 20.0, 1),
 			Color(BLUE.r, BLUE.g, BLUE.b, 0.18))
+
+
+## ── 분류 단추 ────────────────────────────────────────────────────────────
+## 판이 아니라 **글자와 밑줄**이다. 다섯 개가 나란히 서는 자리에 판을 깔면
+## 그것만으로 띠 하나가 더 생겨서 목록보다 분류가 커 보인다.
+class _FilterTab extends Button:
+	var idx: int = 0
+	var label: String = ""
+	var tint: Color = UiKit.ACCENT
+	var on: bool = false
+
+	signal pressed_idx(i: int)
+
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		pressed.connect(func(): pressed_idx.emit(idx))
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var s := size
+		var hot := is_hovered()
+		var a: float = 1.0 if on else (0.75 if hot else 0.42)
+		var f := UiKit.font(11)
+		var w: float = f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		draw_string(f, Vector2((s.x - w) * 0.5, 14), label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(tint.r, tint.g, tint.b, a))
+		# 고른 것만 밑줄. 밑줄 하나면 어느 것이 켜졌는지가 즉시 갈린다.
+		if on:
+			draw_rect(Rect2(4, s.y - 3.0, s.x - 8.0, 2), tint)
 
 
 ## ── 잘린 자리 표시 ───────────────────────────────────────────────────────

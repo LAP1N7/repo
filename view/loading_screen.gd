@@ -51,6 +51,9 @@ func setup(rng_seed: int = 0) -> void:
 	bg.size = Vector2(1280, 720)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
+	# 로딩 화면은 오래 보는 화면이 아니지만, 그래서 더 인상만 남는다.
+	# 무늬를 조금 진하게 깐다.
+	UiKit.deco(self, 23, 1.6)
 
 	_pick(rng_seed)
 

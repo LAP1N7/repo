@@ -52,7 +52,9 @@ const RIGHT_X: float = 700.0
 const PREVIEW_WAVES: int = 2
 const PREVIEW_Y: float = 330.0
 const PREVIEW_W: float = 302.0
-const PREVIEW_H: float = 266.0
+## 오른쪽 보유 목록(3줄)과 아랫선을 맞춘다. 두 기둥의 끝이 어긋나 있으면
+## 화면이 정리가 안 된 것으로 보인다.
+const PREVIEW_H: float = 258.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
 const HAND_Y: float = 560.0
 
@@ -64,6 +66,11 @@ var run: RunState
 
 var lbl_budget: Label
 var lbl_note: Label
+
+## 보유 목록을 자르는 창과 스크롤. 막대 없이 휠로만 굴린다.
+var own_clip: Control
+var own_scroll: float = 0.0
+var own_max: float = 0.0
 ## 아래쪽 적 배치판. 무엇이 어디에 서는지를 사는 자리에서 보여 준다.
 var preview_root: Control
 var lbl_hint: Label
@@ -115,6 +122,8 @@ func setup(p_run: RunState) -> void:
 	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
 	_head(self, Vector2(SHOP_X, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
 	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
+
+	UiKit.deco(self, 3, 1.0)
 
 	shop_root = Control.new()
 	shop_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -438,21 +447,33 @@ func _build_hand() -> void:
 	var own_k := 0.86
 	var bw := CardNode.W * own_k
 	var bh := CardNode.H * own_k
-	for i in mini(n, own_cols * own_rows):
+	# ── 글 대신 스크롤 ──────────────────────────────────────────────────
+	# "그 외 N개" 라고 적어 두면 그것을 보려면 화면을 옮겨야 한다. 여기서 바로
+	# 굴려 볼 수 있으면 그 한 줄이 필요 없다. 막대는 안 그린다 - 목록이 짧고,
+	# 막대가 붙으면 그 폭만큼 블록이 좁아진다.
+	if own_clip == null:
+		own_clip = Control.new()
+		own_clip.position = Vector2(RIGHT_X, PREVIEW_Y)
+		own_clip.size = Vector2(bw * 2.0 + 10.0, float(own_rows) * (bh + 8.0))
+		own_clip.clip_contents = true
+		own_clip.mouse_filter = Control.MOUSE_FILTER_STOP
+		own_clip.gui_input.connect(_on_own_scroll)
+		add_child(own_clip)
+	for c2 in own_clip.get_children():
+		c2.queue_free()
+	own_max = maxf(0.0, ceil(float(n) / float(own_cols)) * (bh + 8.0)
+		- own_clip.size.y)
+	own_scroll = clampf(own_scroll, 0.0, own_max)
+	for i in n:
 		var b := CardNode.new()
-		hand_root.add_child(b)
+		own_clip.add_child(b)
 		b.mini_scale = own_k
 		b.setup(owned[i], i, true, false)
 		b.level = run.special_level(String(owned[i])) + 1 \
 			if RunState.is_special(String(owned[i])) else run.card_level(String(owned[i]))
 		b.enabled = false
-		b.place(Vector2(RIGHT_X + float(i % own_cols) * (bw + 10.0),
-			PREVIEW_Y + float(i / own_cols) * (bh + 8.0)))
-	if n > own_cols * own_rows:
-		UiKit.label(hand_root, Vector2(RIGHT_X, PREVIEW_Y + float(own_rows) * (bh + 8.0)),
-			Vector2(400, 22),
-			UiText.t("shop.own_more", "그 외 %d개 - 오른쪽 [보유] 탭에서 전부 봅니다")
-				% (n - own_cols * own_rows), 12, UiKit.FAINT)
+		b.place(Vector2(float(i % own_cols) * (bw + 10.0),
+			float(i / own_cols) * (bh + 8.0) - own_scroll))
 	return
 
 	# ── 옛 주석 ─────────────────────────────────────────────────────────
@@ -636,7 +657,6 @@ class _Dossier extends Control:
 		if _peek != null:
 			_peek.queue_free()
 		var c := CardNode.new()
-		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		c.z_index = 6
 		add_child(c)
 		c.setup(want_id, 0)
@@ -646,6 +666,10 @@ class _Dossier extends Control:
 			0.0, maxf(0.0, size.y - CardNode.H))
 		c.place(Vector2(size.x - TAB_W - OPEN_W - CardNode.W - 12.0, y))
 		_peek = c
+		# setup() 이 mouse_filter 를 STOP 으로 되돌린다. 미리보기는 보여 주기만
+		# 하는 물건인데 입력을 먹어서, 분류 탭을 한 번 누르고 나면 그 위에
+		# 미리보기가 서면서 다음 클릭이 통째로 삼켜졌다.
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
 		var s := size
@@ -796,6 +820,20 @@ class _Dossier extends Control:
 ## 페이즈가 "한 판 안의 두 번째 문제" 가 아니라 그냥 예습 대상이 된다.
 ## 두 파까지 보여 주는 것은 계획을 세우기에 충분하고, 마지막 한 파를 남기는
 ## 것은 그 계획이 틀릴 여지를 남긴다.
+func _on_own_scroll(e: InputEvent) -> void:
+	if own_max <= 0.0 or not (e is InputEventMouseButton):
+		return
+	var mb := e as InputEventMouseButton
+	if not mb.pressed:
+		return
+	if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		own_scroll = minf(own_max, own_scroll + 46.0)
+		_build_hand()
+	elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+		own_scroll = maxf(0.0, own_scroll - 46.0)
+		_build_hand()
+
+
 func _build_preview() -> void:
 	for c in preview_root.get_children():
 		c.queue_free()

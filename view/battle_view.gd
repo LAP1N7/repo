@@ -339,36 +339,50 @@ class _TopLayer extends Control:
 
 
 ## ── 판 바닥 ──────────────────────────────────────────────────────────────
-## 그리는 것은 둘뿐이다 - 칸마다 네모 하나, 그 네모의 빛나는 테두리.
+## 바탕을 없앴다. 칸마다 어두운 네모를 깔아 놓으니 그 위에 얹히는 것(사거리·
+## 포격 예고·표적선)이 전부 한 겹 더 어두워졌고, 판 전체가 검은 판때기였다.
 ##
-## 진영 색(파랑/빨강)을 뺐다. 적과 아군은 대원 머리 위 표식과 발밑 링이 이미
-## 말하고 있고, 바닥까지 색을 가지면 그 위에 올라가는 표적선·범위 표시와
-## 색이 섞인다. **바닥은 색을 갖지 않는다** 가 규칙이다.
+## 지금 그리는 것은 **테두리뿐**이다. 그리고 그 테두리가 진영을 말한다.
 ##
-## 대신 판을 눕혔다(lay 참조). 아래로 갈수록 폭이 넓어져 격자가 표가 아니라
-## 바닥으로 읽힌다.
+##   아군 진영  파랑    적 진영  붉은색    그 외  강철색
+##
+## 색으로 칸을 채우는 대신 색으로 칸을 **그린다**. 채우기가 없으니 위에 무엇이
+## 올라와도 안 묻히고, 진영은 개전 전에 한 번 훑는 것만으로 읽힌다.
+##
+## 3D 느낌은 두 겹으로 낸다 - 본선 아래에 같은 사각을 조금 내려 어둡게 깔면
+## 칸이 판 위로 **떠 있는** 것으로 보인다. 그림자가 아니라 두께다.
 const CELL_PAD: float = 2.5
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), UiKit.BG)
 
-	var bw := float(Grid.W) * TILE_W
-	var bh := float(Grid.H) * TILE_H
-	var edge := Color(0.36, 0.72, 0.95)
+	var player_x: Dictionary = {}
+	for p in Grid.PLAYER_SLOTS:
+		player_x[p.x] = true
+	var enemy_x: Dictionary = {}
+	for p in Grid.ENEMY_SLOTS:
+		enemy_x[p.x] = true
 
 	for y in Grid.H:
 		for x in Grid.W:
 			var q := cell_quad(x, y, CELL_PAD)
-			draw_colored_polygon(q, Color(0.055, 0.070, 0.095))
-			# 글로우. 같은 테두리를 굵기와 투명도를 달리해 세 번 겹친다.
+			var edge := Color(0.34, 0.40, 0.52)      # 그 외
+			if player_x.has(x):
+				edge = Color(0.32, 0.66, 1.0)
+			elif enemy_x.has(x):
+				edge = Color(1.0, 0.36, 0.40)
+
 			var line := PackedVector2Array(q)
 			line.append(q[0])
-			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.06), 5.0, true)
-			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.13), 3.0, true)
-			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.46), 1.0, true)
-
-	# 네 귀 브래킷은 뺐다. 판 테두리와 겹쳐 모서리마다 선이 두 겹으로 꺾여
-	# 보였다 - 장식이 구조를 흉내 내면 그건 노이즈다.
+			# 두께. 같은 사각을 3px 내려 어둡게 깔면 칸이 떠 보인다.
+			var under := PackedVector2Array()
+			for pt in line:
+				under.append(pt + Vector2(0, 3))
+			draw_polyline(under, Color(0, 0, 0, 0.55), 2.0, true)
+			# 글로우 두 겹 + 본선.
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.07), 5.0, true)
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.16), 3.0, true)
+			draw_polyline(line, Color(edge.r, edge.g, edge.b, 0.72), 1.4, true)
 
 
 ## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
@@ -380,16 +394,8 @@ func _draw_overlay(c: CanvasItem) -> void:
 	# 진영 표시만 크기에 배율을 안 걸어서, 칸은 74px 인데 표시는 64px 로 그려져
 	# 반 칸씩 밀린 것처럼 보였다. 유닛이 어긋난 게 아니라 이 사각형이 어긋난
 	# 것이었다 - 눈에는 똑같이 "격자와 안 맞는다" 로 보인다.
-	# ── 진영은 아주 옅게 ────────────────────────────────────────────────
-	# 진영 칸을 색으로 채워 놓으니 그 위에 얹히는 사거리 표시가 통째로 묻혔다.
-	# 진영은 개전 전에 한 번 확인하는 정보고, 사거리는 매 틱 보는 정보다.
-	# 매 틱 보는 쪽이 이겨야 한다.
-	for p in Grid.PLAYER_SLOTS:
-		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD),
-			Color(COL_PLAYER_ZONE.r, COL_PLAYER_ZONE.g, COL_PLAYER_ZONE.b, 0.055))
-	for p in Grid.ENEMY_SLOTS:
-		c.draw_colored_polygon(cell_quad(p.x, p.y, CELL_PAD),
-			Color(COL_ENEMY_ZONE.r, COL_ENEMY_ZONE.g, COL_ENEMY_ZONE.b, 0.055))
+	# 진영 채움은 없앴다. 칸 테두리 색이 이미 진영을 말한다 - 같은 것을 두 번
+	# 말하면 두 번째가 첫 번째를 덮는다.
 
 	_draw_zones(c)
 
@@ -486,10 +492,18 @@ func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
 			# XCOM 계열이 쓰는 방법을 가져왔다 - **선으로 짠 상자**. 아주 옅은
 			# 채움 위에 밝은 테두리와 네 귀 갈고리만 남긴다. 색이 겹쳐도 선은
 			# 살아남고, 무엇보다 칸 경계가 또렷해 몇 칸인지 셀 수 있다.
+			# ── 살짝 띄운다 ─────────────────────────────────────────────
+			# 판에 딱 붙어 있으면 격자의 일부로 읽힌다. 4px 올리고 그 아래
+			# 그림자를 깔면 **판 위에 얹힌 표시**가 된다.
+			var lift := Vector2(0, -4.0)
 			for p in cells:
 				var q := cell_quad(p.x, p.y, 2.0)
 				for qi in q.size():
-					q[qi] += shift
+					q[qi] += shift + lift
+				var sh := PackedVector2Array()
+				for pt in q:
+					sh.append(pt + Vector2(0, 4.0))
+				c.draw_colored_polygon(sh, Color(0, 0, 0, 0.30))
 				c.draw_colored_polygon(q, Color(fill.r, fill.g, fill.b, fill.a * 0.5))
 				var lc := Color(u.color.r, u.color.g, u.color.b,
 					(0.85 if hot else 0.5) * pulse)

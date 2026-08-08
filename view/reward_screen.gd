@@ -233,8 +233,10 @@ func _build_option(r: Dictionary, at: Vector2, w: float) -> void:
 		Kind.ECONOMY:
 			title = UiText.t("reward.economy", "보급")
 			accent = UiKit.GOOD
-			body = UiText.t("reward.economy_body", "예산 +%d\n정제권 +%d\n\n정제권은 손패에서 카드를\n영구히 버릴 때 쓴다.\n\n덱이 두꺼워지면 원하는 카드가\n덜 나온다. 그때 깎아라.") % [
-				int(r["budget"]), int(r["tokens"])]
+			# 인자를 둘 넘기고 있었다. 정제권을 없애면서 문구는 %d 하나로
+			# 줄였는데 여기가 안 따라왔다 - 개수가 어긋나면 GDScript 는 치환을
+			# 통째로 포기하고 **"%d" 를 글자 그대로** 화면에 뿌린다.
+			body = UiText.t("reward.economy_body", "예산 +%d") % int(r["budget"])
 
 	panel.accent = accent
 	panel.queue_redraw()

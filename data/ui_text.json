@@ -73,7 +73,7 @@
   "reward.rare_special": "희귀 궁극기 · %s",
   "reward.rare_card": "희귀 전술 모듈",
   "reward.economy": "보급",
-  "reward.economy_body": "예산 +%d\n\n다음 단계에 그대로 실린다.\n\n모듈 한 장을 더 사거나,\n보조 지휘를 한 단계 올리거나,\n같은 것 두 장을 합칠 수 있다.",
+  "reward.economy_body": "예산 +%d\n\n다음 단계에 그대로 실린다.\n\n모듈을 더 사거나,\n보조 지휘를 올리거나,\n같은 것 둘을 합칠 수 있다.",
   "reward.summary": "현재 · 강화 %s · 다음 단계 예산 %d",
   "reward.growth_atk": "강화 시 화력 상승폭이 큽니다.",
   "reward.growth_hp": "강화 시 내구도 상승폭이 큽니다.",
@@ -284,5 +284,7 @@
   "shop.preview_head2": "적 배치",
   "shop.offer_head": "확보 가능",
   "shop.own_head": "보유 모듈",
-  "shop.own_more": "그 외 %d개 - 오른쪽 [보유] 탭에서 전부 봅니다"
+  "shop.own_more": "그 외 %d개 - 오른쪽 [보유] 탭에서 전부 봅니다",
+  "loadout.filter_all": "전체",
+  "loadout.filter_ult": "궁극기"
 }

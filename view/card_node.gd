@@ -287,6 +287,22 @@ func _draw() -> void:
 	# 기둥 옆으로 흘러나오는 빛 한 겹.
 	draw_rect(Rect2(4.0 * k, 0, 10.0 * k, s.y), Color(neon.r, neon.g, neon.b, 0.07))
 
+	# ── 오른쪽 끝 해칭 띠 ────────────────────────────────────────────────
+	# 블록이 반듯한 사각이라 오른쪽 끝이 그냥 잘린 것처럼 보였다. 사선 빗금을
+	# 좁게 두르면 그 끝이 **마감**이 된다 - 산업 장비 표찰에 쓰는 어법이다.
+	#
+	# 색은 축색이 아니라 주황이다. 축색으로 두면 왼쪽 기둥과 같은 색이 양쪽
+	# 끝에 서서 블록이 대칭으로 보이고, 그러면 어느 쪽이 앞인지 사라진다.
+	var band_w := 16.0 * k
+	var bx := s.x - band_w - cut * 0.4
+	var hatch := Color(1.0, 0.55, 0.18, 0.55 if enabled else 0.18)
+	var step := 5.0 * k
+	var hx := bx
+	while hx < bx + band_w:
+		draw_line(Vector2(hx, s.y - 4.0 * k), Vector2(hx + 7.0 * k, s.y - 16.0 * k),
+			hatch, 1.6 * k)
+		hx += step
+
 	var outline := PackedVector2Array(shape)
 	outline.append(shape[0])
 	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.85 if enabled else 0.35),
