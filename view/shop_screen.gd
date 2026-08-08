@@ -132,8 +132,8 @@ func setup(p_run: RunState) -> void:
 	for i in OWN_FILTERS.size():
 		var fid := String(OWN_FILTERS[i])
 		var fb := LoadoutScreen._FilterTab.new()
-		fb.position = Vector2(RIGHT_X + 96.0 + float(i) * 66.0, PREVIEW_Y - 32)
-		fb.size = Vector2(62, 22)
+		fb.position = Vector2(RIGHT_X + 108.0 + float(i) * 88.0, PREVIEW_Y - 44)
+		fb.size = Vector2(84, 34)
 		fb.idx = i
 		fb.label = UiText.t("loadout.filter_all", "전체") if fid == "all" 			else (UiText.t("loadout.filter_ult", "궁극기") if fid == "ult" 			else Axes.label(fid))
 		fb.tint = Color(1.0, 0.62, 0.20) if fid == "ult" 			else (Color(0.55, 0.88, 1.0) if fid == "all" else Axes.color(fid))

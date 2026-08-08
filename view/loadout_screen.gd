@@ -45,10 +45,10 @@ const CARD_STEP: float = 266.0
 ## 오른쪽 대원 카드가 왼쪽 경고문("대원을 3명 배치해야 합니다") 보다 아래에서
 ## 시작해 두 기둥의 윗선이 어긋나 있었다. 선을 맞추면 그것만으로 화면이
 ## 정돈된다 - 요소를 줄이지 않고도.
-const CARD_Y: float = 106.0
+const CARD_Y: float = 84.0
 ## 360 -> 330. 카드 아래쪽 절반이 "비어 있음" 세 줄과 여백뿐이라, 그만큼
 ## 서류첩이 화면 밖으로 밀려났다.
-const CARD_H: float = 322.0
+const CARD_H: float = 278.0
 
 ## ── 대원 선택 ───────────────────────────────────────────────────────────
 ## 3열 2행. 한 줄에 여섯을 늘어놓으면 칸 하나가 62px 까지 좁아져 얼굴이
@@ -63,11 +63,11 @@ const PICK_STEP: Vector2 = Vector2(118.0, 112.0)
 const PICK_COLS: int = 3
 
 ## 서류첩은 오른쪽 절반에만 선다. 왼쪽 칸을 침범하지 않는 자리다.
-const HAND_Y: float = 486.0
+const HAND_Y: float = 446.0
 const HAND_X: float = 470.0
 ## 두 줄이 들어갈 높이. 한 줄이면 넉 장밖에 못 보고 나머지는 전부 스크롤 뒤에
 ## 숨는다. 아랫선은 화면 아래 테두리(y 690)와 맞춘다.
-const HAND_H: float = 186.0
+const HAND_H: float = 232.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
@@ -196,8 +196,8 @@ func setup(p_run: RunState) -> void:
 	for i in HAND_FILTERS.size():
 		var fid := String(HAND_FILTERS[i])
 		var fb := _FilterTab.new()
-		fb.position = Vector2(HAND_X + 90.0 + float(i) * 74.0, HAND_Y - 30.0)
-		fb.size = Vector2(70, 22)
+		fb.position = Vector2(HAND_X + 96.0 + float(i) * 88.0, HAND_Y - 42.0)
+		fb.size = Vector2(84, 34)
 		fb.idx = i
 		fb.label = UiText.t("loadout.filter_all", "전체") if fid == "all" 			else (UiText.t("loadout.filter_ult", "궁극기") if fid == "ult" 			else Axes.label(fid))
 		fb.tint = Color(1.0, 0.62, 0.20) if fid == "ult" 			else (Color(0.55, 0.88, 1.0) if fid == "all" else Axes.color(fid))
@@ -741,13 +741,13 @@ class _FilterTab extends Button:
 		var s := size
 		var hot := is_hovered()
 		var a: float = 1.0 if on else (0.75 if hot else 0.42)
-		var f := UiKit.font(11)
-		var w: float = f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-		draw_string(f, Vector2((s.x - w) * 0.5, 14), label,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(tint.r, tint.g, tint.b, a))
+		var f := UiKit.font(13)
+		var w: float = f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(f, Vector2((s.x - w) * 0.5, s.y * 0.5 + 5.0), label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(tint.r, tint.g, tint.b, a))
 		# 고른 것만 밑줄. 밑줄 하나면 어느 것이 켜졌는지가 즉시 갈린다.
 		if on:
-			draw_rect(Rect2(4, s.y - 3.0, s.x - 8.0, 2), tint)
+			draw_rect(Rect2(4, s.y - 4.0, s.x - 8.0, 3), tint)
 
 
 ## ── 잘린 자리 표시 ───────────────────────────────────────────────────────

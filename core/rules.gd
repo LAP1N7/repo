@@ -545,37 +545,12 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 					return _rule(unit, "간격 확보", "move_away", near, 0, bonus)
 			return _rule(unit, "공격", "attack", target, power, 0)
 
-	# ── 지정한 표적이 멀다. 그럼 순서는 이렇게 간다 ──────────────────────
+	# ── 지정한 표적이 멀면 **간다.** 다른 적을 대신 치지 않는다 ─────────
+	# 사거리 안에 다른 적이 있으면 그쪽을 치게 해 뒀다가 되돌렸다. 표적을
+	# 지정한다는 것은 "저 녀석이다" 라는 선언인데, 가는 도중에 만난 것을
+	# 대신 치면 그 선언이 매 틱 뒤집힌다.
 	#
-	#   1) 사거리 안에 칠 수 있는 적이 있나?
-	#        있으면 **표적 축과 같은 기준으로** 그중 하나를 골라 친다.
-	#   2) 없으면 위치 축이 어디로 갈지 정한다.
-	#   3) 위치 축도 갈 곳이 없으면 아군 기준으로 자리를 잡는다.
-	#   4) 그래도 없으면 그때 제자리다.
-	#
-	# 예전에는 2)가 맨 앞에 있었다. 그래서 [방패 뒤] 를 꽂은 총사가 "방패 뒤
-	# 유지" 만 반복하며 판이 끝날 때까지 한 발도 안 쐈다 - 앞지르지 않으려고
-	# 멈춰 선 채, 사거리 안에 적이 들어와 있는데도.
-	#
-	# 자리를 잡는 것은 **다음 틱을 준비하는 일**이다. 이번 틱에 할 일이 있으면
-	# 그게 먼저다. 위치 축은 갈 곳이 있을 때만 의미가 있다.
-	#
-	# ── 왜 아무나 치지 않고 다시 고르는가 ───────────────────────────────
-	# 지정한 그 한 명이 멀어도 그 모듈이 무엇을 원했는지는 남아 있다.
-	# [후열 침투] 면 사거리 안에서 가장 깊은 적을, [처형] 이면 가장 약한 적을
-	# 고른다. 가까운 것을 치는 것과는 다른 답이 나온다.
-	if act_kind == "attack":
-		var in_range: Array = []
-		for e in state.living_enemies_of(unit):
-			if Grid.manhattan(unit.pos, e.pos) <= unit.atk_range 					and state.has_shot(unit, e):
-				in_range.append(e)
-		if not in_range.is_empty():
-			var pick := _ctx_pick if _ctx_pick != "" else "highest_threat_enemy"
-			var near := resolve_target(unit, pick, state, "attack", in_range)
-			if near == null:
-				near = in_range[0]
-			return _rule(unit, "사거리 안 사격", "attack", near, power, 0)
-
+	# 공격은 오직 위에서(사거리 안일 때) 나간다. 여기 아래는 전부 이동이다.
 	var moved := _move_by_stand(unit, state, target, stand, bonus, designated)
 
 	# 위치 축이 제자리를 냈다. 아군 기준으로 설 자리가 있으면 그쪽으로 걷는다 -
@@ -1304,20 +1279,8 @@ static func resolve_target(unit: Unit, target_kind: String, state,
 				if sc > hs:
 					hs = sc
 					ht = e
-			# ── 하던 상대는 후보 안에 있을 때만 유지한다 ─────────────────
-			# 이 검사가 빠져 있었다. 그래서 후보를 **사거리 안**으로 좁혀 놓아도
-			# 직전에 쫓던 상대가 사거리 밖이면 그쪽을 그대로 돌려줬다.
-			#
-			# 실제로 그 결과가 이렇게 나왔다 - 전사가 눈앞의 악사를 두고
-			# 판 건너편 궁수를 "사거리 안 사격" 으로 계속 때렸다.
 			var cur: Unit = unit.last_target
-			var cur_ok := false
-			if cur != null:
-				for e2 in enemies:
-					if (e2 as Unit).index == cur.index:
-						cur_ok = true
-						break
-			if cur_ok and cur.alive and cur.team != unit.team and ht != null 					and cur.index != ht.index:
+			if cur != null and cur.alive and cur.team != unit.team and ht != null 					and cur.index != ht.index:
 				var cs := Threat.score(unit, cur)
 				# 새 후보가 마진을 못 넘으면 하던 대로 간다.
 				if hs * 100 < cs * Threat.SWITCH_MARGIN:

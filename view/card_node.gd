@@ -145,15 +145,17 @@ func _on_gui_input(e: InputEvent) -> void:
 func _process(delta: float) -> void:
 	var want_hover := _hover and enabled
 
-	# ── 호버는 크기를 안 바꾼다 ──────────────────────────────────────────
-	# 예전에는 마우스를 올리면 블록이 커지고 기울었다. 목록에서는 그것이
-	# 옆 블록을 덮고 글자가 겹친다. 지금은 3px 들리고 앞으로 나오는 것뿐이다.
-	var target_lift: float = -3.0 if want_hover else 0.0
-	var k := 1.0 - exp(-18.0 * delta)
+	# ── 들려 올라오면서 앞으로 ───────────────────────────────────────────
+	# 예전 손맛으로 되돌린다. 위로 들리고 살짝 커진다. 기울이지는 않는다 -
+	# 목록에서 기울면 줄이 안 맞아 보인다.
+	var target_lift: float = -14.0 if want_hover else 0.0
+	var target_scale: float = 1.06 if want_hover else 1.0
+	var k := 1.0 - exp(-16.0 * delta)
 	_lift = lerp(_lift, target_lift, k)
+	_scale = lerp(_scale, target_scale, k)
 	position = base_pos + Vector2(0.0, _lift)
 	rotation = 0.0
-	scale = Vector2.ONE
+	scale = Vector2(_scale, _scale)
 	z_index = 50 if want_hover else index
 
 	if want_hover != _drawn_hover or enabled != _drawn_enabled:
@@ -246,44 +248,50 @@ func _draw() -> void:
 	var neon := _neon(border)
 
 	# ── 프레임 ───────────────────────────────────────────────────────────
-	# 참조 그림 그대로다.
-	#   · 모서리가 둥근 사각, 얇은 축색 테두리
-	#   · 오른쪽 위가 계단처럼 안으로 파이고(노치) 그 안에 주황 사선 띠
-	#   · 파인 자리 오른쪽 끝에 비용 배지가 걸친다
+	# 참조 그림 그대로다. 직선으로 가되 **꺾이는 곳은 전부 곡선**이다.
+	#   · 둥근 모서리 사각, 얇은 축색 테두리
+	#   · 오른쪽 위가 계단처럼 파이고(노치) 그 안쪽 꺾임도 둥글다
+	#   · 노치 안에 주황 사선 띠. 위아래를 선으로 마감하고 빛을 조금 흘린다
+	#   · 노치 오른쪽 끝에 3/4 원 배지(아래를 조금 자른다)
 	#   · 왼쪽 아래에 두꺼운 축색 선
-	var r := 14.0 * k                 # 모서리 반지름
-	var nh := 30.0 * k                # 노치 깊이
-	var nx := s.x * 0.52              # 노치가 시작하는 x
+	var r := 15.0 * k                 # 바깥 모서리 반지름
+	var ir := 8.0 * k                 # 노치 안쪽 꺾임 반지름
+	var nh := 34.0 * k                # 노치 깊이
+	var nx := s.x * 0.50              # 노치가 시작하는 x
 	var pts := PackedVector2Array()
 
-	# 왼쪽 위 -> 노치 -> 오른쪽 위 -> 오른쪽 아래 -> 왼쪽 아래 순으로 돈다.
-	_arc_to(pts, Vector2(r, r), r, PI, PI * 1.5)          # 왼쪽 위
-	pts.append(Vector2(nx, 0))
-	pts.append(Vector2(nx, nh - r * 0.5))
-	_arc_to(pts, Vector2(nx + r * 0.5, nh), r * 0.5, PI, PI * 0.5, true)
+	_arc_to(pts, Vector2(r, r), r, PI, PI * 1.5)                    # 왼쪽 위
+	pts.append(Vector2(nx - ir, 0))
+	_arc_to(pts, Vector2(nx - ir, ir), ir, PI * 1.5, PI)            # 노치 바깥 꺾임
+	pts.append(Vector2(nx, nh - ir))
+	_arc_to(pts, Vector2(nx + ir, nh - ir), ir, PI, PI * 0.5, true) # 노치 안쪽 꺾임
 	pts.append(Vector2(s.x - r, nh))
-	_arc_to(pts, Vector2(s.x - r, nh + r), r, PI * 1.5, TAU)
+	_arc_to(pts, Vector2(s.x - r, nh + r), r, PI * 1.5, TAU)        # 오른쪽 위
 	pts.append(Vector2(s.x, s.y - r))
-	_arc_to(pts, Vector2(s.x - r, s.y - r), r, 0.0, PI * 0.5)
+	_arc_to(pts, Vector2(s.x - r, s.y - r), r, 0.0, PI * 0.5)       # 오른쪽 아래
 	pts.append(Vector2(r, s.y))
-	_arc_to(pts, Vector2(r, s.y - r), r, PI * 0.5, PI)
+	_arc_to(pts, Vector2(r, s.y - r), r, PI * 0.5, PI)              # 왼쪽 아래
 
 	draw_colored_polygon(pts, body)
 	var outline := PackedVector2Array(pts)
 	outline.append(pts[0])
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 6.0 * k, true)
 	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.35),
-		1.8 * k, true)
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 5.0 * k, true)
+		2.0 * k, true)
 
 	# ── 노치 안의 사선 띠 ────────────────────────────────────────────────
-	var band_y := 3.0 * k
-	var band_h := nh - 10.0 * k
+	# 양 끝을 사선 방향으로 맞춰 잘라 마감하고, 위아래에 얇은 선을 둘러
+	# 띠 하나로 묶는다. 그 위에 빛을 한 겹 흘린다.
+	var band_y := 4.0 * k
+	var band_h := nh - 13.0 * k
+	var band_x0 := nx + 12.0 * k
+	var band_x1 := s.x - 40.0 * k
+	var slant := 8.0 * k
 	var bar_w := 5.0 * k
-	var bar_gap := 4.0 * k
-	var slant := 7.0 * k
-	var hatch := Color(1.0, 0.42, 0.12, 0.95 if enabled else 0.25)
-	var hx := nx + 10.0 * k
-	while hx + bar_w + slant < s.x - 34.0 * k:
+	var bar_gap := 4.5 * k
+	var hatch := Color(1.0, 0.44, 0.12, 1.0 if enabled else 0.25)
+	var hx := band_x0
+	while hx + bar_w + slant <= band_x1:
 		draw_colored_polygon(PackedVector2Array([
 			Vector2(hx + slant, band_y),
 			Vector2(hx + slant + bar_w, band_y),
@@ -291,30 +299,49 @@ func _draw() -> void:
 			Vector2(hx, band_y + band_h),
 		]), hatch)
 		hx += bar_w + bar_gap
+	# 위아래 마감선 + 발광.
+	var edge_c := Color(1.0, 0.52, 0.16, 0.9 if enabled else 0.2)
+	draw_line(Vector2(band_x0 + slant, band_y), Vector2(band_x1 + slant, band_y),
+		edge_c, 1.4 * k)
+	draw_line(Vector2(band_x0, band_y + band_h), Vector2(band_x1, band_y + band_h),
+		edge_c, 1.4 * k)
+	draw_line(Vector2(band_x0 + slant, band_y), Vector2(band_x1 + slant, band_y),
+		Color(1.0, 0.55, 0.2, 0.18), 5.0 * k)
+	draw_line(Vector2(band_x0, band_y + band_h), Vector2(band_x1, band_y + band_h),
+		Color(1.0, 0.55, 0.2, 0.18), 5.0 * k)
 
 	# ── 왼쪽 아래 두꺼운 선 ──────────────────────────────────────────────
-	draw_line(Vector2(r, s.y - 3.0 * k), Vector2(r + s.x * 0.34, s.y - 3.0 * k),
-		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 5.0 * k)
+	draw_line(Vector2(r, s.y - 3.5 * k), Vector2(r + s.x * 0.32, s.y - 3.5 * k),
+		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 6.0 * k)
 
 	# ── 글 ───────────────────────────────────────────────────────────────
 	var pad := 14.0 * k
-	var axis_size: int = int(10.0 * k) + 1
-	var name_size: int = int(18.0 * k) + 1
-	var text_size: int = int(12.0 * k) + 1
+	var axis_size: int = int(11.0 * k) + 1
+	var name_size: int = int(21.0 * k) + 1
+	var text_size: int = int(13.0 * k) + 1
 
 	# 축 라벨. 궁극기는 축이 없으므로 소유 대원을 적는다 - 누구 것인지가
 	# 이 블록을 살지 말지 정하는 가장 큰 정보다.
 	var top_label := axis_label
 	if axis == "":
 		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
-	draw_string(UiKit.font_role("large"), Vector2(pad, 34.0 * k), top_label,
+	draw_string(UiKit.font_role("large"), Vector2(pad, 30.0 * k), top_label,
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 34.0 * k, axis_size,
 		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
-	var badge_r := 17.0 * k
-	var badge_at := Vector2(s.x - badge_r - 5.0 * k, badge_r + 1.0 * k)
-	draw_circle(badge_at, badge_r, ccol if enabled else Color(0.3, 0.32, 0.38))
+	# 3/4 원. 아래를 조금 잘라 띠에 얹힌 것처럼 보이게 한다.
+	var badge_r := 19.0 * k
+	var badge_at := Vector2(s.x - badge_r - 3.0 * k, badge_r - 2.0 * k)
+	var bcol: Color = ccol if enabled else Color(0.3, 0.32, 0.38)
+	var wedge := PackedVector2Array()
+	var a_from := -PI * 0.86
+	var a_to := PI * 0.60
+	var seg := 26
+	for wi in seg + 1:
+		var wa: float = a_from + (a_to - a_from) * float(wi) / float(seg)
+		wedge.append(badge_at + Vector2(cos(wa), sin(wa)) * badge_r)
+	draw_colored_polygon(wedge, bcol)
 	var cost_txt := str(cost)
 	var cost_size: int = int(16.0 * k) + 1
 	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size).x
@@ -322,14 +349,14 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(0.06, 0.07, 0.1))
 
 	# 이름.
-	draw_string(f, Vector2(pad, 60.0 * k), String(c["name"]),
+	draw_string(f, Vector2(pad, 58.0 * k), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
 
 	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
 	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var ty := 74.0 * k
+	var ty := 70.0 * k
 	var body_w := s.x - pad * 2.0
 	var line_h := float(text_size) + 3.0
 	var room: float = s.y - ty - 8.0 * k

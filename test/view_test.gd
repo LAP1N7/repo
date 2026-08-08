@@ -269,10 +269,10 @@ func test_card_fit() -> void:
 		var sz := card.card_size()
 		var k: float = sz.x / CardNode.W
 		var pad := 14.0 * k
-		var text_size: int = int(12.0 * k) + 1
+		var text_size: int = int(13.0 * k) + 1
 		var line_h := float(text_size) + 3.0
 		var f := UiKit.font(11)
-		var ty := 74.0 * k
+		var ty := 70.0 * k
 		var body_w := sz.x - pad * 2.0
 		var room: float = sz.y - ty - 8.0 * k
 		var cap: int = maxi(1, int(room / line_h))
