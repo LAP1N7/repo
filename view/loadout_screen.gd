@@ -73,7 +73,7 @@ const HAND_H: float = 226.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
-const HAND_SCALE: float = 0.85
+const HAND_SCALE: float = 0.78
 
 ## 카드 안쪽 세로 배치. 전부 카드 원점 기준이다.
 const IN_FACE_H: float = 96.0

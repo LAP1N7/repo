@@ -164,6 +164,35 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+## 글자를 하나씩 놓아 자간을 벌린다.
+func _draw_tracked(f: Font, text: String, at: Vector2, fsize: int,
+		track: float, col: Color) -> void:
+	var x := at.x
+	for i in text.length():
+		var ch := text[i]
+		draw_string(f, Vector2(x, at.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, col)
+		x += f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x + track
+
+
+## 이 폭에서 몇 줄이 나오는가. 세로 가운데 정렬에 쓴다.
+func _count_lines(f: Font, text: String, max_w: float, fsize: int, cap: int) -> int:
+	if text == "":
+		return 0
+	var lines := 0
+	var cur := ""
+	for w in text.split(" "):
+		var probe := w if cur == "" else cur + " " + w
+		if f.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x > max_w \
+				and cur != "":
+			lines += 1
+			cur = w
+		else:
+			cur = probe
+	if cur != "":
+		lines += 1
+	return mini(lines, cap)
+
+
 ## 둥근 모서리 한 귀. 폴리곤에 호 위의 점들을 이어 붙인다.
 ##
 ## StyleBoxFlat 는 반듯한 사각만 둥글게 해 준다. 오른쪽 위가 파인 모양은
@@ -285,10 +314,12 @@ func _draw() -> void:
 	# ── 노치 안의 사선 띠 ────────────────────────────────────────────────
 	# 양 끝을 사선 방향으로 맞춰 잘라 마감하고, 위아래에 얇은 선을 둘러
 	# 띠 하나로 묶는다. 그 위에 빛을 한 겹 흘린다.
-	var band_y := 4.0 * k
-	var band_h := nh - 13.0 * k
-	var band_x0 := nx + 12.0 * k
-	var band_x1 := s.x - 40.0 * k
+	# 아랫변이 노치 바닥선(nh)과 딱 맞게 떨어진다. 띠가 선 위에 얹힌 것이
+	# 아니라 그 선의 일부로 읽힌다.
+	var band_h := nh - 12.0 * k
+	var band_y := nh - band_h - 1.0 * k
+	var band_x0 := nx + 4.0 * k
+	var band_x1 := s.x - 44.0 * k
 	var slant := 8.0 * k
 	var bar_w := 5.0 * k
 	var bar_gap := 4.5 * k
@@ -324,7 +355,10 @@ func _draw() -> void:
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
 	# 3/4 원. 아래를 조금 잘라 띠에 얹힌 것처럼 보이게 한다.
 	var badge_r := 16.0 * k
-	var badge_at := Vector2(s.x - badge_r - 10.0 * k, badge_r - 1.0 * k)
+	# 3/4 원의 잘린 아랫변은 중심에서 r*sin(45도) 만큼 아래에 생긴다.
+	# 그 변이 노치 바닥선과 맞도록 중심을 올린다.
+	var badge_at := Vector2(s.x - badge_r - 10.0 * k,
+		30.0 * k - badge_r * 0.7071 - 1.0 * k)
 	var bcol: Color = ccol if enabled else Color(0.3, 0.32, 0.38)
 	# 아래 1/4(90도)만 잘라낸다. 남는 호는 3/4 이고, 잘린 두 끝을 이으면
 	# 아랫변이 평평해진다.
@@ -343,18 +377,31 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(0.06, 0.07, 0.1))
 
 	# 이름.
-	draw_string(f, Vector2(pad, 50.0 * k), String(c["name"]),
-		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
+	_draw_tracked(f, String(c["name"]), Vector2(pad, 50.0 * k), name_size,
+		1.6 * k, dim)
 
 	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
 	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var ty := 66.0 * k
+	# ── 설명은 남은 자리의 가운데에 ──────────────────────────────────────
+	# 이름 아래부터 블록 바닥까지가 설명이 쓸 수 있는 자리다. 위에 붙여 놓으면
+	# 아래가 통째로 비어 블록이 반만 찬 것처럼 보인다.
+	var body_top := 58.0 * k
+	var body_bottom := s.y - 10.0 * k
+	var ty := body_top
 	var body_w := s.x - pad * 2.0
 	var line_h := float(text_size) + 3.0
-	var room: float = s.y - ty - 8.0 * k
+	var room: float = body_bottom - body_top
 	var cap: int = maxi(1, int(room / line_h))
+	# 실제로 몇 줄이 나오는지 먼저 세어 가운데로 민다.
+	var used_lines := 0
+	if arrow >= 0:
+		used_lines = 1 + _count_lines(fs, rule_text.substr(arrow + 1).strip_edges(),
+			body_w, text_size, maxi(1, cap - 1))
+	else:
+		used_lines = _count_lines(fs, rule_text, body_w, text_size, cap)
+	ty = body_top + maxf(0.0, (room - float(used_lines) * line_h) * 0.5)
 	if arrow >= 0:
 		var cond_line := rule_text.substr(0, arrow).strip_edges()
 		var act_line := rule_text.substr(arrow + 1).strip_edges()
