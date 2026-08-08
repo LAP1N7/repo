@@ -79,6 +79,10 @@ const SWITCH_MARGIN: int = 125
 
 
 ## chooser 가 볼 때 candidate 가 얼마나 위협적인가.
+## [최후의 방벽] 이 켜는 강제 유인값.
+const GUARD_PULL: int = 70
+
+
 static func score(chooser: Unit, candidate: Unit) -> int:
 	# ── 잠복 중이면 위협도가 없다 ────────────────────────────────────────
 	# 표적 후보에서는 이미 빠져 있었다(Battle.living_enemies_of). 그런데
@@ -94,6 +98,11 @@ static func score(chooser: Unit, candidate: Unit) -> int:
 	if candidate.last_target != null and candidate.last_target.index == chooser.index:
 		n += RECENT_HIT
 	n += candidate.threat_mod
+	# [최후의 방벽]. 도발(+35)의 두 배다 - 붙어 있던 적이 **전부** 넘어와야
+	# "인접한 적의 시선을 통째로 가져온다" 가 성립한다. 도발과 같은 값이면
+	# 이미 다른 대원을 물고 있던 적은 전환 문턱(SWITCH_MARGIN)을 못 넘는다.
+	if candidate.taunt_ticks > 0:
+		n += GUARD_PULL
 	# 개체 특성이 상시로 얹는 값. 유인 신호기가 여기로 들어온다.
 	n += candidate.threat_base
 	# 한 일이 쌓인 만큼. 딜을 많이 넣은 대원이 결국 맞게 된다.

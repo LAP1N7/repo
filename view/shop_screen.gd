@@ -235,7 +235,12 @@ func _build_shop() -> void:
 		card.setup(cid, i, false, cid != "", run.refine_tokens)
 		card.enabled = run.can_buy(i)
 		if cid != "" and not run.can_buy(i):
-			card.note = UiText.t("shop.note_poor", "예산 부족 (%d)") % run.price_of(cid)
+			# ── 값이 아니라 **모자란 만큼**을 적는다 ──────────────────────
+			# "예산 부족 (5)" 였다. 5 는 그 카드의 값인데, 화면에는 예산도
+			# 같이 떠 있으니 사람이 매번 뺄셈을 해야 했다. 알고 싶은 것은
+			# "얼마가 더 있어야 사는가" 하나다.
+			card.note = UiText.t("shop.note_poor", "예산 %d 부족") % (
+				run.price_of(cid) - run.budget)
 		card.place(Vector2(x0 + i * (w + gap), SHOP_Y))
 		card.clicked.connect(_on_buy)
 		card.banned.connect(_on_ban)

@@ -338,14 +338,62 @@ class _TopLayer extends Control:
 			view._draw_hover(self)
 
 
+## ── 판 바닥 ──────────────────────────────────────────────────────────────
+## 체커보드 두 색뿐이었다. 어둡게 낮추고 나니 이번엔 **텅 빈 검은 사각형**이
+## 됐다 - 격자선도 안 보이고 그릴 것도 없는 상태다.
+##
+## 명일방주 계열 전술 화면이 쓰는 어법을 가져왔다. 넷 다 아주 옅게 깐다.
+##   1) 진영 물들이기   왼쪽 두 열은 푸르게, 오른쪽 두 열은 붉게. 개전 전에
+##                      "여기가 내 자리" 가 색으로 먼저 읽힌다.
+##   2) 칸 안쪽 테두리   칸마다 1px 안쪽 선. 격자가 선이 아니라 **판**이 된다.
+##   3) 모서리 자국      네 귀퉁이에만 짧은 갈고리. 눈금처럼 읽혀 밀도가 생긴다.
+##   4) 바깥 프레임      판 전체를 감싸는 얇은 테두리 + 네 귀 브래킷
+##
+## 전부 알파 0.1 아래다. 판 위에는 대원·표적선·범위 표시가 얹히므로, 바닥이
+## 조금이라도 주장하면 그 셋이 안 읽힌다.
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), UiKit.BG)
 
+	var bw := float(Grid.W) * TILE_W
+	var bh := float(Grid.H) * TILE_H
+
 	for y in Grid.H:
 		for x in Grid.W:
-			draw_rect(Rect2(BOARD_ORIGIN + Vector2(x * TILE_W, y * TILE_H),
-				Vector2(TILE_W, TILE_H)),
+			var at := BOARD_ORIGIN + Vector2(x * TILE_W, y * TILE_H)
+			draw_rect(Rect2(at, Vector2(TILE_W, TILE_H)),
 				COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B)
+			# 진영. 두 열씩 아주 옅게 물들인다.
+			if x <= 2:
+				draw_rect(Rect2(at, Vector2(TILE_W, TILE_H)),
+					Color(0.30, 0.62, 1.0, 0.045 if x <= 1 else 0.022))
+			elif x >= Grid.W - 3:
+				draw_rect(Rect2(at, Vector2(TILE_W, TILE_H)),
+					Color(1.0, 0.30, 0.34, 0.045 if x >= Grid.W - 2 else 0.022))
+			# 칸 안쪽 선.
+			draw_rect(Rect2(at + Vector2(1, 1), Vector2(TILE_W - 2, TILE_H - 2)),
+				Color(0.62, 0.72, 0.92, 0.055), false, 1.0)
+			# 모서리 자국. 네 귀에만 짧게.
+			var ln := 5.0
+			var cc := Color(0.62, 0.74, 0.95, 0.16)
+			for cx in [0.0, TILE_W]:
+				for cy in [0.0, TILE_H]:
+					var sx: float = 1.0 if cx == 0.0 else -1.0
+					var sy: float = 1.0 if cy == 0.0 else -1.0
+					draw_line(at + Vector2(cx, cy),
+						at + Vector2(cx + ln * sx, cy), cc, 1.0)
+					draw_line(at + Vector2(cx, cy),
+						at + Vector2(cx, cy + ln * sy), cc, 1.0)
+
+	# 바깥 프레임과 네 귀 브래킷. 판이 화면에 놓인 **장비**로 읽힌다.
+	draw_rect(Rect2(BOARD_ORIGIN - Vector2(3, 3), Vector2(bw + 6, bh + 6)),
+		Color(0.55, 0.68, 0.90, 0.20), false, 1.0)
+	var bl := 16.0
+	for corner in [Vector2(0, 0), Vector2(bw, 0), Vector2(0, bh), Vector2(bw, bh)]:
+		var sx2: float = 1.0 if corner.x == 0.0 else -1.0
+		var sy2: float = 1.0 if corner.y == 0.0 else -1.0
+		var o2: Vector2 = BOARD_ORIGIN + corner + Vector2(-3.0 * sx2, -3.0 * sy2)
+		draw_line(o2, o2 + Vector2(bl * sx2, 0), Color(0.55, 0.75, 1.0, 0.55), 2.0)
+		draw_line(o2, o2 + Vector2(0, bl * sy2), Color(0.55, 0.75, 1.0, 0.55), 2.0)
 
 
 ## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.
@@ -648,6 +696,27 @@ func _draw_hover(c: CanvasItem) -> void:
 			(UiText.t("hover.firing", "%s 을(를) 때리는 중") if reach
 				else UiText.t("hover.closing", "%s 에게 접근 중")) % u.last_target.display_name,
 			UiKit.BAD if reach else UiKit.ACCENT])
+	# ── 상대가 무엇을 꽂았는가 ──────────────────────────────────────────
+	# 적도 같은 규칙 엔진으로 돈다. 그런데 화면에는 결과만 보이고 그 결과를
+	# 낳은 규칙은 안 보여서, 플레이어는 적의 행동을 **패턴으로 외울 수밖에**
+	# 없었다. 이 게임은 규칙을 읽어 규칙으로 답하는 게임이다 - 상대 규칙이
+	# 안 보이면 그 절반이 사라진다.
+	#
+	# 순서대로 적는다. 순서가 곧 우선순위이므로 번호가 정보다.
+	for si in u.card_rules.size():
+		var cr: Dictionary = u.card_rules[si]
+		if cr.is_empty():
+			continue
+		var ax := String(cr.get("axis", ""))
+		rows.append([UiText.t("hover.slot", "%d번") % (si + 1),
+			"%s - %s" % [String(cr.get("name", "")), String(cr.get("text", ""))],
+			Axes.color(ax) if ax != "" else UiKit.TEXT])
+	if u.special != "" and Specials.TABLE.has(u.special):
+		rows.append([UiText.t("hover.ult", "궁극기"),
+			"%s - %s" % [String(Specials.TABLE[u.special]["name"]),
+				String(Specials.TABLE[u.special]["text"])],
+			Color(1.0, 0.72, 0.30)])
+
 	if u.team == Unit.TEAM_ENEMY:
 		rows.append([UiText.t("hover.ai", "기본 판단"),
 			Innates.describe(u.type_id), UiKit.FAINT])

@@ -254,6 +254,26 @@ func play_story(when: String, stage: int, next: Callable) -> void:
 	s.done.connect(next)
 
 
+## 대목 여럿을 **한 화면**에 이어 붙여 재생한다.
+##
+## 승리 직후에는 두 대목이 잇달아 온다 - 이번 판의 마무리(post_N)와 다음 판의
+## 도입(pre_N+1). 화면을 두 번 띄우면 그 사이에 곡이 한 번 끊겼다 다시 붙고,
+## 사람 눈에는 "스토리 - 음악 바뀜 - 스토리 - 음악 바뀜" 으로 보인다.
+##
+## 한 화면에 이으면 곡도 한 번만 바뀌고, 되돌리는 것도 나갈 때 한 번이다.
+func play_story_chain(parts: Array, next: Callable) -> void:
+	var all: Array = []
+	for pt in parts:
+		all.append_array(Story.beats(String(pt[0]), int(pt[1])))
+	if all.is_empty():
+		next.call()
+		return
+	var sc := SCN_STORY.instantiate() as StoryScreen
+	_swap(sc)
+	sc.setup(all)
+	sc.done.connect(next)
+
+
 ## 대본 전체를 처음부터 끝까지 재생한다. 타이틀에서만 들어온다.
 ##
 ## 게임을 거치지 않고 이야기만 본다. 대사를 고치는 동안 다섯 판을 다시 이길
@@ -345,12 +365,9 @@ func _do_goto_battle() -> void:
 			tut.advance()
 			return
 		run.on_stage_cleared(s.battle.tick)
-		# ── 승리 대사가 한 번도 안 나오고 있었다 ──────────────────────────
-		# post_N 을 재생하는 곳이 개발용 훅(GG_SCREEN=reward) 하나뿐이었다.
-		# 그래서 ACT 1 의 동기화 연출, ACT 2 의 글리치, ACT 3 의 설원·지하
-		# 배경 전환이 **실제 플레이에서는 단 한 번도 안 떴다.** 대본과 배경은
-		# 다 있는데 부르는 줄이 없었던 것이다.
-		play_story("post", run.stage_id, goto_reward)
+		# 보급을 먼저 받고 그다음이 이야기다. 순서를 반대로 두면
+		# "스토리 - 보급 - 스토리" 가 되어 이야기가 두 토막 난다.
+		goto_reward()
 	)
 
 
@@ -359,11 +376,14 @@ func goto_reward() -> void:
 	_swap(s)
 	s.setup(run, last_used_types)
 	s.chosen.connect(func():
+		# ── 이번 판의 마무리와 다음 판의 도입을 한 번에 ──────────────────
+		# post_N 을 재생하는 곳이 개발용 훅 하나뿐이라 승리 대사가 실제
+		# 플레이에서 한 번도 안 떴다. 붙이면서 pre 와 이어 한 화면으로 묶는다.
+		var cleared := run.stage_id
 		if run.advance():
-			# 새 단계의 도입 대사를 먼저 재생한다.
-			play_story("pre", run.stage_id, goto_shop)
+			play_story_chain([["post", cleared], ["pre", run.stage_id]], goto_shop)
 		else:
-			goto_run_clear()
+			play_story("post", cleared, goto_run_clear)
 	)
 
 

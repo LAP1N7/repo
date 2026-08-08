@@ -30,7 +30,7 @@
   "shop.hand_summary": "보유 모듈 %d개 (궁극기 %d) · 사용 예산 %d",
   "shop.hint": "카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 정제권을 1장 쓴다 (%d장)",
   "shop.budget": "예산  %d",
-  "shop.budget_surcharge": "  (+%d)",
+  "shop.budget_surcharge": "  (구매마다 +%d)",
   "shop.reroll": "재검색  (-%d)",
   "shop.refine": "알고리즘 정제  (%d)",
   "shop.merge": "모듈 합성  (%d)",
@@ -40,7 +40,7 @@
   "shop.hand_head": "보유 모듈  (전술 %d · 궁극기 %d)",
   "shop.hand_refining": "버릴 모듈을 누르십시오 (정제권 %d)",
   "shop.hand_merging": "같은 모듈 2장을 1장으로 합쳐 한 단계 올립니다",
-  "shop.note_poor": "예산 부족 (%d)",
+  "shop.note_poor": "예산 %d 부족",
   "shop.note_discard": "선택 시 폐기",
   "shop.note_merge": "통합 -%d",
   "loadout.sub": "대원을 선택하고 진영의 빈 칸에 배치하십시오. 배치 후 대원을 지정해 보유 모듈을 장착합니다.",
@@ -274,5 +274,7 @@
   "cmd.ult_now": "현재 %d단계",
   "cmd.ult_buy": "-%d",
   "state.no_special": "없는 궁극기입니다",
-  "state.merge_max": "이미 최대 단계입니다"
+  "state.merge_max": "이미 최대 단계입니다",
+  "hover.slot": "%d번",
+  "hover.ult": "궁극기"
 }

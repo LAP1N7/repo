@@ -593,12 +593,22 @@ class _Overlay extends Node2D:
 		# **오버레이에서** 그린다. 유닛 본체의 _draw 에 두면 스프라이트가 그
 		# 위에 얹혀서 고리가 몸 뒤로 숨는다 - 실제로 그렇게 안 보였다.
 		if u.team == Unit.TEAM_ENEMY and owner_view.shown_alive():
+			# 천사링이다. 정원이면 머리 위에 **붙은 원**으로 보이고, 눕혀야
+			# 머리 위에 떠 있는 고리로 읽힌다. 가로 2.4 : 세로 1 로 눌렀다.
 			var hy := -UnitView.R - 30.0
-			var hr := 12.0
-			draw_arc(Vector2(0, hy), hr + 3.0, 0, TAU, 22, Color(1.0, 0.16, 0.22, 0.18), 5.0)
-			draw_arc(Vector2(0, hy), hr, 0, TAU, 22, Color(1.0, 0.26, 0.32, 0.9), 2.0)
-			draw_arc(Vector2(0, hy + 2.0), hr * 0.7, 0, TAU, 18,
-				Color(1.0, 0.34, 0.40, 0.32), 1.0)
+			var rx := 17.0
+			var ry := 7.0
+			var pts := PackedVector2Array()
+			for i in 33:
+				var a := TAU * float(i) / 32.0
+				pts.append(Vector2(cos(a) * rx, hy + sin(a) * ry))
+			# 바깥 잔광 -> 본선 순서로 두 번 그린다. 한 겹이면 발광이 안 된다.
+			var glow := PackedVector2Array()
+			for i in 33:
+				var a2 := TAU * float(i) / 32.0
+				glow.append(Vector2(cos(a2) * (rx + 2.5), hy + sin(a2) * (ry + 2.0)))
+			draw_polyline(glow, Color(1.0, 0.16, 0.22, 0.20), 5.0, true)
+			draw_polyline(pts, Color(1.0, 0.28, 0.34, 0.92), 2.0, true)
 
 		var top := UnitView.R + 3.0
 		var hw := UnitView.HP_W

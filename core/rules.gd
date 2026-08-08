@@ -558,7 +558,26 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			return _rule(unit, "붙은 적 처리", "attack", glued, power, 0)
 
 	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
-	return _move_by_stand(unit, state, target, stand, bonus, designated)
+	var moved := _move_by_stand(unit, state, target, stand, bonus, designated)
+
+	# ── 제자리는 마지막 선택지다 ────────────────────────────────────────
+	# [방패 뒤] 를 꽂은 총사가 "방패 뒤 유지" 만 반복하며 판이 끝날 때까지 한
+	# 발도 안 쏘는 일이 있었다. 앞지르지 않으려고 멈춘 것인데, 멈춰 있는 동안
+	# **사거리 안에 적이 들어와 있어도** 안 쐈다.
+	#
+	# 자리를 지키는 것은 다음 틱을 위한 일이다. 이번 틱에 할 일이 있으면 그게
+	# 먼저다. 순서는 셋이다 - 사거리 안의 적을 친다 → 아군 기준으로 자리를
+	# 잡는다 → 그래도 없으면 그때 제자리.
+	if String((moved.get("card", {}) as Dictionary).get("act", "")) == "hold":
+		if act_kind == "attack":
+			for e in state.living_enemies_of(unit):
+				if Grid.manhattan(unit.pos, e.pos) <= unit.atk_range 						and state.has_shot(unit, e):
+					return _rule(unit, "사거리 안 사격", "attack", e, power, 0)
+		# 칠 것이 없으면 걷는다. 방패병·전사 뒤를 따라가는 경로다.
+		var formed := _move_by_ally(unit, state, stand, bonus)
+		if not formed.is_empty():
+			return formed
+	return moved
 
 
 ## 아군을 기준으로 서는 자리들. 표적이 있든 없든 판단이 같으므로 따로 뗀다.

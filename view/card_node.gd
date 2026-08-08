@@ -293,6 +293,15 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(shape, body)
 
+	# ── 오른쪽 위 눈금 두 줄 ─────────────────────────────────────────────
+	# 카드 윗변이 이름 하나로 끝나서 오른쪽 절반이 비어 있었다. 짧은 세로선
+	# 둘이면 그 자리가 "비어 있다" 가 아니라 "여백이다" 가 된다. 계기판·군용
+	# 표기의 오래된 어법이라 이 게임의 다른 판들과도 맞물린다.
+	var mk := Color(0.86, 0.90, 0.98, 0.5 if not special else 0.65)
+	var mx := s.x - 12.0
+	for i in 2:
+		draw_rect(Rect2(mx - float(i) * 5.0, 9.0, 1.5, 9.0), mk)
+
 	# 네온 외곽선. 채도를 낮춰 쓴다 - 원색 그대로 두르면 카드가 20장 깔렸을 때
 	# 화면이 통째로 형광펜이 된다. 밝기만 올리고 채도는 깎는다.
 	var neon := _neon(border)
@@ -327,7 +336,7 @@ func _draw() -> void:
 	# 10px 로 세 줄까지밖에 못 담아서 조금만 긴 설명이면 "..." 로 끝났다.
 	# 손패는 **무엇을 살지 고르는 화면**이라, 끝을 잘라 놓으면 고를 수가 없다.
 	# 9px 로 내리면 같은 자리에 네 줄이 들어가고, 표의 거의 모든 문장이 다 찬다.
-	var text_size := 12 if not _is_mini() else 9
+	var text_size := 12 if not _is_mini() else 10
 	var dim := Color(1, 1, 1) if enabled else Color(0.55, 0.55, 0.6)
 
 	# 코스트 배지
@@ -392,8 +401,8 @@ func _draw() -> void:
 	# 화살표가 있으면 조건이 붙은 것이고 없으면 상시다. 그 차이는 문장 자체가
 	# 이미 말하므로 라벨이 필요 없다. 화살표 앞뒤로 색만 갈라 준다.
 	# 본문 시작 높이. 위 요소가 끝나는 지점은 고정값이므로 여기도 고정값이다.
-	var ty: float = s.y * (0.42 if _is_mini() else 0.0) + (0.0 if _is_mini() else pad + 64.0)
-	var line_h := float(text_size) + (2.0 if _is_mini() else 3.0)
+	var ty: float = s.y * (0.47 if _is_mini() else 0.0) + (0.0 if _is_mini() else pad + 64.0)
+	var line_h := float(text_size) + 3.0
 
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")

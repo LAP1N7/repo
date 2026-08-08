@@ -182,10 +182,12 @@ class _Logo extends Control:
 		var text := UiText.t("title.name", "PROJECT RECLAIM")
 		var w := _draw_tracked(f, text, Vector2(0, 62), TITLE_SIZE, TRACK, true)
 
-		# 규칙선. 표제를 위아래로 가두면 그 자체가 판처럼 읽힌다.
-		draw_rect(Rect2(0, 8, w, 2), Color(0.72, 0.86, 1.0, 0.55))
-		draw_rect(Rect2(0, 78, w, 1), Color(0.72, 0.86, 1.0, 0.30))
-		# 오른쪽 끝의 짧은 눈금 셋. 계기판 어법이다.
+		# ── 규칙선을 뺐다 ────────────────────────────────────────────────
+		# 표제를 위아래로 가두면 조판된 로고로 읽힌다 - 는 게 원래 의도였는데,
+		# 배경이 영상이라 그 선이 화면을 가로지르는 **가로줄 두 개**로 보였다.
+		# 글자 자체가 이미 충분히 크고 외곽선도 있다.
+		#
+		# 오른쪽 끝 눈금 셋만 남긴다. 이건 로고에 붙은 장식이라 선이 아니다.
 		for i in 3:
 			draw_rect(Rect2(w - 30.0 + float(i) * 10.0, 78, 5, 5),
 				Color(1.0, 0.78, 0.30, 0.75 - 0.2 * float(i)))

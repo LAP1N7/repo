@@ -582,6 +582,11 @@ func step() -> bool:
 				_emit({ "type": "ambush", "unit": u.index })
 			continue
 
+		# 강제 유인은 자기 차례가 올 때 한 틱 깎인다. 잠복과 같은 셈법이라
+		# "3틱" 이 실제로 자기 차례 세 번이 된다.
+		if u.taunt_ticks > 0:
+			u.taunt_ticks -= 1
+
 		_riposte(u)
 
 		# 방어 태세는 자기 행동 직전에 풀린다 → 정확히 한 바퀴 유지된다.
@@ -1096,6 +1101,10 @@ func guard_landing(u: Unit, ally: Unit) -> Vector2i:
 
 
 ## 밀쳐낼 칸. u 에게서 멀어지는 방향으로 n 칸. 막히면 막히기 직전까지만.
+## [최후의 방벽] 이 시선을 붙잡아 두는 틱 수.
+const GUARD_TAUNT_TICKS: int = 3
+
+
 func _push_cell(u: Unit, e: Unit, n: int) -> Vector2i:
 	var blocked: Dictionary = occupancy(e)
 	var p: Vector2i = e.pos
@@ -1236,6 +1245,14 @@ func _execute_special(u: Unit, card: Dictionary, target: Unit, act: String) -> v
 						pushed.append({ "unit": e.index, "from": e.pos, "to": to })
 						e.pos = to
 			u.defending = true
+			# ── 시선을 통째로 가져온다 ───────────────────────────────────
+			# 앞으로 파고들어 막아 서는 것만으로는 부족했다. 밀려난 적들이
+			# 다음 틱에 그냥 옆으로 돌아 원래 노리던 대원을 마저 쳤기 때문이다.
+			# 자리를 막는 것과 시선을 뺏는 것은 다른 일이다.
+			#
+			# 세 틱 동안 강제로 끌어온다. 그 사이에 지켜진 대원이 빠지거나
+			# 회복하지 못하면 어차피 죽으므로, 더 길 이유가 없다.
+			u.taunt_ticks = GUARD_TAUNT_TICKS
 			_emit({
 				"type": "special", "unit": u.index, "skill": u.special,
 				"name": String(card["name"]), "hits": [], "heals": [],
