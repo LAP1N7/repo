@@ -482,9 +482,9 @@ func _build_hand() -> void:
 			own_tabs[i].queue_redraw()
 	if own_clip == null:
 		own_clip = Control.new()
-		own_clip.position = Vector2(RIGHT_X, PREVIEW_Y)
+		own_clip.position = Vector2(RIGHT_X, PREVIEW_Y - 24.0)
 		own_clip.size = Vector2(bw * float(own_cols) + 10.0 * float(own_cols - 1),
-			float(own_rows) * (bh + 8.0))
+			24.0 + float(own_rows) * (bh + 8.0) - 8.0)
 		own_clip.clip_contents = true
 		own_clip.mouse_filter = Control.MOUSE_FILTER_STOP
 		own_clip.gui_input.connect(_on_own_scroll)
@@ -505,7 +505,7 @@ func _build_hand() -> void:
 		# 클릭은 아무 데도 안 붙이므로 눌러도 아무 일이 없다.
 		b.enabled = true
 		b.place(Vector2(float(i % own_cols) * (bw + 10.0),
-			float(i / own_cols) * (bh + 8.0) - own_scroll))
+			24.0 + float(i / own_cols) * (bh + 8.0) - own_scroll))
 	return
 
 	# ── 옛 주석 ─────────────────────────────────────────────────────────

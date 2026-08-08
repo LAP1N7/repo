@@ -180,8 +180,10 @@ func setup(p_run: RunState) -> void:
 	hand_clip = Control.new()
 	# 카드가 호버로 위로 들린다(_lift). 창을 딱 맞게 잘라 두면 들린 윗부분이
 	# 통째로 잘려서 "먹히는" 것처럼 보인다. 위아래로 여유를 준다.
-	hand_clip.position = Vector2(HAND_X - 4.0, HAND_Y - 18.0)
-	hand_clip.size = Vector2(1280.0 - HAND_X - 20.0, HAND_H + 30.0)
+	# 호버로 들리는 만큼 창을 위로 더 연다. 딱 맞게 자르면 들린 윗부분이
+	# 통째로 잘려서 "먹히는" 것처럼 보인다.
+	hand_clip.position = Vector2(HAND_X - 4.0, HAND_Y - 46.0)
+	hand_clip.size = Vector2(1280.0 - HAND_X - 20.0, HAND_H + 58.0)
 	hand_clip.clip_contents = true
 	# 휠을 받아야 하므로 STOP 이다. IGNORE 면 이 영역 위에서 굴려도 안 잡힌다.
 	hand_clip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -606,7 +608,7 @@ func _build_hand() -> void:
 		# 두 줄로 쌓는다. 세로로 먼저 채워야 가로 스크롤이 자연스럽다 -
 		# 가로로 먼저 채우면 스크롤할 때 두 줄이 따로 논다.
 		card.place(Vector2(x0 + float(i / rows) * step,
-			22.0 + float(i % rows) * (mini_h + 8.0)), 0.0)
+			50.0 + float(i % rows) * (mini_h + 8.0)), 0.0)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)

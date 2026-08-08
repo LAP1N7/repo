@@ -170,7 +170,7 @@ func _process(delta: float) -> void:
 ## 폴리곤으로 직접 그려야 하고, 그러면 모서리도 직접 굴려야 한다.
 func _arc_to(pts: PackedVector2Array, c: Vector2, rad: float,
 		a0: float, a1: float, inner: bool = false) -> void:
-	var steps := 6
+	var steps := 14
 	for i in steps + 1:
 		var t := float(i) / float(steps)
 		var a: float = a0 + (a1 - a0) * t
@@ -254,17 +254,20 @@ func _draw() -> void:
 	#   · 노치 안에 주황 사선 띠. 위아래를 선으로 마감하고 빛을 조금 흘린다
 	#   · 노치 오른쪽 끝에 3/4 원 배지(아래를 조금 자른다)
 	#   · 왼쪽 아래에 두꺼운 축색 선
-	var r := 15.0 * k                 # 바깥 모서리 반지름
-	var ir := 8.0 * k                 # 노치 안쪽 꺾임 반지름
+	var r := 20.0 * k                 # 바깥 모서리 반지름
+	var ir := 14.0 * k                # 노치 꺾임 반지름
 	var nh := 34.0 * k                # 노치 깊이
 	var nx := s.x * 0.50              # 노치가 시작하는 x
 	var pts := PackedVector2Array()
 
 	_arc_to(pts, Vector2(r, r), r, PI, PI * 1.5)                    # 왼쪽 위
 	pts.append(Vector2(nx - ir, 0))
-	_arc_to(pts, Vector2(nx - ir, ir), ir, PI * 1.5, PI)            # 노치 바깥 꺾임
+	# 윗변 -> 노치로 꺾여 내려가는 곳. 중심이 안쪽에 있어야 선이 이어진다.
+	# -PI/2 에서 0 으로 돌면 (nx-ir, 0) 에서 (nx, ir) 로 매끄럽게 넘어간다.
+	_arc_to(pts, Vector2(nx - ir, ir), ir, -PI * 0.5, 0.0)
 	pts.append(Vector2(nx, nh - ir))
-	_arc_to(pts, Vector2(nx + ir, nh - ir), ir, PI, PI * 0.5, true) # 노치 안쪽 꺾임
+	# 노치 바닥으로 꺾이는 안쪽 곡선.
+	_arc_to(pts, Vector2(nx + ir, nh - ir), ir, PI, PI * 0.5)
 	pts.append(Vector2(s.x - r, nh))
 	_arc_to(pts, Vector2(s.x - r, nh + r), r, PI * 1.5, TAU)        # 오른쪽 위
 	pts.append(Vector2(s.x, s.y - r))
@@ -299,17 +302,6 @@ func _draw() -> void:
 			Vector2(hx, band_y + band_h),
 		]), hatch)
 		hx += bar_w + bar_gap
-	# 위아래 마감선 + 발광.
-	var edge_c := Color(1.0, 0.52, 0.16, 0.9 if enabled else 0.2)
-	draw_line(Vector2(band_x0 + slant, band_y), Vector2(band_x1 + slant, band_y),
-		edge_c, 1.4 * k)
-	draw_line(Vector2(band_x0, band_y + band_h), Vector2(band_x1, band_y + band_h),
-		edge_c, 1.4 * k)
-	draw_line(Vector2(band_x0 + slant, band_y), Vector2(band_x1 + slant, band_y),
-		Color(1.0, 0.55, 0.2, 0.18), 5.0 * k)
-	draw_line(Vector2(band_x0, band_y + band_h), Vector2(band_x1, band_y + band_h),
-		Color(1.0, 0.55, 0.2, 0.18), 5.0 * k)
-
 	# ── 왼쪽 아래 두꺼운 선 ──────────────────────────────────────────────
 	draw_line(Vector2(r, s.y - 3.5 * k), Vector2(r + s.x * 0.32, s.y - 3.5 * k),
 		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 6.0 * k)
@@ -334,10 +326,12 @@ func _draw() -> void:
 	var badge_r := 19.0 * k
 	var badge_at := Vector2(s.x - badge_r - 3.0 * k, badge_r - 2.0 * k)
 	var bcol: Color = ccol if enabled else Color(0.3, 0.32, 0.38)
+	# 아래 1/4(90도)만 잘라낸다. 남는 호는 3/4 이고, 잘린 두 끝을 이으면
+	# 아랫변이 평평해진다.
 	var wedge := PackedVector2Array()
-	var a_from := -PI * 0.86
-	var a_to := PI * 0.60
-	var seg := 26
+	var a_from := PI * 0.75
+	var a_to := PI * 2.25
+	var seg := 30
 	for wi in seg + 1:
 		var wa: float = a_from + (a_to - a_from) * float(wi) / float(seg)
 		wedge.append(badge_at + Vector2(cos(wa), sin(wa)) * badge_r)
