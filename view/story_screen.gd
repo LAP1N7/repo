@@ -617,7 +617,7 @@ class _NameTag extends Control:
 		if who == "":
 			return
 		var f := UiKit.font_role("story")
-		var fsz := 22
+		var fsz := 21
 		var w: float = f.get_string_size(who, HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x + 38.0
 		var h := size.y
 		var cut := 8.0

@@ -187,15 +187,25 @@ func refresh() -> void:
 		UiKit.BAD if refining else UiKit.TEXT)
 
 	# 합성 가능한 카드가 하나라도 있어야 켜진다.
+	# 궁극기도 센다. 같은 궁극기 두 장이면 합칠 수 있고, 그 둘은 손패 한 줄에
+	# 규칙 모듈과 나란히 놓인다 - 세는 곳만 갈라 두면 화면에서 하나가 조용히
+	# 빠진다.
 	var mergeable := 0
+	var seen: Dictionary = {}
 	for cid in run.hand:
 		if run.can_merge(String(cid)):
+			mergeable += 1
+	for sid in run.special_hand:
+		if seen.has(sid):
+			continue
+		seen[sid] = true
+		if run.can_merge(String(sid)):
 			mergeable += 1
 	if mergeable == 0:
 		merging = false
 	btn_merge.disabled = mergeable == 0
 	btn_merge.set_label(
-		UiText.t("shop.merge", "모듈 합성  (%d)") % mergeable,
+		UiText.t("shop.merge", "합성  (%d)") % mergeable,
 		Color(1, 1, 1) if merging else UiKit.GOOD)
 
 	_build_shop()
@@ -389,7 +399,7 @@ func _build_hand() -> void:
 		head = UiText.t("shop.hand_refining", "버릴 모듈을 누르십시오 (정제권 %d)") % run.refine_tokens
 		head_col = UiKit.BAD
 	elif merging:
-		head = UiText.t("shop.hand_merging", "같은 모듈 2장을 1장으로 합쳐 한 단계 올립니다")
+		head = UiText.t("shop.hand_merging", "같은 것 2장을 1장으로 합쳐 한 단계 올립니다 (궁극기도 됩니다)")
 		head_col = UiKit.GOOD
 	if head != "":
 		UiKit.label(hand_root, Vector2(40, HAND_Y - 34), Vector2(900, 24), head, 15, head_col)
@@ -411,7 +421,7 @@ func _build_hand() -> void:
 		var card := CardNode.new()
 		hand_root.add_child(card)
 		card.setup(owned[i], i, true, false)
-		card.level = run.card_level(String(owned[i]))
+		card.level = run.special_level(String(owned[i])) + 1 			if RunState.is_special(String(owned[i])) else run.card_level(String(owned[i]))
 		# 평소 손패는 보기 전용이다(장착은 2단계). 정제·합성 모드에서만 눌린다.
 		card.enabled = refining or (merging and run.can_merge(String(owned[i])))
 		if refining:

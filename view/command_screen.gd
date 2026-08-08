@@ -121,10 +121,12 @@ func refresh() -> void:
 		# 확률은 항목이 하나뿐이라 기둥 아래가 통째로 빈다. 실험용 장치를
 		# 그 자리에 넣는다 - 둘 다 "무엇이 나오게 할 것인가" 라 성격도 맞는다.
 		if group == "확률":
-			# 궁극기 합성이 실험용 장치 위에 온다. 둘 다 "가진 것을 손보는"
-			# 자리인데, 궁극기 쪽이 훨씬 큰 결정이라 먼저 읽혀야 한다.
-			y = _special_section(Vector2(cx, y + 10.0), colw - 12.0)
-			_swap_section(Vector2(cx, y + 14.0), colw - 12.0)
+			# ── 궁극기 합성은 여기 없다 ──────────────────────────────────
+			# 잠깐 이 위에 뒀다가 뺐다. 궁극기 여섯 줄이 들어오니 실험용 장치가
+			# 화면 아래로 밀려 잘렸고, 무엇보다 **합성은 예산만의 문제가 아니다** -
+			# 같은 카드를 두 장 들고 있어야 한다. 그러면 카드가 보이는 곳,
+			# 즉 상점 손패에 있어야 맞다.
+			_swap_section(Vector2(cx, y + 10.0), colw - 12.0)
 			# 실험용 장치는 확률 기둥의 유일한 칸 아래에 있다. 그 칸이 펼쳐지면
 			# 같이 내려가야 "밀려났다" 로 읽힌다.
 			for n in root.get_children():
@@ -167,92 +169,6 @@ func _process(delta: float) -> void:
 func _on_buy(id: String) -> void:
 	lbl_note.text = run.command_buy(id)
 	refresh()
-
-
-## ── 궁극기 합성 ─────────────────────────────────────────────────────────
-## 모듈 합성과 다르다. 같은 것을 두 장 주웠다고 저절로 합쳐지지 않고, 여기서
-## 예산을 들여 한 단계씩 올린다.
-##
-## 궁극기는 한 판에 한 번 쓰는 **사건**이라, 우연히 세지는 것보다 "이 한 방에
-## 예산을 붓겠다" 는 선언이 어울린다. 손패에 그 궁극기가 없어도 살 수 있다 -
-## 부대가 익힌 것이지 카드에 붙은 것이 아니다.
-##
-## 돌려주는 값은 이 구역이 끝나는 y 다. 아래에 실험용 장치가 붙는다.
-func _special_section(at: Vector2, w: float) -> float:
-	var head := _Pillar.new()
-	head.position = at
-	head.size = Vector2(w, _Pillar.H)
-	head.title = UiText.t("cmd.ult_head", "궁극기 합성")
-	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(head)
-
-	UiKit.label(root, Vector2(at.x + 4, at.y + _Pillar.H + 6.0), Vector2(w - 8, 30),
-		UiText.t("cmd.ult_sub", "궁극기 하나를 %d단계까지 키웁니다. 꽂지 않아도 단계는 남습니다.")
-			% Specials.MERGE_MAX, 10, UiKit.MUTED, true)
-
-	var y := at.y + _Pillar.H + 42.0
-	for sid in Specials.ORDER:
-		var sp: Dictionary = Specials.TABLE[sid]
-		var lv := run.special_level(sid)
-		var b := _Ult.new()
-		b.position = Vector2(at.x, y)
-		b.size = Vector2(w, 34)
-		b.id = sid
-		b.label = String(sp["name"])
-		b.level = lv
-		b.price = run.special_merge_price(sid)
-		b.enabled = b.price >= 0 and run.budget >= b.price
-		b.tint = UnitData.TABLE[String(sp["unit"])]["color"]
-		b.tooltip_text = "%s
-%s
-%s" % [String(sp["text"]),
-			UiText.t("cmd.ult_step", "단계당: %s") % String(Specials.MERGE[sid]["text"]),
-			UiText.t("cmd.ult_now", "현재 %d단계") % lv]
-		b.pressed_id.connect(func(id: String):
-			lbl_note.text = run.special_merge(id)
-			refresh()
-		)
-		root.add_child(b)
-		y += 38.0
-	return y
-
-
-## 궁극기 한 줄. 직업 색 막대 + 이름 + 단계 눈금 + 값.
-class _Ult extends Button:
-	var id: String = ""
-	var label: String = ""
-	var level: int = 0
-	var price: int = 0
-	var enabled: bool = true
-	var tint: Color = UiKit.ACCENT
-
-	signal pressed_id(id: String)
-
-	func _ready() -> void:
-		flat = true
-		focus_mode = Control.FOCUS_NONE
-		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
-			add_theme_stylebox_override(st, StyleBoxEmpty.new())
-		disabled = not enabled
-		pressed.connect(func(): pressed_id.emit(id))
-
-	func _draw() -> void:
-		var s := size
-		var dim: float = 1.0 if enabled else 0.45
-		draw_rect(Rect2(0, 0, s.x, s.y - 4), Color(0.10, 0.11, 0.14, 0.9))
-		draw_rect(Rect2(0, 0, 3, s.y - 4), Color(tint.r, tint.g, tint.b, dim))
-		var f := UiKit.font(12)
-		draw_string(f, Vector2(12, 20), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
-			Color(0.90, 0.92, 0.96, dim))
-		# 단계 눈금. 숫자보다 칸이 빠르다.
-		for i in Specials.MERGE_MAX:
-			var on := i < level
-			draw_rect(Rect2(s.x - 84.0 + float(i) * 11.0, 10, 8, 8),
-				Color(tint.r, tint.g, tint.b, 0.95) if on
-				else Color(0.35, 0.38, 0.46, 0.6))
-		var tail := UiText.t("cmd.maxed_short", "최대") if price < 0 			else UiText.t("cmd.ult_buy", "-%d") % price
-		draw_string(f, Vector2(s.x - 42.0, 20), tail, HORIZONTAL_ALIGNMENT_LEFT,
-			-1, 12, UiKit.FAINT if price < 0 else Color(1.0, 0.80, 0.42, dim))
 
 
 ## ── 실험용 장치 ──────────────────────────────────────────────────────────

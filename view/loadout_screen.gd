@@ -47,7 +47,10 @@ const PICK_H: float = 86.0
 const PICK_STEP: Vector2 = Vector2(122.0, 92.0)
 const PICK_COLS: int = 3
 
-const HAND_Y: float = 540.0
+const HAND_Y: float = 526.0
+## 손패 서류첩이 시작하는 x 와 높이.
+const HAND_X: float = 76.0
+const HAND_H: float = 170.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
@@ -71,6 +74,25 @@ var type_buttons: Dictionary = {}
 var grid_root: Control
 var roster_root: Control
 var hand_root: Control
+
+## ── 손패는 가로로 흐른다 ────────────────────────────────────────────────
+## 열두 장이 넘어가면 카드가 서로 겹칠 때까지 간격이 좁아져서, 뒤로 갈수록
+## 이름만 보이고 설명은 앞 카드에 가렸다. 폭을 나눠 갖는 방식은 장수가 늘면
+## 반드시 무너진다.
+##
+## 카드 크기를 고정하고 **줄 자체를 민다.** 화면에 여덟 장쯤 보이고 나머지는
+## 옆으로 흐른다 - 서류첩에서 종이를 밀어 넘기는 동작이다.
+var hand_scroll: float = 0.0
+var hand_scroll_max: float = 0.0
+
+## 손패를 잘라 내는 창. 이 안에서만 카드가 보인다.
+var hand_clip: Control
+
+## 손패 서류첩 판. 좌우 화살표를 갱신하려고 들고 있는다.
+var hand_folder: Control
+
+## 잘린 자리 표시. 카드 위에 그린다.
+var hand_edge: Control
 var lbl_warn: Label
 var btn_fight: Button
 
@@ -115,9 +137,35 @@ func setup(p_run: RunState) -> void:
 	roster_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(roster_root)
 
+	# ── 서류첩 ──────────────────────────────────────────────────────────
+	# 손패가 화면 아래에 그냥 떠 있으면 "카드 몇 장" 이지 **보유 목록**으로
+	# 안 읽힌다. 왼쪽에 세로 탭을 세우고 그 오른쪽을 창으로 잘라 내면, 카드가
+	# 창 안에서 흐르는 것이 되어 서류첩을 넘기는 동작이 된다.
+	hand_folder = _Folder.new()
+	var folder := hand_folder
+	folder.position = Vector2(HAND_X - 46.0, HAND_Y - 12.0)
+	folder.size = Vector2(1280.0 - HAND_X + 30.0, HAND_H + 24.0)
+	folder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(folder)
+
+	hand_clip = Control.new()
+	hand_clip.position = Vector2(HAND_X, HAND_Y - 12.0)
+	hand_clip.size = Vector2(1280.0 - HAND_X - 16.0, HAND_H + 24.0)
+	hand_clip.clip_contents = true
+	# 휠을 받아야 하므로 STOP 이다. IGNORE 면 이 영역 위에서 굴려도 안 잡힌다.
+	hand_clip.mouse_filter = Control.MOUSE_FILTER_STOP
+	hand_clip.gui_input.connect(_on_hand_scroll)
+	add_child(hand_clip)
+
 	hand_root = Control.new()
 	hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(hand_root)
+	hand_clip.add_child(hand_root)
+
+	hand_edge = _HandEdge.new()
+	hand_edge.position = hand_clip.position
+	hand_edge.size = hand_clip.size
+	hand_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hand_edge)
 
 	# 유닛 종류 - 격자 아래 한 줄.
 	# 성장 곡선(초반형/후반형)은 여기에 적지 않는다.
@@ -446,15 +494,30 @@ func _build_hand() -> void:
 
 	var n := owned.size()
 	if n == 0:
-		UiKit.label(hand_root, Vector2(48, HAND_Y + 10), Vector2(800, 22),
+		UiKit.label(hand_root, Vector2(16, 22), Vector2(800, 22),
 			UiText.t("loadout.hand_empty", "손패가 비었다. 상점으로 돌아가 더 사거나, 꽂은 것을 눌러 되돌려라."),
 			12, UiKit.MUTED)
 		return
 
+	# ── 간격을 고정한다 ─────────────────────────────────────────────────
+	# 예전에는 폭을 장수로 나눴다. 그러면 장수가 늘수록 간격이 좁아져 결국
+	# 카드가 서로를 덮는다 - 열두 장에서 이미 설명이 앞 카드에 가렸다.
+	#
+	# 간격을 고정하고 넘치는 만큼 옆으로 흐르게 둔다. 카드 하나의 크기는
+	# 손패가 몇 장이든 같아야 한다.
 	var mini_w := CardNode.W * HAND_SCALE
-	var step: float = minf(mini_w + 14.0, (1160.0 - mini_w) / maxf(1.0, float(n - 1)))
-	var span := mini_w + step * (n - 1)
-	var x0 := (1280.0 - span) * 0.5
+	var step := mini_w + 14.0
+	var span := mini_w + step * maxf(0.0, float(n - 1))
+	var view_w: float = hand_clip.size.x
+	hand_scroll_max = maxf(0.0, span - view_w + 24.0)
+	hand_scroll = clampf(hand_scroll, 0.0, hand_scroll_max)
+	if hand_edge != null:
+		(hand_edge as _HandEdge).more_left = hand_scroll > 1.0
+		(hand_edge as _HandEdge).more_right = hand_scroll < hand_scroll_max - 1.0
+		hand_edge.queue_redraw()
+	# 다 들어가면 가운데로 모으고, 넘치면 왼쪽에서 시작해 밀어 본다.
+	var x0: float = (view_w - span) * 0.5 if hand_scroll_max <= 0.0 else 12.0
+	x0 -= hand_scroll
 	var mid := (n - 1) * 0.5
 
 	for i in n:
@@ -475,10 +538,46 @@ func _build_hand() -> void:
 			card.enabled = (run.unit_cards[sel_member] as Array).size() < RunState.SLOTS_PER_UNIT
 
 		var offset := float(i) - mid
-		card.place(Vector2(x0 + i * step, HAND_Y + absf(offset) * 3.0), offset * 0.02)
+		# 좌표는 창(hand_clip) 기준이다. 창이 이미 HAND_Y 에 있으므로 여기서는
+		# 0 을 기준으로 놓는다.
+		card.place(Vector2(x0 + i * step, 12.0 + absf(offset) * 3.0), offset * 0.02)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)
+
+
+## 손패를 옆으로 민다. 휠과 드래그 둘 다 받는다.
+##
+## 휠 하나만 두면 트랙패드나 터치에서 아예 못 넘기고, 드래그 하나만 두면
+## 카드를 꽂으려다 조금만 움직여도 스크롤이 된다. 둘을 같이 두되 드래그는
+## 4px 넘게 움직였을 때만 스크롤로 친다.
+func _on_hand_scroll(e: InputEvent) -> void:
+	if hand_scroll_max <= 0.0:
+		return
+	if e is InputEventMouseButton:
+		var mb := e as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
+			_scroll_hand(96.0)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
+			_scroll_hand(-96.0)
+		elif mb.button_index == MOUSE_BUTTON_LEFT:
+			_drag = mb.pressed
+			_drag_from = mb.position.x
+	elif e is InputEventMouseMotion and _drag:
+		var mm := e as InputEventMouseMotion
+		if absf(mm.position.x - _drag_from) > 4.0:
+			_scroll_hand(-mm.relative.x)
+
+
+func _scroll_hand(by: float) -> void:
+	var prev := hand_scroll
+	hand_scroll = clampf(hand_scroll + by, 0.0, hand_scroll_max)
+	if not is_equal_approx(prev, hand_scroll):
+		_build_hand()
+
+
+var _drag: bool = false
+var _drag_from: float = 0.0
 
 
 func _on_hand_clicked(card: CardNode) -> void:
@@ -493,6 +592,102 @@ func _on_hand_clicked(card: CardNode) -> void:
 		if tut != null:
 			tut.notify_action("equip")
 		refresh()
+
+
+## ── 서류첩 ───────────────────────────────────────────────────────────────
+## 왼쪽에 세로 탭, 오른쪽으로 얕은 판. 탭에 "보유" 를 세로로 적는다.
+##
+## 손패가 화면 아래에 그냥 떠 있으면 "카드 몇 장" 이지 보유 목록으로 안 읽힌다.
+## 탭 하나가 그 성격을 정한다 - 서랍에서 꺼낸 서류철이라는 뜻이다.
+##
+## 오른쪽 끝에는 더 있다는 표시를 남긴다. 잘린 자리에 아무 표시가 없으면
+## 플레이어는 그게 전부인 줄 안다.
+class _Folder extends Control:
+	## 오른쪽에 더 남았는가. 화면이 매 프레임 넣어 준다.
+	var more_right: bool = false
+	var more_left: bool = false
+
+	const TAB_W: float = 40.0
+	const BLUE := Color(0.36, 0.72, 1.0)
+
+	func _draw() -> void:
+		var s := size
+		# 판. 탭 오른쪽부터.
+		var cut := 12.0
+		var body := PackedVector2Array([
+			Vector2(TAB_W, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(TAB_W, s.y),
+		])
+		draw_colored_polygon(body, Color(0.055, 0.075, 0.105, 0.92))
+		var line := PackedVector2Array(body)
+		line.append(body[0])
+		draw_polyline(line, Color(BLUE.r, BLUE.g, BLUE.b, 0.30), 1.0, true)
+
+		# 세로 탭. 위쪽이 사선으로 깎인 종이 귀다.
+		var tab := PackedVector2Array([
+			Vector2(0, 14), Vector2(14, 0), Vector2(TAB_W, 0),
+			Vector2(TAB_W, s.y), Vector2(0, s.y),
+		])
+		draw_colored_polygon(tab, Color(0.09, 0.22, 0.36, 0.95))
+		var tl := PackedVector2Array(tab)
+		tl.append(tab[0])
+		draw_polyline(tl, Color(BLUE.r, BLUE.g, BLUE.b, 0.75), 1.0, true)
+		draw_rect(Rect2(TAB_W - 2.0, 0, 2, s.y), BLUE)
+
+		# 세로로 쓴 "보유". 글자를 한 자씩 내려 쌓는다 - draw_string 은 세로쓰기를
+		# 안 해 준다.
+		var f := UiKit.font(12)
+		var word := UiText.t("loadout.folder", "보유")
+		var y := 26.0
+		for i in word.length():
+			draw_string(f, Vector2(11, y), word[i], HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 13, Color(0.78, 0.90, 1.0))
+			y += 17.0
+
+		# 서류 가장자리. 얕은 가로줄 몇 개면 "겹쳐 꽂힌 종이" 로 읽힌다.
+		for i in 7:
+			var yy := 26.0 + float(i) * 9.0
+			if yy > s.y - 12.0:
+				break
+			draw_rect(Rect2(TAB_W + 6.0, yy, 12, 1), Color(BLUE.r, BLUE.g, BLUE.b, 0.25))
+
+
+
+## ── 잘린 자리 표시 ───────────────────────────────────────────────────────
+## 카드가 창 밖으로 잘리는 자리에 아무 표시가 없으면 플레이어는 그게 전부인
+## 줄 안다. 가장자리를 어둡게 흘리고 화살표를 세운다.
+##
+## 서류첩 판이 아니라 **카드 위**에 그려야 한다. 판은 카드 뒤에 있어서, 거기에
+## 그리면 표시가 카드에 가려 안 보인다.
+class _HandEdge extends Control:
+	var more_right: bool = false
+	var more_left: bool = false
+
+	const BLUE := Color(0.36, 0.72, 1.0)
+
+	func _draw() -> void:
+		var s := size
+		if more_right:
+			for i in 20:
+				var f := float(i) / 20.0
+				draw_rect(Rect2(s.x - float(i) * 3.0 - 3.0, 0, 3.0, s.y),
+					Color(0.02, 0.03, 0.05, 0.92 * (1.0 - f)))
+			# 세로 눈금 막대. 화살표만으로는 어두운 판에서 잘 안 보인다.
+			draw_rect(Rect2(s.x - 4.0, 8.0, 2.0, s.y - 16.0),
+				Color(BLUE.r, BLUE.g, BLUE.b, 0.75))
+			_arrow(Vector2(s.x - 16.0, s.y * 0.5), 1.0)
+		if more_left:
+			for i in 16:
+				var f2 := float(i) / 16.0
+				draw_rect(Rect2(float(i) * 3.0, 0, 3.0, s.y),
+					Color(0.02, 0.03, 0.05, 0.75 * (1.0 - f2)))
+			_arrow(Vector2(13.0, s.y * 0.5), -1.0)
+
+	func _arrow(at: Vector2, dir: float) -> void:
+		draw_polyline(PackedVector2Array([
+			at + Vector2(-5.0 * dir, -9), at + Vector2(5.0 * dir, 0),
+			at + Vector2(-5.0 * dir, 9),
+		]), Color(BLUE.r, BLUE.g, BLUE.b, 0.95), 2.5, true)
 
 
 ## ── 머리말 ───────────────────────────────────────────────────────────────

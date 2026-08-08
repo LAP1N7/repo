@@ -33,13 +33,13 @@
   "shop.budget_surcharge": "  (구매마다 +%d)",
   "shop.reroll": "재검색  (-%d)",
   "shop.refine": "알고리즘 정제  (%d)",
-  "shop.merge": "모듈 합성  (%d)",
+  "shop.merge": "합성  (%d)",
   "shop.stage_label": "작전 단계",
   "shop.help": "교전 규정",
   "shop.next": "편성 단계로  ▶",
   "shop.hand_head": "보유 모듈  (전술 %d · 궁극기 %d)",
   "shop.hand_refining": "버릴 모듈을 누르십시오 (정제권 %d)",
-  "shop.hand_merging": "같은 모듈 2장을 1장으로 합쳐 한 단계 올립니다",
+  "shop.hand_merging": "같은 것 2장을 1장으로 합쳐 한 단계 올립니다 (궁극기도 됩니다)",
   "shop.note_poor": "예산 %d 부족",
   "shop.note_discard": "선택 시 폐기",
   "shop.note_merge": "통합 -%d",
@@ -276,5 +276,7 @@
   "state.no_special": "없는 궁극기입니다",
   "state.merge_max": "이미 최대 단계입니다",
   "hover.slot": "%d번",
-  "hover.ult": "궁극기"
+  "hover.ult": "궁극기",
+  "loadout.folder": "보유",
+  "state.merge_copies": "같은 궁극기가 %d장 필요합니다 (현재 %d장)"
 }

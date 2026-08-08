@@ -595,7 +595,10 @@ class _Overlay extends Node2D:
 		if u.team == Unit.TEAM_ENEMY and owner_view.shown_alive():
 			# 천사링이다. 정원이면 머리 위에 **붙은 원**으로 보이고, 눕혀야
 			# 머리 위에 떠 있는 고리로 읽힌다. 가로 2.4 : 세로 1 로 눌렀다.
-			var hy := -UnitView.R - 30.0
+			# 머리 위 30px 은 SD 비율에서 **머리보다 한참 위**였다. 고리가
+			# 인물과 떨어져 떠 있으면 표식이 아니라 장식이 된다. 겹쳐도 좋으니
+			# 정수리에 걸치는 높이로 내린다.
+			var hy := -UnitView.R - 12.0
 			var rx := 17.0
 			var ry := 7.0
 			var pts := PackedVector2Array()

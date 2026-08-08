@@ -722,10 +722,16 @@ func copies_of(card_id: String) -> int:
 ## 없어졌다" 가 되어 아무도 안 쓴다. 손패는 한 장 줄고 성능은 올라간다.
 ## 이 카드를 한 단계 올리는 데 드는 예산.
 func merge_price(card_id: String) -> int:
+	if is_special(card_id):
+		return special_merge_price(card_id)
 	return Cards.merge_cost(card_level(card_id))
 
 
 func can_merge(card_id: String) -> bool:
+	# 궁극기는 다른 표를 본다. 부르는 쪽(상점 합성 모드)이 종류를 가리지 않고
+	# 같은 함수를 쓰게 해 두면, 손패 한 줄에 둘이 섞여 있어도 그대로 돈다.
+	if is_special(card_id):
+		return can_merge_special(card_id)
 	if not Cards.can_merge(card_id):
 		return false
 	if budget < merge_price(card_id):
@@ -736,6 +742,8 @@ func can_merge(card_id: String) -> bool:
 
 
 func merge(card_id: String) -> bool:
+	if is_special(card_id):
+		return special_merge(card_id) == ""
 	if not can_merge(card_id):
 		return false
 	budget -= merge_price(card_id)
@@ -767,6 +775,16 @@ func grant_card(card_id: String) -> String:
 
 
 func merge_blocker(card_id: String) -> String:
+	# 궁극기는 규칙이 달라 이유도 다르다. 장수부터 본다 - 예산이 모자란 것과
+	# 아직 한 장뿐인 것은 플레이어가 할 일이 완전히 다르다.
+	if is_special(card_id):
+		if special_level(card_id) >= Specials.MERGE_MAX:
+			return UiText.t("state.merge_max", "이미 최대 단계입니다")
+		if special_copies_of(card_id) < Specials.MERGE_COPIES:
+			return UiText.t("state.merge_copies", "같은 궁극기가 %d장 필요합니다 (현재 %d장)") % [
+				Specials.MERGE_COPIES, special_copies_of(card_id)]
+		return UiText.t("state.merge_poor", "예산 %d 이 필요합니다 (현재 %d)") % [
+			special_merge_price(card_id), budget]
 	if not Cards.can_merge(card_id):
 		return UiText.t("state.merge_no_stat", "이 모듈은 상승시킬 수치가 없습니다")
 	if card_level(card_id) >= Cards.MAX_LEVEL:
@@ -875,6 +893,29 @@ func special_merge_price(sid: String) -> int:
 	return Specials.merge_price(special_level(sid))
 
 
+## 손패에 든 그 궁극기의 장수.
+func special_copies_of(sid: String) -> int:
+	var n := 0
+	for s in special_hand:
+		if String(s) == sid:
+			n += 1
+	return n
+
+
+## 같은 궁극기 두 장을 한 단계로 합칠 수 있는가.
+##
+## 모듈 합성과 같은 규칙이다 - 장수와 예산을 둘 다 치른다. 예산만으로 사게
+## 하면 강화가 "돈을 얼마나 모았나" 의 함수가 되어 무엇을 주웠는지와 무관해진다.
+func can_merge_special(sid: String) -> bool:
+	if not Specials.TABLE.has(sid):
+		return false
+	if special_level(sid) >= Specials.MERGE_MAX:
+		return false
+	if special_copies_of(sid) < Specials.MERGE_COPIES:
+		return false
+	return budget >= special_merge_price(sid)
+
+
 ## 궁극기 한 단계를 올린다. 실패하면 이유를 돌려준다.
 func special_merge(sid: String) -> String:
 	if not Specials.TABLE.has(sid):
@@ -882,9 +923,14 @@ func special_merge(sid: String) -> String:
 	var price := special_merge_price(sid)
 	if price < 0:
 		return UiText.t("state.merge_max", "이미 최대 단계입니다")
+	if special_copies_of(sid) < Specials.MERGE_COPIES:
+		return UiText.t("state.merge_copies", "같은 궁극기가 %d장 필요합니다 (현재 %d장)") % [
+			Specials.MERGE_COPIES, special_copies_of(sid)]
 	if budget < price:
 		return UiText.t("state.merge_poor", "예산 %d 이 필요합니다 (현재 %d)") % [price, budget]
 	budget -= price
+	for _i in Specials.MERGE_COPIES - 1:
+		special_hand.remove_at(special_hand.find(sid))
 	special_levels[sid] = special_level(sid) + 1
 	return ""
 
