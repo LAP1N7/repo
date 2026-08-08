@@ -38,19 +38,19 @@ var tut: Tutorial = null
 ##
 ##   왼쪽  x  40 ~ 528   상점 카드 (3 + 2)
 ##   오른쪽 x 560 ~ 1240  적 정보 · 조작 · 보유
-const SHOP_X: float = 40.0
-const SHOP_Y: float = 134.0
-const SHOP_GAP: float = 14.0
+const SHOP_X: float = 26.0
+const SHOP_Y: float = 116.0
+const SHOP_GAP: float = 10.0
 const SHOP_COLS: int = 5
 
 ## 오른쪽 열이 시작하는 x.
-const RIGHT_X: float = 700.0
+const RIGHT_X: float = 40.0
 
 ## ── 적 배치 미리보기 ────────────────────────────────────────────────────
 ## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
 ## 페이즈가 문제로 남는다.
 const PREVIEW_WAVES: int = 2
-const PREVIEW_Y: float = 372.0
+const PREVIEW_Y: float = 350.0
 const PREVIEW_W: float = 250.0
 ## 오른쪽 보유 목록(3줄)과 아랫선을 맞춘다. 두 기둥의 끝이 어긋나 있으면
 ## 화면이 정리가 안 된 것으로 보인다.
@@ -60,7 +60,7 @@ const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 254.0
+const BAR_Y: float = 262.0
 
 var run: RunState
 
@@ -127,7 +127,7 @@ func setup(p_run: RunState) -> void:
 	lbl_note.visible = false
 	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
 	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
-	_head(self, Vector2(SHOP_X, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
+	_head(self, Vector2(1030.0, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
 	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
 	for i in OWN_FILTERS.size():
 		var fid := String(OWN_FILTERS[i])
@@ -280,14 +280,8 @@ func _build_shop() -> void:
 		shop_root.add_child(card)
 		card.setup(cid, i, false)
 		card.enabled = run.can_buy(i)
-		if cid != "" and not run.can_buy(i):
-			# ── 값이 아니라 **모자란 만큼**을 적는다 ──────────────────────
-			# "예산 부족 (5)" 였다. 5 는 그 카드의 값인데, 화면에는 예산도
-			# 같이 떠 있으니 사람이 매번 뺄셈을 해야 했다. 알고 싶은 것은
-			# "얼마가 더 있어야 사는가" 하나다.
-			card.note = UiText.t("shop.note_poor", "예산 %d 부족") % (
-				run.price_of(cid) - run.budget)
-		# 다섯이 한 줄. 블록이라 232*5 + 10*4 = 1200 으로 화면에 딱 들어간다.
+		# 예산이 모자라면 그냥 꺼 둔다. 글자로 얼마 부족한지 적을 필요 없다 -
+		# 못 산다는 것은 흐려진 것만으로 이미 보인다.
 		card.place(Vector2(
 			SHOP_X + float(i % SHOP_COLS) * (CardNode.W + SHOP_GAP),
 			SHOP_Y + float(i / SHOP_COLS) * (CardNode.H + SHOP_GAP)))
@@ -473,9 +467,9 @@ func _build_hand() -> void:
 		owned = keep
 		n = owned.size()
 
-	var own_cols := 2
-	var own_rows := 3
-	var own_k := 0.86
+	var own_cols := 4
+	var own_rows := 2
+	var own_k := 1.0
 	var bw := CardNode.W * own_k
 	var bh := CardNode.H * own_k
 	# ── 글 대신 스크롤 ──────────────────────────────────────────────────
@@ -489,7 +483,8 @@ func _build_hand() -> void:
 	if own_clip == null:
 		own_clip = Control.new()
 		own_clip.position = Vector2(RIGHT_X, PREVIEW_Y)
-		own_clip.size = Vector2(bw * 2.0 + 10.0, float(own_rows) * (bh + 8.0))
+		own_clip.size = Vector2(bw * float(own_cols) + 10.0 * float(own_cols - 1),
+			float(own_rows) * (bh + 8.0))
 		own_clip.clip_contents = true
 		own_clip.mouse_filter = Control.MOUSE_FILTER_STOP
 		own_clip.gui_input.connect(_on_own_scroll)
@@ -506,7 +501,9 @@ func _build_hand() -> void:
 		b.setup(owned[i], i, true, false)
 		b.level = run.special_level(String(owned[i])) + 1 \
 			if RunState.is_special(String(owned[i])) else run.card_level(String(owned[i]))
-		b.enabled = false
+		# 호버는 살려 둔다. 목록에서 무엇을 가졌는지 읽는 유일한 수단이다.
+		# 클릭은 아무 데도 안 붙이므로 눌러도 아무 일이 없다.
+		b.enabled = true
 		b.place(Vector2(float(i % own_cols) * (bw + 10.0),
 			float(i / own_cols) * (bh + 8.0) - own_scroll))
 	return
@@ -877,24 +874,25 @@ func _build_preview() -> void:
 	var waves: Array = Stages.waves(st)
 	var shown: int = mini(waves.size(), PREVIEW_WAVES)
 
-	var x := SHOP_X
+	var x := 1030.0
+	var y2 := PREVIEW_Y
 	for w in shown:
 		var b := _Preview.new()
 		b.entries = waves[w]
 		var bb := b.bounds_of(waves[w])
-		b.position = Vector2(x, PREVIEW_Y)
+		b.position = Vector2(x, y2)
 		b.size = Vector2(float(bb.size.x) * _Preview.CELL + 30.0,
 			float(bb.size.y) * _Preview.CELL + _Preview.TOP + 16.0)
 		b.wave = w
 		b.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(b)
-		x += b.size.x + 18.0
+		y2 += b.size.y + 12.0
 
 	# 남은 파는 자리만 남긴다. 아예 안 그리면 "이게 전부" 로 읽힌다.
 	for w in range(shown, waves.size()):
 		var h := _Preview.new()
-		h.position = Vector2(x, PREVIEW_Y)
+		h.position = Vector2(x, y2)
 		h.size = Vector2(150, 140)
 		h.wave = w
 		h.entries = []
@@ -902,7 +900,7 @@ func _build_preview() -> void:
 		h.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(h)
-		x += h.size.x + 18.0
+		y2 += h.size.y + 12.0
 
 
 func _on_buy(card: CardNode) -> void:

@@ -285,6 +285,6 @@
   "shop.offer_head": "확보 가능",
   "shop.own_head": "보유 모듈",
   "shop.own_more": "그 외 %d개 - 오른쪽 [보유] 탭에서 전부 봅니다",
-  "loadout.filter_all": "전체",
-  "loadout.filter_ult": "궁극기"
+  "loadout.filter_all": "ALL",
+  "loadout.filter_ult": "ULTI"
 }

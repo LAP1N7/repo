@@ -534,19 +534,6 @@ func _draw() -> void:
 	#
 	# 진영은 발밑에, 직업은 몸통에 둔다. 자리가 갈리면 둘 다 읽힌다.
 	# 아군은 채운 호, 적은 점선 호다. 색을 못 가리는 사람에게도 모양이 남는다.
-	# 페이즈가 시작하고 두 틱 동안만 켠다. 상시로 깔아 두면 판이 늘 색으로
-	# 차 있어서 표적선과 사거리가 그 위에서 안 읽힌다.
-	if mark_alpha > 0.01:
-		var hw := 16.0
-		var hh := 8.0
-		var box := PackedVector2Array([
-			Vector2(-hw, FOOT_Y - hh), Vector2(hw, FOOT_Y - hh),
-			Vector2(hw, FOOT_Y + hh), Vector2(-hw, FOOT_Y + hh),
-			Vector2(-hw, FOOT_Y - hh),
-		])
-		draw_polyline(box, Color(ring.r, ring.g, ring.b, 0.10 * mark_alpha), 5.0, true)
-		draw_polyline(box, Color(ring.r, ring.g, ring.b, 0.28 * mark_alpha), 2.5, true)
-		draw_polyline(box, Color(ring.r, ring.g, ring.b, 0.95 * mark_alpha), 1.0, true)
 
 	if has_art():
 		# 아트가 있으면 본체는 스프라이트가 그린다. 팀 구분은 발밑 고리로만 남긴다.
@@ -597,34 +584,6 @@ class _Overlay extends Node2D:
 		# 끊으면 "반 넘게 깎였다" 가 색 판단이 아니라 칸 세기가 되고, 그건
 		# 훨씬 빠르다. 여기에 사선 끝단과 얇은 하이라이트를 얹어 이 게임의
 		# 다른 판들(호버 판·슬래브)과 어법을 맞춘다.
-		# ── 적은 머리 위에 붉은 고리를 쓴다 ──────────────────────────────
-		# 진영은 발밑 링 색으로만 갈렸다. 그런데 SD 스프라이트가 세로로 길어서
-		# 앞줄 대원의 몸이 뒷줄의 발밑을 덮고, 링은 그림자·범위 표시와 같은
-		# 자리라 색이 섞였다. 판이 붐비면 아군과 적이 안 갈렸다.
-		#
-		# **오버레이에서** 그린다. 유닛 본체의 _draw 에 두면 스프라이트가 그
-		# 위에 얹혀서 고리가 몸 뒤로 숨는다 - 실제로 그렇게 안 보였다.
-		if u.team == Unit.TEAM_ENEMY and owner_view.shown_alive():
-			# 천사링이다. 정원이면 머리 위에 **붙은 원**으로 보이고, 눕혀야
-			# 머리 위에 떠 있는 고리로 읽힌다. 가로 2.4 : 세로 1 로 눌렀다.
-			# 머리 위 30px 은 SD 비율에서 **머리보다 한참 위**였다. 고리가
-			# 인물과 떨어져 떠 있으면 표식이 아니라 장식이 된다. 겹쳐도 좋으니
-			# 정수리에 걸치는 높이로 내린다.
-			var hy := -UnitView.R - 12.0
-			var rx := 17.0
-			var ry := 7.0
-			var pts := PackedVector2Array()
-			for i in 33:
-				var a := TAU * float(i) / 32.0
-				pts.append(Vector2(cos(a) * rx, hy + sin(a) * ry))
-			# 바깥 잔광 -> 본선 순서로 두 번 그린다. 한 겹이면 발광이 안 된다.
-			var glow := PackedVector2Array()
-			for i in 33:
-				var a2 := TAU * float(i) / 32.0
-				glow.append(Vector2(cos(a2) * (rx + 2.5), hy + sin(a2) * (ry + 2.0)))
-			draw_polyline(glow, Color(1.0, 0.16, 0.22, 0.20), 5.0, true)
-			draw_polyline(pts, Color(1.0, 0.28, 0.34, 0.92), 2.0, true)
-
 		var top := UnitView.R + 3.0
 		var hw := UnitView.HP_W
 		var bh := 7.0

@@ -24,8 +24,8 @@ signal clicked(node: CardNode)
 ##   [축색띠] AXIS        (비용)
 ##            이름
 ##            조건 → 행동
-const W: float = 196.0
-const H: float = 84.0
+const W: float = 238.0
+const H: float = 128.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
 const BANNER_RATIO: float = 0.38
@@ -233,76 +233,77 @@ func _draw() -> void:
 	var neon := _neon(border)
 
 	# ── 프레임 ───────────────────────────────────────────────────────────
-	# 오른쪽 위만 깎는다. 네 귀를 다 깎으면 팔각형이 되고, 대각으로 둘을 깎으면
-	# 카드처럼 보인다 - 지금은 카드가 아니라 **패널에 꽂힌 모듈**이어야 한다.
-	# 한 귀만 깎으면 방향이 생기면서도 사각형으로 남는다.
-	var cut: float = 14.0 * k
-	var shape := PackedVector2Array([
-		Vector2(0, 0), Vector2(s.x - cut, 0), Vector2(s.x, cut),
-		Vector2(s.x, s.y), Vector2(0, s.y),
-	])
-	draw_colored_polygon(shape, body)
-
-	# 왼쪽 축 색 기둥. 이 블록이 무슨 축인지 글자를 읽기 전에 갈린다.
-	draw_rect(Rect2(0, 0, 4.0 * k, s.y), neon)
-	# 기둥 옆으로 흘러나오는 빛 한 겹.
-	draw_rect(Rect2(4.0 * k, 0, 10.0 * k, s.y), Color(neon.r, neon.g, neon.b, 0.07))
-
-	# ── 위쪽 사선 평행사변형 열 ──────────────────────────────────────────
-	# 블록 윗변을 따라 축색 평행사변형을 늘어놓는다. 축이 무엇인지 글자를
-	# 읽기 전에 갈리고, 늘어선 사선이 그 자체로 계기판 어법이 된다.
-	var pw := 9.0 * k        # 평행사변형 한 조각 폭
-	var pslant := 5.0 * k    # 기울기
-	var ph := 5.0 * k        # 높이
-	var px := 6.0 * k
-	while px + pw + pslant < s.x - cut - 2.0 * k:
-		draw_colored_polygon(PackedVector2Array([
-			Vector2(px + pslant, 2.0 * k), Vector2(px + pslant + pw, 2.0 * k),
-			Vector2(px + pw, 2.0 * k + ph), Vector2(px, 2.0 * k + ph),
-		]), Color(neon.r, neon.g, neon.b, 0.55 if enabled else 0.2))
-		px += pw + 4.0 * k
-
-	# ── 오른쪽 끝 해칭 띠 ────────────────────────────────────────────────
-	# 블록이 반듯한 사각이라 오른쪽 끝이 그냥 잘린 것처럼 보였다. 사선 빗금을
-	# 좁게 두르면 그 끝이 **마감**이 된다 - 산업 장비 표찰에 쓰는 어법이다.
+	# 참조 그림을 90도 돌린 그대로다.
 	#
-	# 색은 축색이 아니라 주황이다. 축색으로 두면 왼쪽 기둥과 같은 색이 양쪽
-	# 끝에 서서 블록이 대칭으로 보이고, 그러면 어느 쪽이 앞인지 사라진다.
-	var band_w := 16.0 * k
-	var bx := s.x - band_w - cut * 0.4
-	var hatch := Color(1.0, 0.55, 0.18, 0.55 if enabled else 0.18)
-	var step := 5.0 * k
-	var hx := bx
-	while hx < bx + band_w:
-		draw_line(Vector2(hx, s.y - 4.0 * k), Vector2(hx + 7.0 * k, s.y - 16.0 * k),
-			hatch, 1.6 * k)
-		hx += step
+	#   1) 모서리가 둥근 사각. 얇은 축색 테두리.
+	#   2) 오른쪽 위에 사선 평행사변형을 길게 다다다다 - 주황 해칭 띠.
+	#   3) 왼쪽 아래에 조금 진한 선 하나.
+	#
+	# 둥근 모서리는 StyleBoxFlat 로 그린다. draw_rect 에는 반지름이 없고,
+	# 폴리곤으로 흉내 내면 꼭짓점 수만큼 각이 져서 둥글게 안 보인다.
+	var radius: int = int(round(11.0 * k))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = body
+	sb.set_corner_radius_all(radius)
+	sb.set_border_width_all(int(max(1.0, round(1.4 * k))))
+	sb.border_color = Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.4)
+	draw_style_box(sb, Rect2(Vector2.ZERO, s))
 
-	var outline := PackedVector2Array(shape)
-	outline.append(shape[0])
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.85 if enabled else 0.35),
-		1.4, true)
-	# 바깥으로 한 겹 더 옅게. 선 하나만으로는 발광으로 안 읽힌다.
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.14), 4.0, true)
+	# 바깥 발광 한 겹. 같은 모서리로 조금 키워 아주 옅게 깐다.
+	var glow := StyleBoxFlat.new()
+	glow.bg_color = Color(0, 0, 0, 0)
+	glow.set_corner_radius_all(radius + int(2.0 * k))
+	glow.set_border_width_all(int(max(1.0, round(3.0 * k))))
+	glow.border_color = Color(neon.r, neon.g, neon.b, 0.10 if enabled else 0.03)
+	draw_style_box(glow, Rect2(Vector2(-2.0 * k, -2.0 * k), s + Vector2(4.0 * k, 4.0 * k)))
+
+	# ── 오른쪽 위 해칭 띠 ────────────────────────────────────────────────
+	# 사선 평행사변형을 촘촘히 늘어놓는다. 참조 그림에서 이 띠가 블록의 성격을
+	# 결정한다 - 다른 장식을 다 빼도 이것만 있으면 같은 물건으로 읽힌다.
+	var band_h := 17.0 * k              # 띠 높이
+	var band_y := 5.0 * k
+	var band_x1 := s.x - 8.0 * k        # 오른쪽 끝
+	var band_x0 := s.x * 0.56           # 왼쪽 끝
+	var slant := 6.0 * k                # 위로 갈수록 오른쪽으로 밀리는 정도
+	var bar_w := 3.4 * k                # 막대 하나 폭
+	var bar_gap := 2.6 * k
+	var hatch := Color(1.0, 0.42, 0.12, 0.95 if enabled else 0.25)
+	var hx := band_x0
+	while hx + bar_w + slant < band_x1:
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(hx + slant, band_y),
+			Vector2(hx + slant + bar_w, band_y),
+			Vector2(hx + bar_w, band_y + band_h),
+			Vector2(hx, band_y + band_h),
+		]), hatch)
+		hx += bar_w + bar_gap
+
+	# ── 왼쪽 아래 진한 선 ────────────────────────────────────────────────
+	# 참조 그림의 왼쪽 아래에 있는 밝은 선. 블록에 방향을 준다 - 왼쪽 아래가
+	# 시작점이고 오른쪽 위가 끝이라는 뜻이 된다.
+	var uw: float = s.x * 0.34
+	draw_line(Vector2(radius * 0.9, s.y - 2.5 * k),
+		Vector2(radius * 0.9 + uw, s.y - 2.5 * k),
+		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 2.4 * k)
 
 	# ── 글 ───────────────────────────────────────────────────────────────
 	var pad := 14.0 * k
-	var axis_size: int = int(9.0 * k) + 1
-	var name_size: int = int(15.0 * k) + 1
-	var text_size: int = int(10.0 * k) + 1
+	var axis_size: int = int(10.0 * k) + 1
+	var name_size: int = int(18.0 * k) + 1
+	var text_size: int = int(12.0 * k) + 1
 
 	# 축 라벨. 궁극기는 축이 없으므로 소유 대원을 적는다 - 누구 것인지가
 	# 이 블록을 살지 말지 정하는 가장 큰 정보다.
 	var top_label := axis_label
 	if axis == "":
 		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
-	draw_string(UiKit.font_role("large"), Vector2(pad, 20.0 * k), top_label,
+	draw_string(UiKit.font_role("large"), Vector2(pad, 34.0 * k), top_label,
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 34.0 * k, axis_size,
 		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
-	var badge_r := 11.0 * k
-	var badge_at := Vector2(s.x - pad - badge_r + 2.0, 20.0 * k + badge_r - 6.0)
+	var badge_r := 13.0 * k
+	var badge_at := Vector2(s.x - pad - badge_r + 2.0, 34.0 * k + badge_r - 8.0)
 	draw_circle(badge_at, badge_r, ccol if enabled else Color(0.3, 0.32, 0.38))
 	var cost_txt := str(cost)
 	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1,
@@ -311,14 +312,14 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, int(12.0 * k) + 1, Color(0.06, 0.07, 0.1))
 
 	# 이름.
-	draw_string(f, Vector2(pad, 41.0 * k), String(c["name"]),
+	draw_string(f, Vector2(pad, 60.0 * k), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
 
 	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
 	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var ty := 53.0 * k
+	var ty := 74.0 * k
 	var body_w := s.x - pad * 2.0
 	var line_h := float(text_size) + 3.0
 	var room: float = s.y - ty - 8.0 * k
