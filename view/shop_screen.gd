@@ -926,7 +926,7 @@ func _on_reroll() -> void:
 ## (DESIGN 2.4)은 "무엇이 오는가" 가 아니라 "무엇을 하려 하는가" 까지다.
 class _Preview extends Control:
 	const CUT: float = 12.0
-	const CELL: float = 22.0
+	const CELL: float = 26.0
 	const TOP: float = 30.0
 
 	var wave: int = 0
@@ -1053,8 +1053,10 @@ class _Preview extends Control:
 			# 이름 첫 글자. 칸이 30px 라 이름은 안 들어가고, 색과 자리로
 			# 구분한 뒤 자세한 것은 호버가 말한다.
 			var nm := String(d.get("name", tid))
-			draw_string(fs, Vector2(r.position.x, r.position.y + 20), nm.substr(0, 1),
-				HORIZONTAL_ALIGNMENT_CENTER, int(CELL), 12, Color(1, 1, 1, 0.92))
+			# 칸이 26px 이라 12pt 는 위아래가 잘린다. 칸에 맞춰 줄인다.
+			draw_string(fs, Vector2(r.position.x, r.position.y + CELL * 0.72),
+				nm.substr(0, 1), HORIZONTAL_ALIGNMENT_CENTER, int(CELL), 11,
+				Color(1, 1, 1, 0.95))
 
 		if _hot >= 0:
 			_draw_info(entries[_hot])

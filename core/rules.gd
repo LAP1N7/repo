@@ -1304,8 +1304,20 @@ static func resolve_target(unit: Unit, target_kind: String, state,
 				if sc > hs:
 					hs = sc
 					ht = e
+			# ── 하던 상대는 후보 안에 있을 때만 유지한다 ─────────────────
+			# 이 검사가 빠져 있었다. 그래서 후보를 **사거리 안**으로 좁혀 놓아도
+			# 직전에 쫓던 상대가 사거리 밖이면 그쪽을 그대로 돌려줬다.
+			#
+			# 실제로 그 결과가 이렇게 나왔다 - 전사가 눈앞의 악사를 두고
+			# 판 건너편 궁수를 "사거리 안 사격" 으로 계속 때렸다.
 			var cur: Unit = unit.last_target
-			if cur != null and cur.alive and cur.team != unit.team and ht != null 					and cur.index != ht.index:
+			var cur_ok := false
+			if cur != null:
+				for e2 in enemies:
+					if (e2 as Unit).index == cur.index:
+						cur_ok = true
+						break
+			if cur_ok and cur.alive and cur.team != unit.team and ht != null 					and cur.index != ht.index:
 				var cs := Threat.score(unit, cur)
 				# 새 후보가 마진을 못 넘으면 하던 대로 간다.
 				if hs * 100 < cs * Threat.SWITCH_MARGIN:
