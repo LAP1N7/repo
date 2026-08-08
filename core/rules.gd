@@ -313,14 +313,6 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			if target != null and Grid.manhattan(unit.pos, target.pos) > unit.atk_range:
 				return _approach(unit, state, target, bonus + 1, "압박")
 
-		# ── 진영을 지킨다 ────────────────────────────────────────────────
-		# 적이 코앞일 때만 막는다. 조건 없이 막으면 제 진영에서 영영 안 나와
-		# 정체로 진다 - 실측 0승이었다.
-		"hold_ground":
-			# 붙었을 때만. 2칸까지 넓히면 원거리 대원이 쏠 수 있는 거리에서
-			# 막고 앉아 딜을 통째로 버린다 - 실측 -2 였다.
-			if near_d <= 1:
-				return _rule(unit, "진영 사수", "defend", unit, 0, 0)
 
 	# 표적이 없어도 자리는 지킨다.
 	#

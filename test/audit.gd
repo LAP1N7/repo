@@ -82,7 +82,7 @@ const PICKS := [
 ]
 const STANCES := ["engage", "wait", "defend", "ambush",
 	"avoid_near", "avoid_mid", "avoid_boost", "taunt", "aggressive", "stealth",
-	"close_in", "hold_ground"]
+	"close_in"]
 const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "march", "chase",
 	"follow_guard", "follow_lead", "protect_support", "protect_ranged", "escort", "rally"]
 
