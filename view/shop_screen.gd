@@ -39,7 +39,7 @@ var tut: Tutorial = null
 ##   왼쪽  x  40 ~ 528   상점 카드 (3 + 2)
 ##   오른쪽 x 560 ~ 1240  적 정보 · 조작 · 보유
 const SHOP_X: float = 26.0
-const SHOP_Y: float = 116.0
+const SHOP_Y: float = 110.0
 const SHOP_GAP: float = 10.0
 const SHOP_COLS: int = 5
 
@@ -50,7 +50,7 @@ const RIGHT_X: float = 40.0
 ## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
 ## 페이즈가 문제로 남는다.
 const PREVIEW_WAVES: int = 2
-const PREVIEW_Y: float = 350.0
+const PREVIEW_Y: float = 348.0
 const PREVIEW_W: float = 250.0
 ## 오른쪽 보유 목록(3줄)과 아랫선을 맞춘다. 두 기둥의 끝이 어긋나 있으면
 ## 화면이 정리가 안 된 것으로 보인다.
@@ -60,7 +60,7 @@ const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 262.0
+const BAR_Y: float = 268.0
 
 var run: RunState
 
@@ -126,7 +126,7 @@ func setup(p_run: RunState) -> void:
 	lbl_note = UiKit.label(self, Vector2(-999, -999), Vector2(10, 10), "", 12, UiKit.MUTED)
 	lbl_note.visible = false
 	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
-	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
+	_head(self, Vector2(SHOP_X, 84), UiText.t("shop.offer_head", "확보 가능"))
 	_head(self, Vector2(1012.0, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
 	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
 	for i in OWN_FILTERS.size():
@@ -482,8 +482,8 @@ func _build_hand() -> void:
 			own_tabs[i].queue_redraw()
 	if own_clip == null:
 		own_clip = Control.new()
-		own_clip.position = Vector2(RIGHT_X, PREVIEW_Y - 24.0)
-		own_clip.size = Vector2(bw * float(own_cols) + 10.0 * float(own_cols - 1),
+		own_clip.position = Vector2(RIGHT_X - 12.0, PREVIEW_Y - 24.0)
+		own_clip.size = Vector2(bw * float(own_cols) + 10.0 * float(own_cols - 1) + 24.0,
 			24.0 + float(own_rows) * (bh + 8.0) - 8.0)
 		own_clip.clip_contents = true
 		own_clip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -504,7 +504,7 @@ func _build_hand() -> void:
 		# 호버는 살려 둔다. 목록에서 무엇을 가졌는지 읽는 유일한 수단이다.
 		# 클릭은 아무 데도 안 붙이므로 눌러도 아무 일이 없다.
 		b.enabled = true
-		b.place(Vector2(float(i % own_cols) * (bw + 10.0),
+		b.place(Vector2(12.0 + float(i % own_cols) * (bw + 10.0),
 			24.0 + float(i / own_cols) * (bh + 8.0) - own_scroll))
 	return
 

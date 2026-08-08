@@ -25,7 +25,7 @@ signal clicked(node: CardNode)
 ##            이름
 ##            조건 → 행동
 const W: float = 238.0
-const H: float = 128.0
+const H: float = 142.0
 
 ## 카드에서 일러스트 배너가 차지하는 세로 비율. ASSETS.md 의 카드 아트 규격과 맞물린다.
 const BANNER_RATIO: float = 0.38
@@ -307,31 +307,31 @@ func _draw() -> void:
 		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 6.0 * k)
 
 	# ── 글 ───────────────────────────────────────────────────────────────
-	var pad := 14.0 * k
-	var axis_size: int = int(11.0 * k) + 1
-	var name_size: int = int(21.0 * k) + 1
-	var text_size: int = int(13.0 * k) + 1
+	var pad := 16.0 * k
+	var axis_size: int = int(13.0 * k) + 1
+	var name_size: int = int(27.0 * k) + 1
+	var text_size: int = int(16.0 * k) + 1
 
 	# 축 라벨. 궁극기는 축이 없으므로 소유 대원을 적는다 - 누구 것인지가
 	# 이 블록을 살지 말지 정하는 가장 큰 정보다.
 	var top_label := axis_label
 	if axis == "":
 		top_label = "ULT · %s" % String(UnitData.TABLE.get(c.get("unit", ""), {}).get("name", ""))
-	draw_string(UiKit.font_role("large"), Vector2(pad, 30.0 * k), top_label,
+	draw_string(UiKit.font_role("large"), Vector2(pad, 27.0 * k), top_label,
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 34.0 * k, axis_size,
 		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
 	# 3/4 원. 아래를 조금 잘라 띠에 얹힌 것처럼 보이게 한다.
 	var badge_r := 19.0 * k
-	var badge_at := Vector2(s.x - badge_r - 3.0 * k, badge_r - 2.0 * k)
+	var badge_at := Vector2(s.x - badge_r - 10.0 * k, badge_r - 1.0 * k)
 	var bcol: Color = ccol if enabled else Color(0.3, 0.32, 0.38)
 	# 아래 1/4(90도)만 잘라낸다. 남는 호는 3/4 이고, 잘린 두 끝을 이으면
 	# 아랫변이 평평해진다.
 	var wedge := PackedVector2Array()
 	var a_from := PI * 0.75
 	var a_to := PI * 2.25
-	var seg := 30
+	var seg := 64
 	for wi in seg + 1:
 		var wa: float = a_from + (a_to - a_from) * float(wi) / float(seg)
 		wedge.append(badge_at + Vector2(cos(wa), sin(wa)) * badge_r)
@@ -343,14 +343,14 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(0.06, 0.07, 0.1))
 
 	# 이름.
-	draw_string(f, Vector2(pad, 58.0 * k), String(c["name"]),
+	draw_string(f, Vector2(pad, 56.0 * k), String(c["name"]),
 		HORIZONTAL_ALIGNMENT_LEFT, s.x - pad - 30.0 * k, name_size, dim)
 
 	# ── 규칙 한 줄 ───────────────────────────────────────────────────────
 	# 화살표 앞이 조건, 뒤가 행동이다. 색만 갈라 두면 라벨이 필요 없다.
 	var rule_text := String(c["text"])
 	var arrow := rule_text.find("→")
-	var ty := 70.0 * k
+	var ty := 78.0 * k
 	var body_w := s.x - pad * 2.0
 	var line_h := float(text_size) + 3.0
 	var room: float = s.y - ty - 8.0 * k

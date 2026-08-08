@@ -472,8 +472,7 @@ func show_rule(text: String, innate: bool = false) -> void:
 ## 재생부(view/battle_view.gd)가 사건마다 이 값을 옮겨 준다.
 var hp_shown: int = -1
 
-## 진영 표시가 남은 정도. 1 이면 또렷하고 0 이면 안 그린다.
-## 페이즈가 시작할 때 1 로 켜고 두 틱에 걸쳐 0 으로 내린다.
+## 안 쓴다. 전투 화면이 아직 값을 넣으므로 자리는 남겨 둔다.
 var mark_alpha: float = 1.0
 
 
@@ -534,6 +533,12 @@ func _draw() -> void:
 	#
 	# 진영은 발밑에, 직업은 몸통에 둔다. 자리가 갈리면 둘 다 읽힌다.
 	# 아군은 채운 호, 적은 점선 호다. 색을 못 가리는 사람에게도 모양이 남는다.
+	var seg: int = 28 if unit.team == Unit.TEAM_PLAYER else 12
+	draw_set_transform(Vector2(0, FOOT_Y), 0.0, Vector2(1.0, FOOT_SQUASH))
+	draw_arc(Vector2.ZERO, FOOT_R, 0.0, TAU, seg,
+		Color(ring.r, ring.g, ring.b, 0.95), 3.0 / FOOT_SQUASH)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 
 	if has_art():
 		# 아트가 있으면 본체는 스프라이트가 그린다. 팀 구분은 발밑 고리로만 남긴다.

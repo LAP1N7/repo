@@ -48,7 +48,7 @@ const CARD_STEP: float = 266.0
 const CARD_Y: float = 84.0
 ## 360 -> 330. 카드 아래쪽 절반이 "비어 있음" 세 줄과 여백뿐이라, 그만큼
 ## 서류첩이 화면 밖으로 밀려났다.
-const CARD_H: float = 278.0
+const CARD_H: float = 306.0
 
 ## ── 대원 선택 ───────────────────────────────────────────────────────────
 ## 3열 2행. 한 줄에 여섯을 늘어놓으면 칸 하나가 62px 까지 좁아져 얼굴이
@@ -63,24 +63,24 @@ const PICK_STEP: Vector2 = Vector2(118.0, 112.0)
 const PICK_COLS: int = 3
 
 ## 서류첩은 오른쪽 절반에만 선다. 왼쪽 칸을 침범하지 않는 자리다.
-const HAND_Y: float = 446.0
+const HAND_Y: float = 456.0
 const HAND_X: float = 470.0
 ## 두 줄이 들어갈 높이. 한 줄이면 넉 장밖에 못 보고 나머지는 전부 스크롤 뒤에
 ## 숨는다. 아랫선은 화면 아래 테두리(y 690)와 맞춘다.
-const HAND_H: float = 232.0
+const HAND_H: float = 236.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
 const HAND_SCALE: float = 0.85
 
 ## 카드 안쪽 세로 배치. 전부 카드 원점 기준이다.
-const IN_FACE_H: float = 110.0
+const IN_FACE_H: float = 96.0
 const IN_NAME_Y: float = 118.0
 const IN_STAT_Y: float = 142.0
-const IN_SLOT_Y: float = 162.0
-const IN_SLOT_H: float = 34.0
-const IN_ULT_Y: float = 272.0
-const IN_INNATE_Y: float = 306.0
+const IN_SLOT_Y: float = 160.0
+const IN_SLOT_H: float = 30.0
+const IN_ULT_Y: float = 254.0
+const IN_INNATE_Y: float = 286.0
 
 var run: RunState
 
@@ -177,23 +177,6 @@ func setup(p_run: RunState) -> void:
 	folder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(folder)
 
-	hand_clip = Control.new()
-	# 카드가 호버로 위로 들린다(_lift). 창을 딱 맞게 잘라 두면 들린 윗부분이
-	# 통째로 잘려서 "먹히는" 것처럼 보인다. 위아래로 여유를 준다.
-	# 호버로 들리는 만큼 창을 위로 더 연다. 딱 맞게 자르면 들린 윗부분이
-	# 통째로 잘려서 "먹히는" 것처럼 보인다.
-	hand_clip.position = Vector2(HAND_X - 4.0, HAND_Y - 46.0)
-	hand_clip.size = Vector2(1280.0 - HAND_X - 20.0, HAND_H + 58.0)
-	hand_clip.clip_contents = true
-	# 휠을 받아야 하므로 STOP 이다. IGNORE 면 이 영역 위에서 굴려도 안 잡힌다.
-	hand_clip.mouse_filter = Control.MOUSE_FILTER_STOP
-	hand_clip.gui_input.connect(_on_hand_scroll)
-	add_child(hand_clip)
-
-	hand_root = Control.new()
-	hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hand_clip.add_child(hand_root)
-
 	# 분류 단추. 머리띠 오른쪽에 나란히 세운다.
 	for i in HAND_FILTERS.size():
 		var fid := String(HAND_FILTERS[i])
@@ -210,6 +193,23 @@ func setup(p_run: RunState) -> void:
 		)
 		add_child(fb)
 		hand_tabs.append(fb)
+
+	hand_clip = Control.new()
+	# 카드가 호버로 위로 들린다(_lift). 창을 딱 맞게 잘라 두면 들린 윗부분이
+	# 통째로 잘려서 "먹히는" 것처럼 보인다. 위아래로 여유를 준다.
+	# 호버로 들리는 만큼 창을 위로 더 연다. 딱 맞게 자르면 들린 윗부분이
+	# 통째로 잘려서 "먹히는" 것처럼 보인다.
+	hand_clip.position = Vector2(HAND_X - 14.0, HAND_Y - 46.0)
+	hand_clip.size = Vector2(1280.0 - HAND_X, HAND_H + 58.0)
+	hand_clip.clip_contents = true
+	# 휠을 받아야 하므로 STOP 이다. IGNORE 면 이 영역 위에서 굴려도 안 잡힌다.
+	hand_clip.mouse_filter = Control.MOUSE_FILTER_STOP
+	hand_clip.gui_input.connect(_on_hand_scroll)
+	add_child(hand_clip)
+
+	hand_root = Control.new()
+	hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hand_clip.add_child(hand_root)
 
 	hand_edge = _HandEdge.new()
 	hand_edge.position = hand_clip.position
@@ -548,6 +548,10 @@ func _build_hand() -> void:
 	if picked:
 		tid = String(run.roster[sel_member]["type"])
 
+	for i in hand_tabs.size():
+		if is_instance_valid(hand_tabs[i]):
+			(hand_tabs[i] as _FilterTab).on = i == hand_filter
+			hand_tabs[i].queue_redraw()
 	var n := owned.size()
 	if n == 0:
 		UiKit.label(hand_root, Vector2(16, 22), Vector2(800, 22),
@@ -573,16 +577,12 @@ func _build_hand() -> void:
 	if hand_folder != null:
 		(hand_folder as _Folder).count = n
 		hand_folder.queue_redraw()
-	for i in hand_tabs.size():
-		if is_instance_valid(hand_tabs[i]):
-			(hand_tabs[i] as _FilterTab).on = i == hand_filter
-			hand_tabs[i].queue_redraw()
 	if hand_edge != null:
 		(hand_edge as _HandEdge).more_left = hand_scroll > 1.0
 		(hand_edge as _HandEdge).more_right = hand_scroll < hand_scroll_max - 1.0
 		hand_edge.queue_redraw()
 	# 다 들어가면 가운데로 모으고, 넘치면 왼쪽에서 시작해 밀어 본다.
-	var x0: float = 12.0
+	var x0: float = 22.0
 	x0 -= hand_scroll
 	var mid := (n - 1) * 0.5
 
@@ -608,7 +608,7 @@ func _build_hand() -> void:
 		# 두 줄로 쌓는다. 세로로 먼저 채워야 가로 스크롤이 자연스럽다 -
 		# 가로로 먼저 채우면 스크롤할 때 두 줄이 따로 논다.
 		card.place(Vector2(x0 + float(i / rows) * step,
-			50.0 + float(i % rows) * (mini_h + 8.0)), 0.0)
+			44.0 + float(i % rows) * (mini_h + 6.0)), 0.0)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)

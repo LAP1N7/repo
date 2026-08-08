@@ -483,32 +483,11 @@ func _zones_body(c: CanvasItem, outline_only: bool = false) -> void:
 			# XCOM 계열이 쓰는 방법을 가져왔다 - **선으로 짠 상자**. 아주 옅은
 			# 채움 위에 밝은 테두리와 네 귀 갈고리만 남긴다. 색이 겹쳐도 선은
 			# 살아남고, 무엇보다 칸 경계가 또렷해 몇 칸인지 셀 수 있다.
-			# ── 판 위로 떠 있는 판때기 ───────────────────────────────────
-			# 명일방주 배치 화면의 사거리 표시는 격자 위에 **한 겹 더 놓인
-			# 판**이다. 옆면 두께가 보이고 그 아래로 그림자가 진다. 그래서
-			# 격자와 섞이지 않는다.
-			#
-			# 여기서도 같은 방법을 쓴다 - 8px 올리고, 올린 만큼 옆면을 채우고,
-			# 바닥에 그림자를 깐다. 선은 1px 로 얇게 - 굵으면 그 자체가 격자가
-			# 된다.
-			var lift := Vector2(0, -8.0)
+			# 격자 위에 바로 겹친다. 띄우지 않는다.
 			for p in cells:
-				var base_q := cell_quad(p.x, p.y, 3.0)
-				for qi in base_q.size():
-					base_q[qi] += shift
-				var q := PackedVector2Array()
-				for pt in base_q:
-					q.append(pt + lift)
-				# 바닥 그림자.
-				var sh := PackedVector2Array()
-				for pt in base_q:
-					sh.append(pt + Vector2(0, 3.0))
-				c.draw_colored_polygon(sh, Color(0, 0, 0, 0.35))
-				# 옆면. 아래 두 변과 위 판을 잇는 띠 - 이게 두께다.
-				var side := Color(u.color.r, u.color.g, u.color.b, 0.20 * pulse)
-				c.draw_colored_polygon(PackedVector2Array([
-					q[3], q[2], base_q[2], base_q[3]]), side)
-				# 윗면.
+				var q := cell_quad(p.x, p.y, 3.0)
+				for qi in q.size():
+					q[qi] += shift
 				c.draw_colored_polygon(q, Color(fill.r, fill.g, fill.b, fill.a * 0.7))
 				var lc := Color(u.color.r, u.color.g, u.color.b,
 					(0.9 if hot else 0.55) * pulse)
@@ -573,8 +552,10 @@ func _hatch(c: CanvasItem, r: Rect2, col: Color, step: float) -> void:
 ## 통째로 색으로 덮여서, 정작 위험한 칸이 안 보인다.
 func _danger_cells(u: Unit) -> Array:
 	var out: Array = []
-	# 자폭 - 자신을 중심으로 한 3x3.
-	if Traits.has(u, Traits.VOLATILE):
+	# 자폭 - 자신을 중심으로 한 3x3. **도화선에 불이 붙었을 때만** 그린다.
+	# 붙기 전에도 띄우면 판 위에 늘 붉은 상자가 깔려 있어서, 정작 급한 순간에
+	# 그것이 급한 줄을 모른다.
+	if Traits.has(u, Traits.VOLATILE) and u.fuse_ticks >= 0:
 		for dy in [-1, 0, 1]:
 			for dx in [-1, 0, 1]:
 				var p := u.pos + Vector2i(dx, dy)
