@@ -521,6 +521,27 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 					return _rule(unit, "간격 확보", "move_away", near, 0, bonus)
 			return _rule(unit, "공격", "attack", target, power, 0)
 
+	# ── 붙은 적을 등지고 자리를 잡지는 않는다 ────────────────────────────
+	# [후열 침투] + [방패 뒤] 를 같이 꽂으면 판이 망가졌다. 표적은 뒷줄의 적인데
+	# 거기까지 사거리가 안 닿으니 위치 축이 돌고, 위치 축은 "방패병 뒤로" 라고
+	# 답한다. 그래서 **코앞의 적을 그냥 두고 뒤로 걸어갔다.** 매 틱 공짜로
+	# 맞으면서.
+	#
+	# 자리를 잡는 것은 다음 틱을 준비하는 일이다. 이미 붙어 있는 적이 있으면
+	# 다음 틱이 없을 수도 있다 - 그 순서를 뒤집는다.
+	#
+	# 인접(1칸)만 본다. 2~3칸 떨어진 적까지 이걸 걸면 표적 축이 통째로 죽는다.
+	# [후열 침투] 는 앞줄을 지나쳐 들어가는 모듈인데, 지나칠 기회를 아예 안
+	# 주는 것이 되니까.
+	if act_kind == "attack":
+		var glued: Unit = null
+		for e in state.living_enemies_of(unit):
+			if Grid.manhattan(unit.pos, e.pos) <= 1 and state.has_shot(unit, e):
+				glued = e
+				break
+		if glued != null:
+			return _rule(unit, "붙은 적 처리", "attack", glued, power, 0)
+
 	# ── 사거리 밖이면 위치 축이 어디로 갈지 정한다 ───────────────────────
 	return _move_by_stand(unit, state, target, stand, bonus, designated)
 

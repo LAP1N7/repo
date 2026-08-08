@@ -1490,6 +1490,7 @@ func _build_unit_views() -> void:
 		var v := UnitView.new()
 		board.add_child(v)
 		v.setup(u, font)
+		v.hp_shown = u.hp
 		v.position = tile_center(u.pos)
 		unit_views.append(v)
 
@@ -1504,6 +1505,7 @@ func _spawn_wave_views(indices: Array) -> void:
 		var v := UnitView.new()
 		board.add_child(v)
 		v.setup(u, font)
+		v.hp_shown = u.hp
 		v.position = tile_center(u.pos)
 		# 등장하는 순간이 보여야 한다. 조용히 나타나면 "언제 늘었지" 가 된다.
 		v.scale = Vector2(0.2, 0.2)
@@ -1772,6 +1774,48 @@ func _play_events(evs: Array, my_id: int) -> void:
 
 			"result":
 				await _wait(ACT_TIME * 0.6)
+
+		# ── 막대는 사건을 따라간다 ───────────────────────────────────────
+		# 엔진은 한 틱을 통째로 계산하고 화면은 그것을 순서대로 재생한다.
+		# 막대가 유닛의 실제 hp 를 직접 읽으면 틱이 시작하는 순간 그 틱의
+		# 피해가 전부 반영돼, 궁극기 컷인(1.9초)이 뜨기 **전에** 이미 적 HP 가
+		# 깎여 있었다.
+		_advance_hp(e)
+
+	# 틱이 끝나면 실제 값으로 맞춘다. 사건을 안 남기는 경로가 하나라도 있으면
+	# 막대가 영구히 어긋나는데, 여기서 매 틱 수렴시키므로 그럴 수가 없다.
+	for v0 in unit_views:
+		if v0 != null:
+			v0.hp_shown = v0.unit.hp
+			v0.queue_redraw()
+
+
+## 사건 하나가 말한 HP 를 막대에 옮긴다.
+##
+## 사건 payload 는 전부 target_hp 를 들고 있다(피해·회복·자폭·궁극기 모두).
+## 그래서 사건 종류를 하나하나 나열할 필요가 없다 - 있으면 쓴다.
+func _advance_hp(e: Dictionary) -> void:
+	if e.has("target") and e.has("target_hp"):
+		_set_hp(int(e["target"]), int(e["target_hp"]))
+	for h in e.get("hits", []):
+		if (h as Dictionary).has("target_hp"):
+			_set_hp(int(h["target"]), int(h["target_hp"]))
+	for hv in e.get("heals", []):
+		if (hv as Dictionary).has("target_hp"):
+			_set_hp(int(hv["target"]), int(hv["target_hp"]))
+	for hd in e.get("healed", []):
+		if (hd as Dictionary).has("target_hp"):
+			_set_hp(int(hd["target"]), int(hd["target_hp"]))
+
+
+func _set_hp(idx: int, value: int) -> void:
+	if idx < 0 or idx >= unit_views.size():
+		return
+	var v := unit_views[idx]
+	if v == null:
+		return
+	v.hp_shown = value
+	v.queue_redraw()
 
 
 ## 특수 스킬 재생. cutin 플래그가 붙은 희귀 스킬만 컷인 연출을 탄다.

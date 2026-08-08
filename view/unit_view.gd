@@ -461,6 +461,23 @@ func show_rule(text: String, innate: bool = false) -> void:
 	chip_alpha = 1.0
 
 
+## ── 화면에 그릴 HP ──────────────────────────────────────────────────────
+## -1 이면 실제 값을 쓴다.
+##
+## 엔진은 한 틱을 통째로 계산해 놓고 화면은 그것을 사건 순서대로 재생한다.
+## 그래서 막대가 유닛의 실제 hp 를 직접 읽으면 **틱이 시작하는 순간 그 틱의
+## 모든 피해가 한꺼번에 반영된다.** 궁극기 컷인이 1.9초짜리라 이 어긋남이
+## 특히 크게 보였다 - 컷인이 뜨기 전에 이미 적 HP 가 깎여 있었다.
+##
+## 재생부(view/battle_view.gd)가 사건마다 이 값을 옮겨 준다.
+var hp_shown: int = -1
+
+
+## 지금 그려야 할 HP.
+func shown_hp() -> int:
+	return hp_shown if hp_shown >= 0 else unit.hp
+
+
 func hit() -> void:
 	flash = 1.0
 
@@ -572,7 +589,7 @@ class _Overlay extends Node2D:
 		var hw := UnitView.HP_W
 		var bh := 7.0
 		var x0 := -hw * 0.5
-		var frac := clampf(float(u.hp) / float(u.max_hp), 0.0, 1.0)
+		var frac := clampf(float(owner_view.shown_hp()) / float(u.max_hp), 0.0, 1.0)
 		var hp_col := Color(0.36, 0.95, 0.62)
 		if frac <= 0.25:
 			hp_col = Color(1.0, 0.32, 0.36)

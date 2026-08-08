@@ -180,24 +180,25 @@ func test_axis_fallthrough() -> void:
 func test_axis_priority() -> void:
 	print("\n[5] 교전 > 위치 > 표적")
 
-	# ── 이 검사는 없는 모듈을 쓰고 있었다 ────────────────────────────────
-	# [사거리 대기](hold_fire)는 표에 없는 id 다. 그래서 이 검사는 축 우선순위가
-	# 아니라 **모듈 셋 중 하나가 조용히 무시되는 경우**를 통과시키고 있었다.
-	# 값이 우연히 맞아서 여태 초록으로 떴을 뿐이다.
-	#
-	# 교전 축이 위치 축을 이기는 것을 실제로 재는 쌍으로 바꿨다. 강행군은
-	# "붙는다", 부상 회피는 "물러난다" 라서 결과가 정반대로 갈린다.
+	# [사거리 대기] 가 걸리면 표적이 무엇이든 이번 틱은 안 움직인다.
+	var d := decide(1, [
+		member("archer", 0, ["backline", "hold_fire", "forced_march"]),
+		member("warrior", 2), member("warrior", 4)])
+	ok(String(d["card"]["act"]) == "hold", "교전(대기)이 위치(강행군)를 이긴다",
+		String(d["card"]["act"]))
+
+	# 교전 축이 위치 축을 이기는 것을 반대 방향으로도 한 번 더 잰다.
+	# 강행군은 "붙는다", 부상 회피는 "물러난다" 라서 결과가 정반대로 갈린다.
 	var b0 := Battle.new()
 	b0.setup(1, [member("archer", 0, ["wary_step", "forced_march"]),
 		member("warrior", 2), member("warrior", 4)])
 	b0.units[0].hp = 1
-	# [부상 회피] 는 "적이 2칸 이내" 를 본다. 적을 옆에 붙여 조건을 세운다 -
-	# 개전 시점에는 적이 멀어서 이 검사가 위치 축을 재고 있었다.
+	# [부상 회피] 는 "적이 2칸 이내" 를 본다. 적을 옆에 붙여 조건을 세운다.
 	var foe: Unit = b0.living_enemies_of(b0.units[0])[0]
 	foe.pos = b0.units[0].pos + Vector2i(1, 0)
-	var d := Rules.select(b0.units[0], b0)
-	ok(String(d["card"]["act"]) == "move_away",
-		"교전(부상 회피)이 위치(강행군)를 이긴다", String(d["card"]["act"]))
+	var d9 := Rules.select(b0.units[0], b0)
+	ok(String(d9["card"]["act"]) == "move_away",
+		"교전(부상 회피)이 위치(강행군)를 이긴다", String(d9["card"]["act"]))
 
 	# [부상 회피] 는 표적이 사거리 안이어도 물러나게 한다.
 	var b := Battle.new()
@@ -272,8 +273,8 @@ func test_branches() -> void:
 	var comps := [
 		[member("warrior", 0), member("warrior", 2), member("warrior", 4)],
 		[member("bard", 0), member("bard", 2), member("bard", 4)],
-		[member("archer", 0, ["keep_range"]), member("archer", 2, ["keep_range"]),
-			member("archer", 4, ["keep_range"])],
+		[member("archer", 0, ["hold_fire"]), member("archer", 2, ["hold_fire"]),
+			member("archer", 4, ["hold_fire"])],
 	]
 	for stage in [1, 2, 3, 4, 5]:
 		for c in comps:
