@@ -293,14 +293,29 @@ static func _pick_target(unit: Unit, state, trace: Dictionary) -> Dictionary:
 		if lure != null:
 			swap = lure
 			why = UiText.t("rule.lure_why", "선언된 유인이 지정을 덮었다")
-		# ② 지정한 곳에 갈 수가 없으면 눈앞의 위협으로 넘어간다.
+		# ② 지정한 곳에 갈 수가 없다.
 		elif _designation_blocked(unit, cur, state):
-			var top := _top_threat(unit, state)
-			var tu: Unit = top.get("unit", null)
-			if tu != null and int(top["score"]) >= THREAT_SOFT:
-				swap = tu
-				why = UiText.t("rule.blocked_why",
-					"지정한 곳이 막혀 위협도 %d 로 넘어갔다") % int(top["score"])
+			# ②-a 먼저 **같은 모듈로 다시 고른다.** 후보를 갈 수 있는 적으로만
+			#      좁혀서. [후열 침투] 가 문 대원에게 못 가더라도 "갈 수 있는
+			#      것 중 가장 깊은 적" 은 여전히 그 모듈이 원하는 답이다.
+			#      곧장 위협도로 넘기면 산 모듈이 그 순간 없는 것이 된다.
+			var reach := _reachable_enemies(unit, state)
+			if not won.is_empty() and not reach.is_empty():
+				var rule: Dictionary = won.get("rule", {})
+				var alt := resolve_target(unit, String(rule.get("pick", "")),
+					state, "attack", reach)
+				if alt != null and alt.index != cur.index:
+					swap = alt
+					why = UiText.t("rule.reroute_why",
+						"지정한 곳이 막혀 갈 수 있는 대상으로 다시 골랐다")
+			# ②-b 그래도 없으면 눈앞의 위협으로 넘어간다.
+			if swap == null:
+				var top := _top_threat(unit, state)
+				var tu: Unit = top.get("unit", null)
+				if tu != null and int(top["score"]) >= THREAT_SOFT:
+					swap = tu
+					why = UiText.t("rule.blocked_why",
+						"지정한 곳이 막혀 위협도 %d 로 넘어갔다") % int(top["score"])
 
 		if swap != null and (cur == null or cur.index != swap.index):
 			rows.append({ "slot": -1, "name": UiText.t("rule.forced", "위협 개입"),
@@ -654,6 +669,19 @@ static func _designation_blocked(unit: Unit, target: Unit, state) -> bool:
 	return int(field[unit.pos]) - direct > DETOUR_LIMIT
 
 
+## 지금 실제로 갈 수 있는 적들.
+##
+## 판정은 _designation_blocked 와 같다 - 우회 경로가 직선보다 DETOUR_LIMIT
+## 넘게 길면 못 가는 것으로 본다. 두 곳이 다른 잣대를 쓰면 "막혔다고 판단해
+## 넘어갔는데 넘어간 곳도 막혀 있는" 일이 난다.
+static func _reachable_enemies(unit: Unit, state) -> Array:
+	var out: Array = []
+	for e in state.living_enemies_of(unit):
+		if not _designation_blocked(unit, e, state):
+			out.append(e)
+	return out
+
+
 ## 지금 가장 위협적인 상대와 그 점수. { unit, score }
 ##
 ## 동점은 index 로 끊는다 - 난수는 없다.
@@ -946,11 +974,27 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 ## act 를 받는 이유: 공격 계열은 차폐를 통과한 적만 후보로 삼아야 한다.
 ## 그러지 않으면 "가장 가까운 적" 이 벽 뒤에 있을 때 조준했다가 실행 불가로
 ## 폴스루해 버려서, 쏠 수 있는 적이 있는데도 궁수가 아무것도 안 한다.
-static func resolve_target(unit: Unit, target_kind: String, state, act: String = "") -> Unit:
+## pool 을 주면 그 안에서만 고른다.
+##
+## 지정한 대상에게 갈 수 없을 때 쓴다. 모듈이 고른 **그 한 명**은 못 가더라도
+## 모듈이 무엇을 원했는지는 남아 있어야 한다 - [후열 침투] 는 갈 수 있는 것
+## 중 가장 깊은 적을, [지원 차단] 은 갈 수 있는 회복원을 고르면 된다.
+## 그러지 않고 곧장 위협도로 넘기면 산 모듈이 그 순간 없는 것이 된다.
+static func resolve_target(unit: Unit, target_kind: String, state,
+		act: String = "", pool: Array = []) -> Unit:
 	# point_blank 는 1칸이라 사선이 막힐 수가 없지만, 대상 후보를 공격 계열과
 	# 똑같이 걸러 두어야 "때릴 수 없는 적" 을 조준하고 폴스루하는 일이 없다.
 	var shooting := act == "attack" or act == "point_blank"
 	var enemies: Array = state.shootable_enemies_of(unit) if shooting 		else state.living_enemies_of(unit)
+	if not pool.is_empty():
+		var keep: Dictionary = {}
+		for e in pool:
+			keep[(e as Unit).index] = true
+		var narrowed: Array = []
+		for e in enemies:
+			if keep.has((e as Unit).index):
+				narrowed.append(e)
+		enemies = narrowed
 
 	match target_kind:
 		"self":

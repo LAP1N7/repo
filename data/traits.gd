@@ -104,7 +104,7 @@ const TEXT: Dictionary = {
 	IMMOBILE: "고정 - 절대 움직이지 않는다",
 	VOLATILE: "자폭 - 붙으면 %d틱 뒤 폭발. 주위 3x3 에 %d 피해 (적아 무관)" % [
 		FUSE_TICKS, VOLATILE_DAMAGE],
-	BEACON: "유인 - 위협도 +%d. 표적 모듈이 없으면 여기부터 친다" % BEACON_THREAT,
+	BEACON: "유인 - 위협도 +%d. 표적 지정을 덮고 이쪽으로 끌어온다" % BEACON_THREAT,
 	OVERSEER: "감독 - 살아 있는 동안 같은 편 공격 +%d%%" % OVERSEER_ATK_PCT,
 	ZEALOT: "광신 - 같은 편이 죽을 때마다 공격 +%d%% (최대 %d회)" % [
 		ZEALOT_ATK_PCT, ZEALOT_MAX_STACK],
