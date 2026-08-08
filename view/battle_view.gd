@@ -219,7 +219,9 @@ var roster_hover: Unit = null
 
 func setup(p_run: RunState) -> void:
 	sfx = Sfx.new()
-	_battle_music = _music_for(p_run.stage_id if p_run != null else 1)
+	# 튜토리얼은 판 번호와 무관하게 자기 곡을 쓴다. 배우는 시간과 겨루는
+	# 시간은 다른 시간이다.
+	_battle_music = "tutorial_theme" if (tut != null and tut.active) 		else _music_for(p_run.stage_id if p_run != null else 1)
 	add_child(sfx)
 	run = p_run
 	# UnitView 가 이 폰트로 머리 위 규칙 칩(12px)과 이름을 그린다. 둘 다 작은 글씨다.
@@ -1448,13 +1450,17 @@ class _Brief extends Control:
 ## 곡이 바뀌는 순간 "여기서부터 다르다" 가 규칙보다 먼저 전해진다.
 ##
 ## 셋으로 나눈다.
-##   1~2 배우는 구간   opening_theme  타이틀과 같은 곡 - 아직 같은 세계다
+##   1~2 배우는 구간   battle12       교전 전용 곡
 ##   3~4 갈리는 구간   ost2           승률이 반토막 나는 지점이다. 곡도 바뀐다
 ##   5   마지막        boss_theme
+##
+## 1~2 판은 타이틀과 같은 opening_theme 을 썼다. "아직 같은 세계다" 라는
+## 뜻이었는데, 실제로 이어서 해 보면 타이틀 -> 상점 -> 첫 교전이 전부 한 곡이라
+## **교전이 시작됐다는 신호가 없다.** 곡이 바뀌는 것 자체가 그 신호다.
 func _music_for(stage_id: int) -> String:
 	if Stages.is_last(stage_id):
 		return "boss_theme"
-	return "ost2" if stage_id >= 3 else "opening_theme"
+	return "ost2" if stage_id >= 3 else "battle12"
 
 
 func _reset() -> void:

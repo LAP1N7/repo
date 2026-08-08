@@ -217,6 +217,13 @@ static func _on_music_finished() -> void:
 
 ## 배경음악을 튼다. 같은 곡이 이미 돌고 있으면 아무것도 안 한다 -
 ## 화면이 바뀔 때마다 처음부터 다시 시작하면 음악이 계속 끊긴다.
+## 지금 돌고 있는 곡 이름. 없으면 빈 문자열.
+##
+## 스토리 화면이 자기 곡을 틀기 전에 이 값을 적어 두고, 나갈 때 되돌린다.
+static func music_name() -> String:
+	return _music_name
+
+
 func play_music(name: String) -> void:
 	if _music_name == name and _music != null and is_instance_valid(_music):
 		if not enabled:

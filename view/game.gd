@@ -206,6 +206,13 @@ func _bind_tutorial(screen: Node, screen_name: String) -> void:
 		return
 	tut.clear_anchors()
 	screen.set("tut", tut)
+	# 튜토리얼은 상점·편성·교전이 한 덩어리다. 화면마다 곡이 바뀌면 그 덩어리가
+	# 쪼개져 보인다. (같은 곡이면 play_music 이 아무것도 안 한다)
+	var sp: Variant = screen.get("sfx")
+	if sp == null:
+		sp = screen.get("_sfx")
+	if sp is Sfx:
+		(sp as Sfx).play_music("tutorial_theme")
 
 
 ## 튜토리얼 오버레이를 화면 위에 얹는다. 화면 UI 가 다 만들어진 뒤에 불러야 한다.

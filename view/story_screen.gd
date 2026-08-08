@@ -276,6 +276,9 @@ const TYPE_SFX_EVERY: int = 2
 var _bg_id: String = ""
 var _sfx: Sfx
 
+## 대본이 곡을 바꾸기 전에 돌던 곡. 화면을 떠날 때 이것으로 되돌린다.
+var _music_back: String = ""
+
 var _opened_ms: int = 0
 
 ## 이 시간 안에 들어온 입력은 앞 화면에서 새어 나온 것으로 본다.
@@ -321,9 +324,20 @@ func _advance() -> void:
 		return
 	index += 1
 	if index >= beats.size():
+		_restore_music()
 		done.emit()
 		return
 	_show(index)
+
+
+## 대본이 바꿔 놓은 곡을 되돌린다.
+##
+## 스테이지 4 도입부는 자기 곡이 있는데, 대본이 끝나고 상점·편성·교전으로
+## 넘어가도 그 곡이 계속 흘렀다. 한 대목의 곡이 그 판의 곡이 되어 버린 셈이다.
+func _restore_music() -> void:
+	if _music_back != "" and _sfx != null and Sfx.music_name() != _music_back:
+		_sfx.play_music(_music_back)
+	_music_back = ""
 
 
 func _show(i: int) -> void:
@@ -398,6 +412,15 @@ func _show(i: int) -> void:
 	# (Sfx.play_music 은 같은 곡이면 아무것도 안 한다 - 다시 시작하지 않는다)
 	var bgm := String(b.get("music", ""))
 	if bgm != "" and _sfx != null:
+		# ── 나갈 때 되돌릴 곡을 적어 둔다 ────────────────────────────────
+		# 스테이지 4 도입부는 자기 곡이 있다. 그런데 대본이 끝나고 상점·편성·
+		# 교전으로 넘어가도 그 곡이 계속 흘렀다 - 도입부 한 대목의 곡이 그
+		# 판의 곡이 되어 버린 것이다.
+		#
+		# 대본이 곡을 바꾸는 것은 그 대목 동안만이다. 처음 바꾸는 순간의 곡을
+		# 기억해 두고 화면을 떠날 때 그것으로 돌아간다.
+		if _music_back == "":
+			_music_back = Sfx.music_name()
 		_sfx.play_music(bgm)
 
 	var fx := String(b.get("fx", ""))

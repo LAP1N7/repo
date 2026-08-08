@@ -29,7 +29,8 @@
       "speaker": "대원 A",
       "art": "commander_room",
       "portrait": "archer",
-      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!"
+      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!",
+      "music": "story12"
     },
     {
       "speaker": "대원 B",
@@ -57,7 +58,8 @@
       "speaker": "MIRA",
       "art": "commander_room2",
       "portrait": "ai_smile",
-      "text": "수고하셨습니다. 첫 번째 거점을 완벽하게 수복했네요."
+      "text": "수고하셨습니다. 첫 번째 거점을 완벽하게 수복했네요.",
+      "music": "story12"
     },
     {
       "speaker": "MIRA",
@@ -81,14 +83,16 @@
       "speaker": "MIRA",
       "art": "commander_room2",
       "portrait": "ai",
-      "text": "이번 상대는 거리를 좁힐 틈을 주지 않을 것입니다. \n그에 맞춘 효과적인 전술이 필요해요."
+      "text": "이번 상대는 거리를 좁힐 틈을 주지 않을 것입니다. \n그에 맞춘 효과적인 전술이 필요해요.",
+      "music": "story12"
     }
   ],
   "post_2": [
     {
       "art": "commander_room2",
       "fx": "glitch",
-      "text": ""
+      "text": "",
+      "music": "story12"
     },
     {
       "speaker": "MIRA",
@@ -224,7 +228,6 @@
       "speaker": "MIRA",
       "art": "commander_room2",
       "portrait": "ai",
-      "music": "opening_theme",
       "text": "데이터 수집률 목표치에 근접했습니다.\n마지막 단계입니다, 지휘관님."
     }
   ],
