@@ -753,6 +753,18 @@ func _draw_hover(c: CanvasItem) -> void:
 		rows.append([UiText.t("hover.slot", "%d번") % (si + 1),
 			"%s - %s" % [String(cr.get("name", "")), String(cr.get("text", ""))],
 			Axes.color(ax) if ax != "" else UiKit.TEXT])
+	# 한 칸도 안 꽂은 개체면 그렇다고 적는다. 아무것도 안 적으면 플레이어는
+	# 표시가 고장 난 것인지 정말 없는 것인지 구별할 수 없다.
+	var has_mod := false
+	for cr2 in u.card_rules:
+		if not (cr2 as Dictionary).is_empty():
+			has_mod = true
+			break
+	if not has_mod:
+		rows.append([UiText.t("hover.mods", "전술"),
+			UiText.t("hover.no_mods", "꽂은 모듈이 없다 - 기본기로만 판단한다"),
+			UiKit.FAINT])
+
 	if u.special != "" and Specials.TABLE.has(u.special):
 		rows.append([UiText.t("hover.ult", "궁극기"),
 			"%s - %s" % [String(Specials.TABLE[u.special]["name"]),

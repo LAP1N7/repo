@@ -116,8 +116,13 @@ func setup(p_run: RunState) -> void:
 	# 노드는 남기고 보이지만 않게 한다. 지우면 배치를 다시 잡아야 한다.
 	btn_merge = _slab(bar, Vector2(784, BAR_Y), Vector2(236, 54), "", UiKit.GOOD)
 	btn_merge.pressed.connect(_on_merge_toggle)
-	btn_merge.visible = false
-	btn_merge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# ── 숨어 있었다 ──────────────────────────────────────────────────────
+	# visible = false 에 mouse_filter = IGNORE 로 만들어 놓고 어디서도 다시
+	# 켜지 않았다. 매 refresh 마다 라벨과 disabled 는 성실히 갱신하면서 정작
+	# 화면에는 없었던 것이다.
+	#
+	# 그래서 **모듈 합성도 궁극기 합성도 아예 도달할 수 없는 기능**이었다.
+	# 합칠 것이 없으면 꺼진 채로 두되, 있다는 사실은 보여야 한다.
 
 	# 보조 지휘는 정제 옆이다. 셋 다 "예산을 어디에 쓸까" 라서, 재검색·정제와
 	# 나란히 놓여야 같은 저울에 올려놓고 고르게 된다.

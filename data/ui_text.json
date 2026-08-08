@@ -278,5 +278,7 @@
   "hover.slot": "%d번",
   "hover.ult": "궁극기",
   "loadout.folder": "보유",
-  "state.merge_copies": "같은 궁극기가 %d장 필요합니다 (현재 %d장)"
+  "state.merge_copies": "같은 궁극기가 %d장 필요합니다 (현재 %d장)",
+  "hover.mods": "전술",
+  "hover.no_mods": "꽂은 모듈이 없다 - 기본기로만 판단한다"
 }

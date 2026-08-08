@@ -24,11 +24,18 @@ var tut: Tutorial = null
 ## 나란히 서면 우선순위 세 벌을 한눈에 비교할 수 있고, 그게 이 게임에서
 ## 편성 화면이 존재하는 이유다.
 ##
-##   x  40 ~ 424   배치 격자 · 대원 선택
-##   x 440 ~ 1240  대원 카드 3장 (254 폭, 266 간격)
-##   y 548 ~       보유 모듈
-const TILE: float = 66.0
-const GRID_AT := Vector2(48, 124)
+## ── 화면을 좌우로 가른다 ────────────────────────────────────────────────
+## 예전에는 보유 모듈이 화면 **바닥 전체**를 가로질렀다. 그래서 왼쪽 아래에
+## 있는 대원 선택 칸과 겹쳤고, 서류첩 판이 얼굴 타일 위로 올라앉았다.
+##
+## 성격이 다른 것을 같은 자리에 놓아서 생긴 문제다. 왼쪽은 **누구를 어디에
+## 세울까**, 오른쪽은 **무엇을 꽂을까** 다. 세로선 하나로 가르면 둘이 서로를
+## 침범할 수가 없고, 그만큼 각자 세로를 넉넉히 쓴다.
+##
+##   왼쪽  x  40 ~ 400   배치 격자 · 대원 선택   (둘만 둔다)
+##   오른쪽 x 424 ~ 1264  대원 카드 · 보유 모듈
+const TILE: float = 76.0
+const GRID_AT := Vector2(48, 128)
 
 ## 대원 카드
 const CARD_X: float = 440.0
@@ -40,17 +47,19 @@ const CARD_H: float = 360.0
 ## ── 대원 선택 ───────────────────────────────────────────────────────────
 ## 3열 2행. 한 줄에 여섯을 늘어놓으면 칸 하나가 62px 까지 좁아져 얼굴이
 ## 우표만 해진다. 두 줄로 접으면 같은 폭에서 칸이 두 배 가까이 커진다.
+## 왼쪽 절반을 통째로 쓰므로 칸을 키웠다. 얼굴을 보고 고르는 자리인데
+## 우표만 하면 고를 수가 없다.
 const PICK_X: float = 48.0
-const PICK_Y: float = 366.0
-const PICK_W: float = 116.0
-const PICK_H: float = 86.0
-const PICK_STEP: Vector2 = Vector2(122.0, 92.0)
+const PICK_Y: float = 428.0
+const PICK_W: float = 112.0
+const PICK_H: float = 104.0
+const PICK_STEP: Vector2 = Vector2(118.0, 112.0)
 const PICK_COLS: int = 3
 
-const HAND_Y: float = 526.0
-## 손패 서류첩이 시작하는 x 와 높이.
-const HAND_X: float = 76.0
-const HAND_H: float = 170.0
+## 서류첩은 오른쪽 절반에만 선다. 왼쪽 칸을 침범하지 않는 자리다.
+const HAND_Y: float = 520.0
+const HAND_X: float = 470.0
+const HAND_H: float = 174.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
@@ -165,6 +174,9 @@ func setup(p_run: RunState) -> void:
 	hand_edge.position = hand_clip.position
 	hand_edge.size = hand_clip.size
 	hand_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 카드가 z_index 를 올려 잡으므로 표시도 그보다 위여야 한다. 형제 순서만
+	# 믿으면 카드 밑으로 깔린다 - 실제로 그래서 화살표가 안 보였다.
+	hand_edge.z_index = 60
 	add_child(hand_edge)
 
 	# 유닛 종류 - 격자 아래 한 줄.
@@ -702,7 +714,10 @@ func _head(at: Vector2, text: String, parent: Node = null) -> void:
 	bar.size = Vector2(3, 16)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.add_child(bar)
-	UiKit.label(host, at + Vector2(11, 0), Vector2(520, 22), text, 15, UiKit.TEXT)
+	# 15 -> 17. 이 화면에서 유일한 구획 표시라, 본문과 크기가 비슷하면 구획이
+	# 안 읽힌다.
+	bar.size = Vector2(4, 20)
+	UiKit.label(host, at + Vector2(13, -1), Vector2(520, 26), text, 17, UiKit.TEXT)
 
 
 ## ── 얼굴 타일 ────────────────────────────────────────────────────────────
