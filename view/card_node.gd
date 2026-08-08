@@ -162,6 +162,19 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+## 둥근 모서리 한 귀. 폴리곤에 호 위의 점들을 이어 붙인다.
+##
+## StyleBoxFlat 는 반듯한 사각만 둥글게 해 준다. 오른쪽 위가 파인 모양은
+## 폴리곤으로 직접 그려야 하고, 그러면 모서리도 직접 굴려야 한다.
+func _arc_to(pts: PackedVector2Array, c: Vector2, rad: float,
+		a0: float, a1: float, inner: bool = false) -> void:
+	var steps := 6
+	for i in steps + 1:
+		var t := float(i) / float(steps)
+		var a: float = a0 + (a1 - a0) * t
+		pts.append(c + Vector2(cos(a), sin(a)) * (rad if not inner else rad))
+
+
 ## 규칙 카드와 특수 스킬은 표에서만 다르고 그리는 모양은 같은 뼈대를 쓴다.
 func is_special() -> bool:
 	return Specials.TABLE.has(card_id)
@@ -233,43 +246,44 @@ func _draw() -> void:
 	var neon := _neon(border)
 
 	# ── 프레임 ───────────────────────────────────────────────────────────
-	# 참조 그림을 90도 돌린 그대로다.
-	#
-	#   1) 모서리가 둥근 사각. 얇은 축색 테두리.
-	#   2) 오른쪽 위에 사선 평행사변형을 길게 다다다다 - 주황 해칭 띠.
-	#   3) 왼쪽 아래에 조금 진한 선 하나.
-	#
-	# 둥근 모서리는 StyleBoxFlat 로 그린다. draw_rect 에는 반지름이 없고,
-	# 폴리곤으로 흉내 내면 꼭짓점 수만큼 각이 져서 둥글게 안 보인다.
-	var radius: int = int(round(11.0 * k))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = body
-	sb.set_corner_radius_all(radius)
-	sb.set_border_width_all(int(max(1.0, round(1.4 * k))))
-	sb.border_color = Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.4)
-	draw_style_box(sb, Rect2(Vector2.ZERO, s))
+	# 참조 그림 그대로다.
+	#   · 모서리가 둥근 사각, 얇은 축색 테두리
+	#   · 오른쪽 위가 계단처럼 안으로 파이고(노치) 그 안에 주황 사선 띠
+	#   · 파인 자리 오른쪽 끝에 비용 배지가 걸친다
+	#   · 왼쪽 아래에 두꺼운 축색 선
+	var r := 14.0 * k                 # 모서리 반지름
+	var nh := 30.0 * k                # 노치 깊이
+	var nx := s.x * 0.52              # 노치가 시작하는 x
+	var pts := PackedVector2Array()
 
-	# 바깥 발광 한 겹. 같은 모서리로 조금 키워 아주 옅게 깐다.
-	var glow := StyleBoxFlat.new()
-	glow.bg_color = Color(0, 0, 0, 0)
-	glow.set_corner_radius_all(radius + int(2.0 * k))
-	glow.set_border_width_all(int(max(1.0, round(3.0 * k))))
-	glow.border_color = Color(neon.r, neon.g, neon.b, 0.10 if enabled else 0.03)
-	draw_style_box(glow, Rect2(Vector2(-2.0 * k, -2.0 * k), s + Vector2(4.0 * k, 4.0 * k)))
+	# 왼쪽 위 -> 노치 -> 오른쪽 위 -> 오른쪽 아래 -> 왼쪽 아래 순으로 돈다.
+	_arc_to(pts, Vector2(r, r), r, PI, PI * 1.5)          # 왼쪽 위
+	pts.append(Vector2(nx, 0))
+	pts.append(Vector2(nx, nh - r * 0.5))
+	_arc_to(pts, Vector2(nx + r * 0.5, nh), r * 0.5, PI, PI * 0.5, true)
+	pts.append(Vector2(s.x - r, nh))
+	_arc_to(pts, Vector2(s.x - r, nh + r), r, PI * 1.5, TAU)
+	pts.append(Vector2(s.x, s.y - r))
+	_arc_to(pts, Vector2(s.x - r, s.y - r), r, 0.0, PI * 0.5)
+	pts.append(Vector2(r, s.y))
+	_arc_to(pts, Vector2(r, s.y - r), r, PI * 0.5, PI)
 
-	# ── 오른쪽 위 해칭 띠 ────────────────────────────────────────────────
-	# 사선 평행사변형을 촘촘히 늘어놓는다. 참조 그림에서 이 띠가 블록의 성격을
-	# 결정한다 - 다른 장식을 다 빼도 이것만 있으면 같은 물건으로 읽힌다.
-	var band_h := 17.0 * k              # 띠 높이
-	var band_y := 5.0 * k
-	var band_x1 := s.x - 8.0 * k        # 오른쪽 끝
-	var band_x0 := s.x * 0.56           # 왼쪽 끝
-	var slant := 6.0 * k                # 위로 갈수록 오른쪽으로 밀리는 정도
-	var bar_w := 3.4 * k                # 막대 하나 폭
-	var bar_gap := 2.6 * k
+	draw_colored_polygon(pts, body)
+	var outline := PackedVector2Array(pts)
+	outline.append(pts[0])
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.35),
+		1.8 * k, true)
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 5.0 * k, true)
+
+	# ── 노치 안의 사선 띠 ────────────────────────────────────────────────
+	var band_y := 3.0 * k
+	var band_h := nh - 10.0 * k
+	var bar_w := 5.0 * k
+	var bar_gap := 4.0 * k
+	var slant := 7.0 * k
 	var hatch := Color(1.0, 0.42, 0.12, 0.95 if enabled else 0.25)
-	var hx := band_x0
-	while hx + bar_w + slant < band_x1:
+	var hx := nx + 10.0 * k
+	while hx + bar_w + slant < s.x - 34.0 * k:
 		draw_colored_polygon(PackedVector2Array([
 			Vector2(hx + slant, band_y),
 			Vector2(hx + slant + bar_w, band_y),
@@ -278,13 +292,9 @@ func _draw() -> void:
 		]), hatch)
 		hx += bar_w + bar_gap
 
-	# ── 왼쪽 아래 진한 선 ────────────────────────────────────────────────
-	# 참조 그림의 왼쪽 아래에 있는 밝은 선. 블록에 방향을 준다 - 왼쪽 아래가
-	# 시작점이고 오른쪽 위가 끝이라는 뜻이 된다.
-	var uw: float = s.x * 0.34
-	draw_line(Vector2(radius * 0.9, s.y - 2.5 * k),
-		Vector2(radius * 0.9 + uw, s.y - 2.5 * k),
-		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 2.4 * k)
+	# ── 왼쪽 아래 두꺼운 선 ──────────────────────────────────────────────
+	draw_line(Vector2(r, s.y - 3.0 * k), Vector2(r + s.x * 0.34, s.y - 3.0 * k),
+		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 5.0 * k)
 
 	# ── 글 ───────────────────────────────────────────────────────────────
 	var pad := 14.0 * k
@@ -302,14 +312,14 @@ func _draw() -> void:
 		Color(ccol.r, ccol.g, ccol.b, 0.95 if enabled else 0.5))
 
 	# 비용. 배지를 오른쪽 위 깎인 귀 아래에 놓는다.
-	var badge_r := 13.0 * k
-	var badge_at := Vector2(s.x - pad - badge_r + 2.0, 34.0 * k + badge_r - 8.0)
+	var badge_r := 17.0 * k
+	var badge_at := Vector2(s.x - badge_r - 5.0 * k, badge_r + 1.0 * k)
 	draw_circle(badge_at, badge_r, ccol if enabled else Color(0.3, 0.32, 0.38))
 	var cost_txt := str(cost)
-	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1,
-		int(12.0 * k) + 1).x
-	draw_string(fs, badge_at + Vector2(-cw * 0.5, 4.5 * k), cost_txt,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, int(12.0 * k) + 1, Color(0.06, 0.07, 0.1))
+	var cost_size: int = int(16.0 * k) + 1
+	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size).x
+	draw_string(fs, badge_at + Vector2(-cw * 0.5, 6.0 * k), cost_txt,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(0.06, 0.07, 0.1))
 
 	# 이름.
 	draw_string(f, Vector2(pad, 60.0 * k), String(c["name"]),

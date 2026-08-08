@@ -127,7 +127,7 @@ func setup(p_run: RunState) -> void:
 	lbl_note.visible = false
 	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
 	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
-	_head(self, Vector2(1030.0, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
+	_head(self, Vector2(1012.0, PREVIEW_Y - 30), UiText.t("shop.preview_head2", "적 배치"))
 	_head(self, Vector2(RIGHT_X, PREVIEW_Y - 30), UiText.t("shop.own_head", "보유 모듈"))
 	for i in OWN_FILTERS.size():
 		var fid := String(OWN_FILTERS[i])
@@ -136,7 +136,7 @@ func setup(p_run: RunState) -> void:
 		fb.size = Vector2(62, 22)
 		fb.idx = i
 		fb.label = UiText.t("loadout.filter_all", "전체") if fid == "all" 			else (UiText.t("loadout.filter_ult", "궁극기") if fid == "ult" 			else Axes.label(fid))
-		fb.tint = Color(0.55, 0.88, 1.0) if fid == "all" or fid == "ult" 			else Axes.color(fid)
+		fb.tint = Color(1.0, 0.62, 0.20) if fid == "ult" 			else (Color(0.55, 0.88, 1.0) if fid == "all" else Axes.color(fid))
 		fb.pressed_idx.connect(func(k: int):
 			own_filter = k
 			own_scroll = 0.0
@@ -874,7 +874,7 @@ func _build_preview() -> void:
 	var waves: Array = Stages.waves(st)
 	var shown: int = mini(waves.size(), PREVIEW_WAVES)
 
-	var x := 1030.0
+	var x := 1012.0
 	var y2 := PREVIEW_Y
 	for w in shown:
 		var b := _Preview.new()
@@ -887,7 +887,7 @@ func _build_preview() -> void:
 		b.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(b)
-		y2 += b.size.y + 12.0
+		x += b.size.x + 10.0
 
 	# 남은 파는 자리만 남긴다. 아예 안 그리면 "이게 전부" 로 읽힌다.
 	for w in range(shown, waves.size()):
@@ -900,7 +900,7 @@ func _build_preview() -> void:
 		h.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(h)
-		y2 += h.size.y + 12.0
+		x += h.size.x + 10.0
 
 
 func _on_buy(card: CardNode) -> void:
@@ -926,7 +926,7 @@ func _on_reroll() -> void:
 ## (DESIGN 2.4)은 "무엇이 오는가" 가 아니라 "무엇을 하려 하는가" 까지다.
 class _Preview extends Control:
 	const CUT: float = 12.0
-	const CELL: float = 30.0
+	const CELL: float = 22.0
 	const TOP: float = 30.0
 
 	var wave: int = 0

@@ -200,7 +200,7 @@ func setup(p_run: RunState) -> void:
 		fb.size = Vector2(70, 22)
 		fb.idx = i
 		fb.label = UiText.t("loadout.filter_all", "전체") if fid == "all" 			else (UiText.t("loadout.filter_ult", "궁극기") if fid == "ult" 			else Axes.label(fid))
-		fb.tint = Color(0.55, 0.88, 1.0) if fid == "all" or fid == "ult" 			else Axes.color(fid)
+		fb.tint = Color(1.0, 0.62, 0.20) if fid == "ult" 			else (Color(0.55, 0.88, 1.0) if fid == "all" else Axes.color(fid))
 		fb.pressed_idx.connect(func(k: int):
 			hand_filter = k
 			hand_scroll = 0.0

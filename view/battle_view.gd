@@ -442,10 +442,117 @@ func _draw_overlay(c: CanvasItem) -> void:
 ## 위에서 한눈에 읽힌다.
 ##
 ## 격자 위·유닛 아래에 그린다. 누가 그 칸에 서 있는지가 안 가려야 한다.
-func _draw_zones(_c: CanvasItem, _outline_only: bool = false) -> void:
-	# 사거리 범위 표시는 없앴다. 판 위에 얹히는 것이 하나 줄면 그만큼 대원과
-	# 표적선이 또렷해진다.
-	pass
+func _draw_zones(c: CanvasItem, outline_only: bool = false) -> void:
+	_zones_body(c, outline_only)
+
+
+func _zones_body(c: CanvasItem, outline_only: bool = false) -> void:
+	if battle == null:
+		return
+	for u in battle.units:
+		if not _shown_alive(u):
+			continue
+		var cells := _danger_cells(u)
+		if cells.is_empty():
+			continue
+		var edge: Color = COL_ALLY if u.team == Unit.TEAM_PLAYER else COL_FOE
+		# 도화선에 불이 붙었으면 진하게. 곧 터진다는 것이 가장 급한 정보다.
+		var hot: bool = u.fuse_ticks >= 0
+		var pulse: float = 0.72 + 0.28 * sin(Time.get_ticks_msec() / (110.0 if hot else 260.0))
+
+		# ── 구역은 **화면에 그려진 자리**를 따라간다 ─────────────────────
+		# 전투 코어는 틱이 끝나는 순간 pos 를 목적지로 바꾸는데 화면은 그 이동을
+		# 시간에 걸쳐 보여 준다. 칸 좌표로 구역을 그리면, 아직 걸어가는 중인
+		# 자폭체의 폭발 범위가 **이미 도착지에 가 있다.**
+		#
+		# 표적 화살표에서 같은 문제를 이미 겪었다(_live_pos 주석). 규칙은 pos 로,
+		# 화면은 화면으로 - 판 위에 그리는 것은 전부 같은 규칙을 따라야 한다.
+		var shift := _live_pos(u) - (BOARD_ORIGIN + tile_center(u.pos))
+
+		if not outline_only:
+			# ── 채움 + 빗금 ──────────────────────────────────────────────
+			# 반투명 채움만으로는 진영 표시(파랑·빨강 0.15)와 섞여 아무것도
+			# 안 보였다. 같은 자리에 색 두 겹을 얹으면 둘 다 죽는다.
+			# 빗금은 **무늬**라 색이 겹쳐도 살아남는다.
+			var fill := Color(u.color.r, u.color.g, u.color.b,
+				(0.22 if hot else 0.12) * pulse)
+			# ── 채우지 않는다 ───────────────────────────────────────────
+			# 칸을 색으로 채우고 빗금까지 그었더니 그 아래 진영 표시와 겹쳐
+			# 둘 다 안 보였다. 겹치는 색을 하나 더 얹는 것으로는 절대 안 풀린다.
+			#
+			# XCOM 계열이 쓰는 방법을 가져왔다 - **선으로 짠 상자**. 아주 옅은
+			# 채움 위에 밝은 테두리와 네 귀 갈고리만 남긴다. 색이 겹쳐도 선은
+			# 살아남고, 무엇보다 칸 경계가 또렷해 몇 칸인지 셀 수 있다.
+			# ── 판 위로 떠 있는 판때기 ───────────────────────────────────
+			# 명일방주 배치 화면의 사거리 표시는 격자 위에 **한 겹 더 놓인
+			# 판**이다. 옆면 두께가 보이고 그 아래로 그림자가 진다. 그래서
+			# 격자와 섞이지 않는다.
+			#
+			# 여기서도 같은 방법을 쓴다 - 8px 올리고, 올린 만큼 옆면을 채우고,
+			# 바닥에 그림자를 깐다. 선은 1px 로 얇게 - 굵으면 그 자체가 격자가
+			# 된다.
+			var lift := Vector2(0, -8.0)
+			for p in cells:
+				var base_q := cell_quad(p.x, p.y, 3.0)
+				for qi in base_q.size():
+					base_q[qi] += shift
+				var q := PackedVector2Array()
+				for pt in base_q:
+					q.append(pt + lift)
+				# 바닥 그림자.
+				var sh := PackedVector2Array()
+				for pt in base_q:
+					sh.append(pt + Vector2(0, 3.0))
+				c.draw_colored_polygon(sh, Color(0, 0, 0, 0.35))
+				# 옆면. 아래 두 변과 위 판을 잇는 띠 - 이게 두께다.
+				var side := Color(u.color.r, u.color.g, u.color.b, 0.20 * pulse)
+				c.draw_colored_polygon(PackedVector2Array([
+					q[3], q[2], base_q[2], base_q[3]]), side)
+				# 윗면.
+				c.draw_colored_polygon(q, Color(fill.r, fill.g, fill.b, fill.a * 0.7))
+				var lc := Color(u.color.r, u.color.g, u.color.b,
+					(0.9 if hot else 0.55) * pulse)
+				var ql := PackedVector2Array(q)
+				ql.append(q[0])
+				c.draw_polyline(ql, lc, 1.0, true)
+			continue
+
+		# ── 바깥 테두리만 ────────────────────────────────────────────────
+		# 칸마다 네모를 그리면 안쪽에 격자 무늬가 한 겹 더 생겨 지저분하다.
+		# 구역의 **경계**만 굵게 두른다. 이 층은 화살표보다 위라 절대 안 가린다.
+		var set: Dictionary = {}
+		for p in cells:
+			set[p] = true
+		# ── 도화선 카운트다운 ────────────────────────────────────────────
+		# 범위가 보이는 것과 "언제" 터지는지를 아는 것은 다른 문제다. 칸만 밝혀
+		# 두면 플레이어는 계속 위험한 줄 알고, 실제로 급한 한 틱을 놓친다.
+		if u.fuse_ticks >= 0:
+			# 머리 위 정가운데는 이름표가 쓴다. 오른쪽 어깨 위로 비켜 놓는다.
+			var at := _live_pos(u) + Vector2(UNIT_R * 0.75, -UNIT_R - 6.0)
+			var fs := UiKit.font(16)
+			var txt := str(maxi(0, u.fuse_ticks))
+			var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+			c.draw_circle(at, 13.0, Color(0.06, 0.07, 0.10, 0.9))
+			c.draw_arc(at, 13.0, 0.0, TAU, 20, Color(edge.r, edge.g, edge.b, 0.95), 2.0)
+			c.draw_string(fs, at + Vector2(-tw * 0.5, 6), txt,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UiKit.BAD)
+
+		# 선을 얇게. 굵으면 그 자체가 격자로 보인다.
+		var w := 1.6 if hot else 1.0
+		var col := Color(edge.r, edge.g, edge.b, (0.95 if hot else 0.6) * pulse)
+		for p in cells:
+			var q2 := cell_quad(p.x, p.y, 0.0)
+			for qi2 in q2.size():
+				q2[qi2] += shift
+			# q2 는 좌상 → 우상 → 우하 → 좌하 순이다.
+			if not set.has(p + Vector2i(0, -1)):
+				c.draw_line(q2[0], q2[1], col, w)
+			if not set.has(p + Vector2i(0, 1)):
+				c.draw_line(q2[3], q2[2], col, w)
+			if not set.has(p + Vector2i(-1, 0)):
+				c.draw_line(q2[0], q2[3], col, w)
+			if not set.has(p + Vector2i(1, 0)):
+				c.draw_line(q2[1], q2[2], col, w)
 
 
 ## 사각형 안에 사선 빗금. 색이 겹쳐도 무늬는 살아남는다.
