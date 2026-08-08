@@ -48,6 +48,34 @@ static var _ctx_target: Unit = null
 ## 어긋난다.
 const THREAT_ONLY: Array[String] = ["taunt", "aggressive", "stealth"]
 
+## ── 위협도가 표적 지정에 개입하는 문턱 ──────────────────────────────────
+## 표적 축과 위협도는 원래 만나지 않았다. 모듈이 있으면 모듈이 이기고, 위협도는
+## 모듈이 없을 때의 기본값일 뿐이었다. 그래서 표적 모듈을 든 적에게는 도발이
+## 아예 안 통했다.
+##
+## 그렇다고 위협도가 늘 이기게 하면 표적 축 16개가 통째로 장식이 된다.
+## 그래서 **문턱을 둘로 나눈다.**
+##
+##   HARD  표적 모듈이 지정을 마친 상태를 덮으려면 이만큼 필요하다.
+##         지정은 플레이어가 명시적으로 내린 명령이므로 쉽게 뒤집히면 안 된다.
+##   SOFT  지정이 없거나(기본기) 물러나려는 상황에서는 이만큼이면 된다.
+##         이미 확신이 없는 상태라 작은 신호로도 방향이 바뀌어야 자연스럽다.
+##
+## ── 값은 실측 분포에서 골랐다 ───────────────────────────────────────────
+## 한 판에서 나온 위협도 점수 5,262개의 분포:
+##
+##     -10~19  4,928 (94%)   평범한 상황
+##      20~29    ...         인접한 상대 (평균 22)
+##      30~49    148         도발 중 (평균 43)
+##      70~89    158         유인 신호기 (threat_base +70)
+##
+## HARD 30 - 도발과 신호기는 넘고 평범한 인접(22)은 못 넘는다. 지정을 덮는
+##           일이 드물게, 그러나 확실히 일어난다.
+## SOFT 18 - 인접한 상대는 넘고 멀리 있는 상대는 못 넘는다. "코앞의 위협은
+##           무시하지 않는다" 가 이 값의 뜻이다.
+const THREAT_HARD: int = 30
+const THREAT_SOFT: int = 18
+
 ## [광전] 이 붙는 위력 배수. 물러나지 않는 대신 받는 값이다.
 ## 1.3 은 기본기(70)를 91 로, 평타(100)를 130 으로 올린다 - 한 방이 눈에 띄게
 ## 커지되 궁극기(150~200)를 넘지는 않는 선이다.
@@ -251,30 +279,28 @@ static func _pick_target(unit: Unit, state, trace: Dictionary) -> Dictionary:
 		# "가장 가까운 적" 이었는데 그러면 도발도 은신도 아무 의미가 없다.
 		out = { "target": resolve_target(unit, "highest_threat_enemy", state, "attack") }
 
-	# ── 강제 유인은 지정을 덮는다 ────────────────────────────────────────
-	# 여기가 위협도와 표적 축이 만나는 유일한 자리다.
+	# ── 위협도가 개입한다 ────────────────────────────────────────────────
+	# 여기가 위협도와 표적 축이 만나는 자리다. 문턱은 **지금 지정이 얼마나
+	# 확실한가**에 따라 달라진다(THREAT_HARD / THREAT_SOFT 주석 참조).
 	#
-	# 예전에는 둘이 아예 안 만났다. 표적 모듈이 있으면 그것이 이기고, 위협도는
-	# **모듈이 없을 때의 기본값**일 뿐이었다. 그래서 표적 모듈을 든 적에게는
-	# 도발이 통하지 않았다 - 실측으로 스테이지 전체 적 42 중 16(38%)이 표적
-	# 모듈을 들고 있다. 그 적들에게 우리 방패병은 투명인간이었다.
+	#   모듈이 지정을 마쳤다   -> HARD. 명시적 명령이라 쉽게 안 뒤집힌다
+	#   기본기로 떨어졌다      -> SOFT. 이미 확신이 없는 상태다
 	#
-	# 그러면 "방패병이 붙잡는 동안 원거리가 갉는다" 는 전술 자체가 반쯤만
-	# 성립한다. 어떤 적에게는 되고 어떤 적에게는 안 되는데, 화면에는 그 차이가
-	# 안 나온다.
-	#
-	# 그래서 **도발만 예외로** 둔다. 선언한 강제 유인은 지정을 덮는다.
-	# 나머지 위협(거리 · 최근 타격 · 누적 피해)은 지금처럼 기본값으로만 쓴다.
-	# 전부 덮게 하면 표적 축 16개가 통째로 장식이 된다.
+	# 회복형(악사)의 아군 표적은 건드리지 않는다. 살릴 사람을 고르는 판단에
+	# 적의 위협도가 끼어들 이유가 없다.
 	var cur: Unit = out.get("target", null)
 	if cur == null or cur.team != unit.team:
-		var forced := _forced_target(unit, state)
-		if forced != null and (cur == null or cur.index != forced.index):
-			rows.append({ "slot": -1, "name": UiText.t("rule.forced", "강제 유인"),
-				"hit": true, "why": UiText.t("rule.forced_why", "적의 도발이 지정을 덮었다") })
+		var floor_: int = THREAT_HARD if not won.is_empty() else THREAT_SOFT
+		var top := _top_threat(unit, state)
+		var tu: Unit = top.get("unit", null)
+		if tu != null and int(top["score"]) >= floor_ 				and (cur == null or cur.index != tu.index):
+			rows.append({ "slot": -1, "name": UiText.t("rule.forced", "위협 개입"),
+				"hit": true,
+				"why": UiText.t("rule.forced_why", "위협도 %d 가 문턱 %d 를 넘었다")
+					% [int(top["score"]), floor_] })
 			# rule 과 slot 은 그대로 둔다. 표적만 바뀌었을 뿐 "이 대원은 적을
 			# 찾아간다" 는 선언은 유효하고, 화면도 그 슬롯이 걸린 것으로 읽는다.
-			out["target"] = forced
+			out["target"] = tu
 			out["forced"] = true
 
 	trace[Axes.TARGET] = rows
@@ -399,6 +425,16 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			var flee := int(ai["flee_within"])
 			# [광전]·[압박]은 물러나지 않는다. 추격 자세도 마찬가지다.
 			if stance == "engage" or stance == "close_in" or stand == "chase":
+				flee = 0
+			# ── 코앞의 위협은 등지지 않는다 ──────────────────────────────
+			# 궁수는 적이 붙으면 한 칸 물러나며 쏘는 것이 기본기다. 그런데
+			# 그 붙은 것이 **도발 중인 방패병**이거나 유인 신호기면, 물러나는
+			# 것이 오히려 상대가 원하는 그림이다.
+			#
+			# 문턱은 낮은 쪽(SOFT)을 쓴다. 물러나려는 상태는 이미 "이 대원이
+			# 무엇을 할지" 가 확정된 상태가 아니므로, 작은 신호로도 방향이
+			# 바뀌는 편이 자연스럽다.
+			if flee > 0 and Threat.score(unit, target) >= THREAT_SOFT:
 				flee = 0
 			if flee > 0 and dist <= flee:
 				var near := resolve_target(unit, "nearest_enemy", state, "")
@@ -569,25 +605,21 @@ static func follow_anchor(unit: Unit, state) -> Unit:
 	return null
 
 
-## 지금 강제 유인을 선언한 적. 없으면 null.
+## 지금 가장 위협적인 상대와 그 점수. { unit, score }
 ##
-## 여럿이면 위협도가 가장 높은 쪽. 동점은 index 로 끊는다 - 난수는 없다.
+## 동점은 index 로 끊는다 - 난수는 없다.
 ##
-## 판정은 **선언한 태세**로만 한다(threat_mod). 유인 신호기처럼 상시로 붙는
-## 값(threat_base)은 포함하지 않는다 - 그건 "높다" 이지 "강제" 가 아니고,
-## 신호기가 표적 모듈까지 덮으면 그 판은 신호기를 부수는 것 말고 할 일이
-## 없어진다.
-static func _forced_target(unit: Unit, state) -> Unit:
+## 점수에는 거리가 이미 들어 있다(Threat.PER_TILE). 그래서 "거리 비례 위협도"
+## 를 따로 계산할 필요가 없고, 멀리서 도발해 봐야 문턱을 못 넘는다.
+static func _top_threat(unit: Unit, state) -> Dictionary:
 	var best: Unit = null
 	var bs: int = -(1 << 30)
 	for e in state.living_enemies_of(unit):
-		if e.threat_mod < Threat.TAUNT:
-			continue
 		var sc := Threat.score(unit, e)
 		if sc > bs:
 			bs = sc
 			best = e
-	return best
+	return { "unit": best, "score": bs }
 
 
 ## 협력 축이 기준으로 삼는 아군. 없으면 null.
