@@ -13,21 +13,38 @@ signal command()
 ## 튜토리얼이 붙어 있으면 앵커를 등록하고 행동을 알린다. 없으면 전부 무시된다.
 var tut: Tutorial = null
 
-const SHOP_Y: float = 132.0
+## ── 화면을 좌우로 가른다 ────────────────────────────────────────────────
+## 카드 다섯 장이 화면 폭을 가로질러 한 줄로 누워 있었다. 그러면 남는 세로가
+## 전부 아래로 밀려서, 적 정보도 버튼도 손패도 아래쪽에 층층이 쌓인다.
+## 실제로 상점은 위에서 아래로 다섯 층짜리 화면이었다.
+##
+## 명일방주 작전 준비 화면의 어법을 가져왔다 - **왼쪽은 고르는 것, 오른쪽은
+## 아는 것**. 왼쪽에 살 카드를 모아 두고, 오른쪽에 적 정보와 조작을 둔다.
+## 눈이 좌우로 한 번만 움직이면 되고, 세로는 각자 넉넉해진다.
+##
+##   왼쪽  x  40 ~ 528   상점 카드 (3 + 2)
+##   오른쪽 x 560 ~ 1240  적 정보 · 조작 · 보유
+const SHOP_X: float = 40.0
+const SHOP_Y: float = 128.0
+const SHOP_GAP: float = 16.0
+const SHOP_COLS: int = 3
+
+## 오른쪽 열이 시작하는 x.
+const RIGHT_X: float = 560.0
 
 ## ── 적 배치 미리보기 ────────────────────────────────────────────────────
 ## 몇 파까지 보여 줄 것인가. 마지막 한 파는 남긴다 - 계획이 틀릴 여지가 있어야
 ## 페이즈가 문제로 남는다.
 const PREVIEW_WAVES: int = 2
-const PREVIEW_Y: float = 452.0
-const PREVIEW_W: float = 276.0
-const PREVIEW_H: float = 224.0
+const PREVIEW_Y: float = 158.0
+const PREVIEW_W: float = 292.0
+const PREVIEW_H: float = 300.0
 ## 상점 카드(156~352)와 안내문(366) 아래.
-const HAND_Y: float = 470.0
+const HAND_Y: float = 560.0
 
 ## 조작 버튼 줄의 y. 카드 아래끝(156+196=352)에서 넉넉히 띄운다.
 ## 카드는 호버하면 위로 떠오르므로 바짝 붙이면 손이 겹친다.
-const BAR_Y: float = 348.0
+const BAR_Y: float = 500.0
 
 var run: RunState
 
@@ -78,7 +95,9 @@ func setup(p_run: RunState) -> void:
 	# 숨기면 시행착오 게임이 되고, 공개하면 추리 게임이 된다. (DESIGN 2.4)
 	# 적 정보는 더 이상 글줄이 아니다. 아래 배치판이 통째로 맡는다 -
 	# "접근 → 교전 / 자폭 개체 2" 같은 요약은 이미 아는 사람에게만 읽힌다.
-	lbl_note = UiKit.label(self, Vector2(40, 96), Vector2(900, 22), "", 13, UiKit.MUTED)
+	lbl_note = UiKit.label(self, Vector2(RIGHT_X, 96), Vector2(680, 22), "", 13, UiKit.MUTED)
+	# 구획 머리말은 한 번만 만든다. refresh 에서 부르면 매번 라벨이 쌓인다.
+	_head(self, Vector2(SHOP_X, 92), UiText.t("shop.offer_head", "확보 가능"))
 
 	shop_root = Control.new()
 	shop_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -102,13 +121,13 @@ func setup(p_run: RunState) -> void:
 
 	# 카드는 SHOP_Y(156)에서 시작해 높이 196 이므로 352 에서 끝난다.
 	# 카드 아래 여백을 넉넉히 둬야 호버로 카드가 떠오를 때 버튼과 안 겹친다.
-	btn_reroll = _slab(bar, Vector2(40, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
+	btn_reroll = _slab(bar, Vector2(RIGHT_X, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
 	btn_reroll.pressed.connect(_on_reroll)
 
 
 	# 재검색 바로 옆이다. 둘 다 "예산을 어디에 쓸까" 라서 나란히 놓여야 같은
 	# 저울에 올려놓고 고르게 된다.
-	btn_command = _slab(bar, Vector2(288, BAR_Y), Vector2(236, 54),
+	btn_command = _slab(bar, Vector2(RIGHT_X + 248.0, BAR_Y), Vector2(236, 54),
 		UiText.t("shop.command", "보조 지휘  →"), Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func():
 		sfx.play("click")
@@ -122,7 +141,7 @@ func setup(p_run: RunState) -> void:
 	if tut != null:
 		tut.register_anchor("shop_command", btn_command)
 
-	lbl_hint = UiKit.label(bar, Vector2(40, BAR_Y + 62), Vector2(1000, 22),
+	lbl_hint = UiKit.label(bar, Vector2(RIGHT_X, BAR_Y + 60), Vector2(680, 22),
 		"", 12, UiKit.MUTED)
 
 	# 이 화면의 주 버튼이다. 채우고 빛을 흘려 목록의 한 칸이 아니게 만든다.
@@ -146,6 +165,7 @@ func refresh() -> void:
 	# 화면에 안 적히면 "버그인가?" 가 된다.
 	# 제외권이 몇 장 남았는지 안내문에 적는다. 카드마다 숫자가 붙지만,
 	# 지금 몇 장인지를 한 곳에서도 말해 줘야 "쓸까 말까" 를 결정할 수 있다.
+	lbl_budget.text = UiText.t("shop.budget", "예산  %d") % run.budget
 	lbl_hint.text = UiText.t("shop.hint",
 		"카드를 누르면 구매합니다. 예산은 다음 단계로 이월되지 않습니다.")
 	btn_reroll.disabled = not run.can_reroll()
@@ -182,15 +202,25 @@ func refresh() -> void:
 	btn_next.disabled = false
 
 
+## 구획 머리말. 짧은 색 막대 + 글자.
+##
+## 이 화면은 이제 왼쪽과 오른쪽이 서로 다른 일을 한다. 구획이 어디서 갈리는지
+## 표시가 없으면 그냥 요소가 흩어진 화면으로 보인다.
+func _head(parent: Node, at: Vector2, text: String) -> void:
+	var bar2 := ColorRect.new()
+	bar2.color = Color(0.55, 0.88, 1.0)
+	bar2.position = at + Vector2(0, 4)
+	bar2.size = Vector2(4, 18)
+	bar2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(bar2)
+	UiKit.label(parent, at + Vector2(13, -1), Vector2(520, 24), text, 16, UiKit.TEXT)
+
+
 func _build_shop() -> void:
 	for c in shop_root.get_children():
 		c.queue_free()
 
 	var total := run.offers.size()
-	var gap := 18.0
-	var w := CardNode.W
-	var span := total * w + (total - 1) * gap
-	var x0 := (1280.0 - span) * 0.5
 
 	for i in total:
 		var cid: String = run.offers[i]
@@ -205,7 +235,12 @@ func _build_shop() -> void:
 			# "얼마가 더 있어야 사는가" 하나다.
 			card.note = UiText.t("shop.note_poor", "예산 %d 부족") % (
 				run.price_of(cid) - run.budget)
-		card.place(Vector2(x0 + i * (w + gap), SHOP_Y))
+		# 3 + 2 두 줄. 한 줄로 늘어놓으면 왼쪽 열을 넘어간다.
+		var col := i % SHOP_COLS
+		var row := i / SHOP_COLS
+		card.place(Vector2(
+			SHOP_X + float(col) * (CardNode.W + SHOP_GAP),
+			SHOP_Y + float(row) * (CardNode.H + SHOP_GAP)))
 		card.clicked.connect(_on_buy)
 		if tut != null:
 			tut.register_anchor("shop_card_%d" % i, card)
@@ -723,11 +758,10 @@ func _build_preview() -> void:
 	var waves: Array = Stages.waves(st)
 	var shown: int = mini(waves.size(), PREVIEW_WAVES)
 
-	UiKit.label(preview_root, Vector2(40, PREVIEW_Y - 26), Vector2(600, 22),
-		UiText.t("shop.preview_head", "적 배치  -  개체에 마우스를 올리면 알고리즘이 보입니다"),
-		13, UiKit.MUTED)
+	_head(preview_root, Vector2(RIGHT_X, PREVIEW_Y - 30),
+		UiText.t("shop.preview_head2", "적 배치"))
 
-	var x := 40.0
+	var x := RIGHT_X
 	for w in shown:
 		var b := _Preview.new()
 		b.position = Vector2(x, PREVIEW_Y)
@@ -737,7 +771,7 @@ func _build_preview() -> void:
 		b.title = UiText.t("shop.preview_wave", "%d 페이즈") % (w + 1)
 		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		preview_root.add_child(b)
-		x += PREVIEW_W + 18.0
+		x += PREVIEW_W + 16.0
 
 	# 남은 파는 자리만 남긴다. 아예 안 그리면 "이게 전부" 로 읽힌다.
 	for w in range(shown, waves.size()):

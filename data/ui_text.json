@@ -273,12 +273,14 @@
   "state.merge_max": "이미 최대 단계입니다",
   "hover.slot": "%d번",
   "hover.ult": "궁극기",
-  "loadout.folder": "보유",
+  "loadout.folder": "보유 모듈",
   "state.merge_copies": "같은 궁극기가 %d장 필요합니다 (현재 %d장)",
   "hover.mods": "전술",
   "hover.no_mods": "장착한 모듈이 없다.",
   "cmd.merge_head": "합성",
   "cmd.merge_sub": "같은 것 2장 + 예산으로 한 단계 올립니다.",
   "cmd.merge_none": "같은 것을 두 장 가진 모듈이 없습니다.",
-  "cmd.merge_do": "2장을 1장으로 합칩니다 (-%d)"
+  "cmd.merge_do": "2장을 1장으로 합칩니다 (-%d)",
+  "shop.preview_head2": "적 배치",
+  "shop.offer_head": "확보 가능"
 }

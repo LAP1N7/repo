@@ -154,14 +154,14 @@ func setup(p_run: RunState) -> void:
 	# 창 안에서 흐르는 것이 되어 서류첩을 넘기는 동작이 된다.
 	hand_folder = _Folder.new()
 	var folder := hand_folder
-	folder.position = Vector2(HAND_X - 46.0, HAND_Y - 12.0)
-	folder.size = Vector2(1280.0 - HAND_X + 30.0, HAND_H + 24.0)
+	folder.position = Vector2(HAND_X - 16.0, HAND_Y - 34.0)
+	folder.size = Vector2(1280.0 - HAND_X, HAND_H + 46.0)
 	folder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(folder)
 
 	hand_clip = Control.new()
-	hand_clip.position = Vector2(HAND_X, HAND_Y - 12.0)
-	hand_clip.size = Vector2(1280.0 - HAND_X - 16.0, HAND_H + 24.0)
+	hand_clip.position = Vector2(HAND_X - 4.0, HAND_Y - 6.0)
+	hand_clip.size = Vector2(1280.0 - HAND_X - 20.0, HAND_H + 12.0)
 	hand_clip.clip_contents = true
 	# 휠을 받아야 하므로 STOP 이다. IGNORE 면 이 영역 위에서 굴려도 안 잡힌다.
 	hand_clip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -521,6 +521,9 @@ func _build_hand() -> void:
 	var view_w: float = hand_clip.size.x
 	hand_scroll_max = maxf(0.0, span - view_w + 24.0)
 	hand_scroll = clampf(hand_scroll, 0.0, hand_scroll_max)
+	if hand_folder != null:
+		(hand_folder as _Folder).count = n
+		hand_folder.queue_redraw()
 	if hand_edge != null:
 		(hand_edge as _HandEdge).more_left = hand_scroll > 1.0
 		(hand_edge as _HandEdge).more_right = hand_scroll < hand_scroll_max - 1.0
@@ -613,37 +616,51 @@ func _on_hand_clicked(card: CardNode) -> void:
 ## 오른쪽 끝에는 더 있다는 표시를 남긴다. 잘린 자리에 아무 표시가 없으면
 ## 플레이어는 그게 전부인 줄 안다.
 class _Folder extends Control:
-	## 오른쪽에 더 남았는가. 화면이 매 프레임 넣어 준다.
-	var more_right: bool = false
-	var more_left: bool = false
-
-	const TAB_W: float = 40.0
+	const TAB_W: float = 44.0
 	const BLUE := Color(0.36, 0.72, 1.0)
 
+	## 지금 몇 장인가. 머리띠에 적는다.
+	var count: int = 0
+
+	## ── 소녀전선 계열 장비/제대 칸의 어법 ────────────────────────────────
+	## 그쪽 하단 목록은 "판 위에 카드가 놓여 있다" 가 아니라 **서랍이 열려 있고
+	## 그 안에 물건이 꽂혀 있다** 로 보인다. 그 인상을 만드는 것은 셋이다.
+	##
+	##   1) 위쪽 머리띠   목록 전체를 가로지르는 얇은 띠. 여기에 이름과 수를
+	##                    적는다. 카드마다 적으면 목록이 글자로 덮인다.
+	##   2) 왼쪽 색 기둥  띠와 같은 색으로 세로로 내린다. 목록의 시작점이
+	##                    한 줄로 정해져서 카드가 몇 장이든 왼쪽이 안 흔들린다.
+	##   3) 바닥 홈       카드가 놓이는 자리에 옅은 가로 홈. 카드가 **꽂혀
+	##                    있는** 것으로 읽힌다.
+	##
+	## 사선 절삭은 안 쓴다. 이 화면에 이미 사선 판이 여럿이라 하나 더 얹으면
+	## 어법이 아니라 버릇이 된다.
 	func _draw() -> void:
 		var s := size
-		# ── 사선을 뺐다 ──────────────────────────────────────────────────
-		# 모서리를 깎은 판이 화면에 이미 예닐곱 개 있다. 하나 더 얹으니 어법이
-		# 아니라 버릇으로 보였다. 여기는 반듯한 사각 하나로 두고, 성격은
-		# **왼쪽 세로 띠와 위쪽 얇은 선**으로만 낸다.
-		draw_rect(Rect2(TAB_W, 0, s.x - TAB_W, s.y), Color(0.05, 0.065, 0.09, 0.94))
-		# 위쪽 한 줄만 밝게. 판이 아래로 이어지는 서랍처럼 읽힌다.
-		draw_rect(Rect2(TAB_W, 0, s.x - TAB_W, 1), Color(BLUE.r, BLUE.g, BLUE.b, 0.45))
-		draw_rect(Rect2(TAB_W, s.y - 1, s.x - TAB_W, 1), Color(0, 0, 0, 0.5))
+		# 판.
+		draw_rect(Rect2(0, 0, s.x, s.y), Color(0.045, 0.058, 0.082, 0.96))
 
-		# 세로 탭. 색 띠 하나와 글자뿐이다.
-		draw_rect(Rect2(0, 0, TAB_W, s.y), Color(0.07, 0.17, 0.28, 0.96))
-		draw_rect(Rect2(0, 0, 3, s.y), BLUE)
+		# 머리띠. 목록의 이름과 수가 여기 산다.
+		var band := 26.0
+		draw_rect(Rect2(0, 0, s.x, band), Color(0.075, 0.135, 0.20, 0.98))
+		draw_rect(Rect2(0, band - 1.0, s.x, 1), Color(BLUE.r, BLUE.g, BLUE.b, 0.55))
+		# 왼쪽 색 기둥. 머리띠에서 바닥까지 한 줄로 내린다.
+		draw_rect(Rect2(0, 0, 4, s.y), BLUE)
 
-		# 세로로 쓴 "보유". draw_string 은 세로쓰기를 안 해 주므로 한 자씩 쌓는다.
 		var f := UiKit.font(12)
-		var word := UiText.t("loadout.folder", "보유")
-		var y := (s.y - float(word.length()) * 18.0) * 0.5 + 14.0
-		for i in word.length():
-			draw_string(f, Vector2(14, y), word[i], HORIZONTAL_ALIGNMENT_LEFT,
-				-1, 13, Color(0.82, 0.92, 1.0))
-			y += 18.0
+		draw_string(f, Vector2(16, 18), UiText.t("loadout.folder", "보유 모듈"),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.86, 0.94, 1.0))
+		var num := str(count)
+		draw_string(f, Vector2(s.x - 18.0 - f.get_string_size(
+			num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, 18), num,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.80, 0.42))
 
+		# 바닥 홈. 카드가 꽂히는 자리를 얕게 판다.
+		var slot_y := band + 8.0
+		draw_rect(Rect2(10, slot_y, s.x - 20.0, s.y - slot_y - 8.0),
+			Color(0.02, 0.03, 0.05, 0.55))
+		draw_rect(Rect2(10, s.y - 9.0, s.x - 20.0, 1),
+			Color(BLUE.r, BLUE.g, BLUE.b, 0.18))
 
 
 ## ── 잘린 자리 표시 ───────────────────────────────────────────────────────
