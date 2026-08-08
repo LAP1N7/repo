@@ -42,7 +42,9 @@ const CARD_X: float = 440.0
 const CARD_W: float = 254.0
 const CARD_STEP: float = 266.0
 const CARD_Y: float = 116.0
-const CARD_H: float = 360.0
+## 360 -> 330. 카드 아래쪽 절반이 "비어 있음" 세 줄과 여백뿐이라, 그만큼
+## 서류첩이 화면 밖으로 밀려났다.
+const CARD_H: float = 330.0
 
 ## ── 대원 선택 ───────────────────────────────────────────────────────────
 ## 3열 2행. 한 줄에 여섯을 늘어놓으면 칸 하나가 62px 까지 좁아져 얼굴이
@@ -57,9 +59,9 @@ const PICK_STEP: Vector2 = Vector2(118.0, 112.0)
 const PICK_COLS: int = 3
 
 ## 서류첩은 오른쪽 절반에만 선다. 왼쪽 칸을 침범하지 않는 자리다.
-const HAND_Y: float = 520.0
+const HAND_Y: float = 496.0
 const HAND_X: float = 470.0
-const HAND_H: float = 174.0
+const HAND_H: float = 196.0
 
 ## 손패 카드 배율. 상점(0.72)보다 크게 잡는다 - 여기서는 **읽고 고르는** 것이
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
@@ -236,11 +238,11 @@ func refresh() -> void:
 		lbl_warn.add_theme_color_override("font_color", UiKit.BAD)
 		lbl_warn.visible = true
 	else:
-		# 막지는 않는다. 기본기만으로도 싸울 수 있으니 알려만 준다.
-		var bare := run.bare_units()
-		lbl_warn.visible = not bare.is_empty()
-		lbl_warn.text = UiText.t("loadout.m01", "%s 는 카드 없이 기본기만으로 싸운다.") % ", ".join(bare)
-		lbl_warn.add_theme_color_override("font_color", UiKit.MUTED)
+		# ── 알려 주지 않는다 ────────────────────────────────────────────
+		# "궁수, 악사 는 모듈이 없습니다" 를 띄우고 있었다. 그런데 그 사실은
+		# 바로 오른쪽 카드에 "1. 비어 있음" 으로 이미 세 줄이나 적혀 있다.
+		# 같은 말을 두 번 하면 두 번째는 안 읽히고 자리만 먹는다.
+		lbl_warn.visible = false
 
 
 # ── 진영 격자 ────────────────────────────────────────────────────────────
@@ -328,10 +330,6 @@ func _on_slot_remove(member: int) -> void:
 func _build_roster() -> void:
 	for c in roster_root.get_children():
 		c.queue_free()
-
-	UiKit.label(roster_root, Vector2(CARD_X, 82), Vector2(700, 22),
-		UiText.t("loadout.slots_head", "규칙 슬롯 - 위에서부터 처음 맞는 규칙 하나가 실행된다"),
-		14, UiKit.MUTED)
 
 	if run.roster.is_empty():
 		UiKit.label(roster_root, Vector2(CARD_X, CARD_Y + 20), Vector2(600, 22),
@@ -624,44 +622,27 @@ class _Folder extends Control:
 
 	func _draw() -> void:
 		var s := size
-		# 판. 탭 오른쪽부터.
-		var cut := 12.0
-		var body := PackedVector2Array([
-			Vector2(TAB_W, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
-			Vector2(s.x - cut, s.y), Vector2(TAB_W, s.y),
-		])
-		draw_colored_polygon(body, Color(0.055, 0.075, 0.105, 0.92))
-		var line := PackedVector2Array(body)
-		line.append(body[0])
-		draw_polyline(line, Color(BLUE.r, BLUE.g, BLUE.b, 0.30), 1.0, true)
+		# ── 사선을 뺐다 ──────────────────────────────────────────────────
+		# 모서리를 깎은 판이 화면에 이미 예닐곱 개 있다. 하나 더 얹으니 어법이
+		# 아니라 버릇으로 보였다. 여기는 반듯한 사각 하나로 두고, 성격은
+		# **왼쪽 세로 띠와 위쪽 얇은 선**으로만 낸다.
+		draw_rect(Rect2(TAB_W, 0, s.x - TAB_W, s.y), Color(0.05, 0.065, 0.09, 0.94))
+		# 위쪽 한 줄만 밝게. 판이 아래로 이어지는 서랍처럼 읽힌다.
+		draw_rect(Rect2(TAB_W, 0, s.x - TAB_W, 1), Color(BLUE.r, BLUE.g, BLUE.b, 0.45))
+		draw_rect(Rect2(TAB_W, s.y - 1, s.x - TAB_W, 1), Color(0, 0, 0, 0.5))
 
-		# 세로 탭. 위쪽이 사선으로 깎인 종이 귀다.
-		var tab := PackedVector2Array([
-			Vector2(0, 14), Vector2(14, 0), Vector2(TAB_W, 0),
-			Vector2(TAB_W, s.y), Vector2(0, s.y),
-		])
-		draw_colored_polygon(tab, Color(0.09, 0.22, 0.36, 0.95))
-		var tl := PackedVector2Array(tab)
-		tl.append(tab[0])
-		draw_polyline(tl, Color(BLUE.r, BLUE.g, BLUE.b, 0.75), 1.0, true)
-		draw_rect(Rect2(TAB_W - 2.0, 0, 2, s.y), BLUE)
+		# 세로 탭. 색 띠 하나와 글자뿐이다.
+		draw_rect(Rect2(0, 0, TAB_W, s.y), Color(0.07, 0.17, 0.28, 0.96))
+		draw_rect(Rect2(0, 0, 3, s.y), BLUE)
 
-		# 세로로 쓴 "보유". 글자를 한 자씩 내려 쌓는다 - draw_string 은 세로쓰기를
-		# 안 해 준다.
+		# 세로로 쓴 "보유". draw_string 은 세로쓰기를 안 해 주므로 한 자씩 쌓는다.
 		var f := UiKit.font(12)
 		var word := UiText.t("loadout.folder", "보유")
-		var y := 26.0
+		var y := (s.y - float(word.length()) * 18.0) * 0.5 + 14.0
 		for i in word.length():
-			draw_string(f, Vector2(11, y), word[i], HORIZONTAL_ALIGNMENT_LEFT,
-				-1, 13, Color(0.78, 0.90, 1.0))
-			y += 17.0
-
-		# 서류 가장자리. 얕은 가로줄 몇 개면 "겹쳐 꽂힌 종이" 로 읽힌다.
-		for i in 7:
-			var yy := 26.0 + float(i) * 9.0
-			if yy > s.y - 12.0:
-				break
-			draw_rect(Rect2(TAB_W + 6.0, yy, 12, 1), Color(BLUE.r, BLUE.g, BLUE.b, 0.25))
+			draw_string(f, Vector2(14, y), word[i], HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 13, Color(0.82, 0.92, 1.0))
+			y += 18.0
 
 
 

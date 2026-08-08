@@ -155,18 +155,6 @@ func start_tutorial() -> void:
 	run.fixed_offers = ["near_first", "keep_range", "guard_stance",
 		"execute", "front_line"] as Array[String]
 	run.budget = 12
-	# ── 정제권 한 장 ────────────────────────────────────────────────────
-	# 대본이 "[제외] 를 누르십시오" 라고 시키는데 정제권이 0 이라 버튼이
-	# 꺼져 있었다. 시키는 대로 해도 안 되는 튜토리얼은 튜토리얼이 아니다.
-	#
-	# 딱 한 장만 준다. 그리고 그 한 장을 엉뚱한 카드에 쓰는 일은 대본이
-	# 막는다 - 앞 두 대사는 gate 가 걸려 있고 앵커가 카드 본체(shop_card_0/1)
-	# 라, 그동안 [제외] 버튼은 아예 안 눌린다. 눌리는 순간은 앵커가
-	# shop_ban_2 인 그 대사 하나뿐이다.
-	#
-	# 튜토리얼이 끝나면 start_run() 이 refine_tokens 를 0 으로 되돌리므로
-	# 본편으로 새어 나가지 않는다.
-	run.refine_tokens = 1
 	run.offers.clear()
 	run._fill_offers()
 	tut.load_script()

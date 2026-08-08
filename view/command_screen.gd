@@ -120,6 +120,11 @@ func refresh() -> void:
 
 		# 확률은 항목이 하나뿐이라 기둥 아래가 통째로 빈다. 실험용 장치를
 		# 그 자리에 넣는다 - 둘 다 "무엇이 나오게 할 것인가" 라 성격도 맞는다.
+		# 합성은 경제 기둥 아래다. 예산과 보유 장수를 같이 치르는 조작이라
+		# "무엇을 살까" 와 같은 저울에 올라간다.
+		if group == "경제":
+			_merge_section(Vector2(cx, y + 10.0), colw - 12.0)
+
 		if group == "확률":
 			# ── 궁극기 합성은 여기 없다 ──────────────────────────────────
 			# 잠깐 이 위에 뒀다가 뺐다. 궁극기 여섯 줄이 들어오니 실험용 장치가
@@ -169,6 +174,107 @@ func _process(delta: float) -> void:
 func _on_buy(id: String) -> void:
 	lbl_note.text = run.command_buy(id)
 	refresh()
+
+
+## ── 합성 ────────────────────────────────────────────────────────────────
+## 같은 것을 두 장 들고 있으면 한 장을 소모해 한 단계 올린다. 모듈도 궁극기도
+## 같은 규칙이다.
+##
+## 상점에 있던 것을 여기로 옮겼다. 상점은 "무엇을 살까" 하나만 묻는 화면이어야
+## 하는데 사고·버리고·합치는 조작이 한 줄에 다 붙어 있어서, 정작 살 카드가
+## 화면에서 세 번째로 읽혔다.
+func _merge_section(at: Vector2, w: float) -> void:
+	var head := _Pillar.new()
+	head.position = at
+	head.size = Vector2(w, _Pillar.H)
+	head.title = UiText.t("cmd.merge_head", "합성")
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(head)
+
+	UiKit.label(root, Vector2(at.x + 4, at.y + _Pillar.H + 6.0), Vector2(w - 8, 30),
+		UiText.t("cmd.merge_sub", "같은 것 2장 + 예산으로 한 단계 올립니다."),
+		10, UiKit.MUTED, true)
+
+	# 두 장 이상 가진 것만 줄로 세운다. 없으면 그렇다고 적는다 - 빈 자리는
+	# 기능이 없는 것인지 조건이 안 맞는 것인지 알려 주지 않는다.
+	var seen: Dictionary = {}
+	var rows: Array[String] = []
+	for cid in run.hand:
+		var k := String(cid)
+		if not seen.has(k) and run.copies_of(k) >= Cards.MERGE_COPIES:
+			seen[k] = true
+			rows.append(k)
+	for sid in run.special_hand:
+		var k2 := String(sid)
+		if not seen.has(k2) and run.special_copies_of(k2) >= Specials.MERGE_COPIES:
+			seen[k2] = true
+			rows.append(k2)
+
+	var y := at.y + _Pillar.H + 40.0
+	if rows.is_empty():
+		UiKit.label(root, Vector2(at.x + 4, y), Vector2(w - 8, 36),
+			UiText.t("cmd.merge_none", "같은 것을 두 장 가진 모듈이 없습니다."),
+			11, UiKit.FAINT, true)
+		return
+
+	for id in rows:
+		var b := _Merge.new()
+		b.position = Vector2(at.x, y)
+		b.size = Vector2(w, 32)
+		b.id = id
+		var sp := RunState.is_special(id)
+		b.label = String(Specials.TABLE[id]["name"]) if sp else String(Cards.TABLE[id]["name"])
+		b.level = run.special_level(id) if sp else run.card_level(id)
+		b.max_level = Specials.MERGE_MAX if sp else Cards.MAX_LEVEL
+		b.price = run.merge_price(id)
+		b.enabled = run.can_merge(id)
+		b.tint = Color(1.0, 0.72, 0.30) if sp else Axes.color(String(Cards.TABLE[id].get("axis", "")))
+		b.tooltip_text = run.merge_blocker(id) if not b.enabled 			else UiText.t("cmd.merge_do", "2장을 1장으로 합칩니다 (-%d)") % b.price
+		b.pressed_id.connect(func(mid: String):
+			if run.merge(mid):
+				lbl_note.text = ""
+			else:
+				lbl_note.text = run.merge_blocker(mid)
+			refresh()
+		)
+		root.add_child(b)
+		y += 36.0
+
+
+## 합성 한 줄. 이름 · 단계 눈금 · 값.
+class _Merge extends Button:
+	var id: String = ""
+	var label: String = ""
+	var level: int = 1
+	var max_level: int = 3
+	var price: int = 0
+	var enabled: bool = true
+	var tint: Color = UiKit.ACCENT
+
+	signal pressed_id(id: String)
+
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		disabled = not enabled
+		pressed.connect(func(): pressed_id.emit(id))
+
+	func _draw() -> void:
+		var s := size
+		var dim: float = 1.0 if enabled else 0.45
+		draw_rect(Rect2(0, 0, s.x, s.y - 4), Color(0.10, 0.11, 0.14, 0.9))
+		draw_rect(Rect2(0, 0, 3, s.y - 4), Color(tint.r, tint.g, tint.b, dim))
+		var f := UiKit.font(12)
+		draw_string(f, Vector2(12, 19), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			Color(0.90, 0.92, 0.96, dim))
+		for i in max_level:
+			draw_rect(Rect2(s.x - 76.0 + float(i) * 10.0, 9, 7, 7),
+				Color(tint.r, tint.g, tint.b, 0.95) if i < level
+				else Color(0.35, 0.38, 0.46, 0.6))
+		draw_string(f, Vector2(s.x - 34.0, 19), "-%d" % price,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.80, 0.42, dim))
 
 
 ## ── 실험용 장치 ──────────────────────────────────────────────────────────

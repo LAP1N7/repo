@@ -11,7 +11,6 @@ var checks: int = 0
 func _init() -> void:
 	print("=== 덱 구성 · 편성 검증 ===\n")
 	test_shop()
-	test_ban()
 	test_escalating_cost()
 	test_run_reset()
 	test_growth_curve()
@@ -26,7 +25,6 @@ func _init() -> void:
 	test_shadowing()
 	test_tutorial()
 	test_command()
-	test_ban_tokens()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, failures])
 	quit(1 if failures > 0 else 0)
 
@@ -115,41 +113,6 @@ func test_shop() -> void:
 		if poor.can_buy(i) and poor.cost_of(poor.offers[i]) != 0:
 			only_free = false
 	ok(only_free, "예산 0이면 코스트 0 카드만 살 수 있다", str(any_affordable))
-
-
-func test_ban() -> void:
-	print("\n[2] 카드 추방")
-	var r := fresh()
-	# 제외는 정제권을 쓴다. 넉넉히 주고 나머지 동작을 본다 -
-	# 정제권이 없을 때의 동작은 [10] 에서 따로 잰다.
-	r.refine_tokens = 9
-	var victim: String = r.offers[0]
-
-	ok(r.ban(0), "추방 성공")
-	ok(r.banned.has(victim), "추방 목록에 등록")
-	ok(r.offers[0] == "", "그 자리는 비운다")
-	ok(not r.pool().has(victim), "풀에서 제거")
-
-	# 리롤을 여러 번 해도 다시는 안 나와야 한다. 이게 추방의 유일한 의미다.
-	var seen := false
-	for _i in 30:
-		r.budget = 99
-		r.reroll()
-		if r.offers.has(victim):
-			seen = true
-	ok(not seen, "리롤 30회에도 추방 카드는 안 나옴", victim)
-
-	# 전부 추방하면 제시가 비어야 하고 리롤도 막혀야 한다 (무한 루프 방지)
-	var r2 := fresh()
-	r2.refine_tokens = 9
-	for cid in Cards.deck_order():
-		r2.banned[cid] = true
-	for sid in Specials.ORDER:
-		r2.banned[sid] = true
-	r2.budget = 99
-	ok(r2.pool().is_empty(), "전부 추방 시 카드 풀이 빔")
-	ok(r2.special_pool().is_empty(), "특수 풀도 빔")
-	ok(not r2.can_reroll(), "양쪽 풀이 다 비면 리롤 불가")
 
 
 func test_escalating_cost() -> void:
@@ -347,7 +310,7 @@ func test_stage_rewards() -> void:
 	ok(RunState.reward_budget(5) > RunState.reward_budget(1),
 		"보상 예산이 스테이지에 따라 는다",
 		"%d → %d" % [RunState.reward_budget(1), RunState.reward_budget(5)])
-	ok(RunState.reward_tokens(5) >= RunState.reward_tokens(1), "정제권도 줄지 않는다")
+	ok(RunState.reward_bonus(5) >= RunState.reward_bonus(1), "보너스 예산도 줄지 않는다")
 
 	# ── 경제 보상이 다음 스테이지까지 살아남는가 ──────────────────────────
 	# start() 가 budget 을 재계산하기 때문에, 예전엔 보상으로 받은 예산이
@@ -629,7 +592,6 @@ func test_run_progression() -> void:
 	var deck_before := r.hand.size()
 	r.on_stage_cleared()
 	r.apply_upgrade("warrior")
-	r.refine_tokens += 2
 
 	ok(r.advance(), "다음 스테이지로 진행")
 	ok(r.stage_id == 2, "스테이지 2", str(r.stage_id))
@@ -639,7 +601,6 @@ func test_run_progression() -> void:
 		"덱이 유지된다 (편성 해제로 꽂았던 카드도 복귀)", str(r.hand.size()))
 	ok(r.special_hand.has("unyielding"), "특수도 손패로 복귀해 유지된다", str(r.special_hand))
 	ok(r.upgrade_level("warrior") == 1, "유닛 강화가 유지된다")
-	ok(r.refine_tokens == 2, "정제권이 유지된다")
 	ok(r.cleared == 1, "클리어 수가 누적된다")
 
 	# ── 사라져야 하는 것
@@ -669,15 +630,6 @@ func test_run_progression() -> void:
 	ok(r.upgrade_level("warrior") == RunState.MAX_UPGRADE,
 		"강화 상한 %d 를 넘지 않는다" % RunState.MAX_UPGRADE, str(r.upgrade_level("warrior")))
 	ok(not r.can_upgrade("warrior"), "만렙이면 더 못 올린다")
-
-	# 정제
-	var n_before := r.hand.size()
-	var tok := r.refine_tokens
-	ok(r.refine(r.hand[0]), "정제로 카드를 버린다")
-	ok(r.hand.size() == n_before - 1, "덱에서 실제로 사라진다")
-	ok(r.refine_tokens == tok - 1, "정제권을 1장 쓴다")
-	r.refine_tokens = 0
-	ok(not r.refine(r.hand[0]), "정제권이 없으면 못 버린다")
 
 	# 마지막 스테이지에서는 더 못 간다
 	var last := RunState.new()
@@ -907,34 +859,3 @@ func test_command() -> void:
 	ok(a.hand[0] == b.hand[0], "같은 시드면 같은 모듈이 나온다", str(a.hand))
 
 
-## ── 제외는 정제권을 쓴다 ─────────────────────────────────────────────────
-## 예전에는 공짜였다. 마음에 안 드는 것을 계속 지우면 주머니가 내가 원하는
-## 카드로만 남고, 상점이 "무엇이 나왔는가" 가 아니라 "무엇을 남길 것인가" 가
-## 된다. 매 런이 같은 덱으로 수렴한다.
-##
-## 손패를 버리는 것(정제)과 같은 자원을 쓴다. 따로 두면 저울질이 사라진다 -
-## 각각 자기 것만 쓰면 되니까.
-func test_ban_tokens() -> void:
-	print("
-[10] 제외 · 정제권")
-	var r := fresh()
-	r.refine_tokens = 2
-
-	ok(r.ban(0), "정제권이 있으면 제외된다")
-	ok(r.refine_tokens == 1, "정제권을 1장 쓴다", str(r.refine_tokens))
-
-	# 같은 자원이므로 손패 정제와 서로 깎아먹는다. 그게 요점이다.
-	r.hand = ["near_first"] as Array[String]
-	ok(r.refine("near_first"), "남은 1장으로 손패를 버릴 수 있다")
-	ok(r.refine_tokens == 0, "이제 0장", str(r.refine_tokens))
-
-	var idx := -1
-	for i in r.offers.size():
-		if r.offers[i] != "":
-			idx = i
-			break
-	ok(idx >= 0, "제외할 자리가 있다")
-	var pool_before := r.pool().size()
-	ok(not r.ban(idx), "정제권이 없으면 제외되지 않는다")
-	ok(r.offers[idx] != "", "자리가 그대로 남는다")
-	ok(r.pool().size() == pool_before, "주머니도 그대로다")

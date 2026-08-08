@@ -37,13 +37,9 @@ var lbl_note: Label
 var preview_root: Control
 var lbl_hint: Label
 var btn_reroll: Button
-var btn_refine: Button
-var btn_merge: Button
 var btn_command: Button
 var sfx: Sfx
 ## 정제 모드: 손패 카드를 누르면 사는 게 아니라 영구히 버린다.
-var refining: bool = false
-var merging: bool = false
 var btn_next: Button
 var shop_root: Control
 var hand_root: Control
@@ -109,24 +105,10 @@ func setup(p_run: RunState) -> void:
 	btn_reroll = _slab(bar, Vector2(40, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
 	btn_reroll.pressed.connect(_on_reroll)
 
-	btn_refine = _slab(bar, Vector2(288, BAR_Y), Vector2(236, 54), "", UiKit.TEXT)
-	btn_refine.pressed.connect(_on_refine_toggle)
 
-	# 합성은 축 개편에서 빠졌다. 자리를 되살릴 계획(환전·교환)이 있으므로
-	# 노드는 남기고 보이지만 않게 한다. 지우면 배치를 다시 잡아야 한다.
-	btn_merge = _slab(bar, Vector2(784, BAR_Y), Vector2(236, 54), "", UiKit.GOOD)
-	btn_merge.pressed.connect(_on_merge_toggle)
-	# ── 숨어 있었다 ──────────────────────────────────────────────────────
-	# visible = false 에 mouse_filter = IGNORE 로 만들어 놓고 어디서도 다시
-	# 켜지 않았다. 매 refresh 마다 라벨과 disabled 는 성실히 갱신하면서 정작
-	# 화면에는 없었던 것이다.
-	#
-	# 그래서 **모듈 합성도 궁극기 합성도 아예 도달할 수 없는 기능**이었다.
-	# 합칠 것이 없으면 꺼진 채로 두되, 있다는 사실은 보여야 한다.
-
-	# 보조 지휘는 정제 옆이다. 셋 다 "예산을 어디에 쓸까" 라서, 재검색·정제와
-	# 나란히 놓여야 같은 저울에 올려놓고 고르게 된다.
-	btn_command = _slab(bar, Vector2(536, BAR_Y), Vector2(236, 54),
+	# 재검색 바로 옆이다. 둘 다 "예산을 어디에 쓸까" 라서 나란히 놓여야 같은
+	# 저울에 올려놓고 고르게 된다.
+	btn_command = _slab(bar, Vector2(288, BAR_Y), Vector2(236, 54),
 		UiText.t("shop.command", "보조 지휘  →"), Color(0.55, 0.88, 1.0))
 	btn_command.pressed.connect(func():
 		sfx.play("click")
@@ -143,8 +125,10 @@ func setup(p_run: RunState) -> void:
 	lbl_hint = UiKit.label(bar, Vector2(40, BAR_Y + 62), Vector2(1000, 22),
 		"", 12, UiKit.MUTED)
 
+	# 이 화면의 주 버튼이다. 채우고 빛을 흘려 목록의 한 칸이 아니게 만든다.
 	btn_next = _slab(self, Vector2(960, 636), Vector2(280, 60),
 		UiText.t("shop.next", "편성 단계로  ▶"), UiKit.ACCENT, 19)
+	(btn_next as _Slab).primary = true
 	btn_next.pressed.connect(func():
 		if tut != null:
 			tut.notify_action("next")
@@ -169,7 +153,7 @@ func refresh() -> void:
 	# 제외권이 몇 장 남았는지 안내문에 적는다. 카드마다 숫자가 붙지만,
 	# 지금 몇 장인지를 한 곳에서도 말해 줘야 "쓸까 말까" 를 결정할 수 있다.
 	lbl_hint.text = UiText.t("shop.hint",
-		"카드를 누르면 구매.  [제외] 는 그 모듈을 작전 전체에서 없앤다 - 정제권을 1장 쓴다 (%d장)") 		% run.refine_tokens
+		"카드를 누르면 구매합니다. 예산은 다음 단계로 이월되지 않습니다.")
 	btn_reroll.disabled = not run.can_reroll()
 	btn_reroll.set_label(UiText.t("shop.reroll", "재검색  (-%d)") % run.reroll_cost())
 
@@ -183,35 +167,6 @@ func refresh() -> void:
 	# 아래 배치판이 격자 그대로 보여 주고, 개체에 손을 올리면 그 개체가 꽂고
 	# 있는 모듈까지 편다. 전투 화면의 [적 개요] 는 줄글로 그대로 남아 있다.
 
-	# 정제권이 없으면 정제 모드로 들어갈 수 없다.
-	if run.refine_tokens <= 0:
-		refining = false
-	btn_refine.disabled = run.refine_tokens <= 0 		or (run.hand.is_empty() and run.special_hand.is_empty())
-	btn_refine.set_label(
-		UiText.t("shop.refine", "알고리즘 정제  (%d)") % run.refine_tokens,
-		UiKit.BAD if refining else UiKit.TEXT)
-
-	# 합성 가능한 카드가 하나라도 있어야 켜진다.
-	# 궁극기도 센다. 같은 궁극기 두 장이면 합칠 수 있고, 그 둘은 손패 한 줄에
-	# 규칙 모듈과 나란히 놓인다 - 세는 곳만 갈라 두면 화면에서 하나가 조용히
-	# 빠진다.
-	var mergeable := 0
-	var seen: Dictionary = {}
-	for cid in run.hand:
-		if run.can_merge(String(cid)):
-			mergeable += 1
-	for sid in run.special_hand:
-		if seen.has(sid):
-			continue
-		seen[sid] = true
-		if run.can_merge(String(sid)):
-			mergeable += 1
-	if mergeable == 0:
-		merging = false
-	btn_merge.disabled = mergeable == 0
-	btn_merge.set_label(
-		UiText.t("shop.merge", "합성  (%d)") % mergeable,
-		Color(1, 1, 1) if merging else UiKit.GOOD)
 
 	_build_shop()
 	_build_hand()
@@ -247,7 +202,7 @@ func _build_shop() -> void:
 		var cid: String = run.offers[i]
 		var card := CardNode.new()
 		shop_root.add_child(card)
-		card.setup(cid, i, false, cid != "", run.refine_tokens)
+		card.setup(cid, i, false)
 		card.enabled = run.can_buy(i)
 		if cid != "" and not run.can_buy(i):
 			# ── 값이 아니라 **모자란 만큼**을 적는다 ──────────────────────
@@ -258,7 +213,6 @@ func _build_shop() -> void:
 				run.price_of(cid) - run.budget)
 		card.place(Vector2(x0 + i * (w + gap), SHOP_Y))
 		card.clicked.connect(_on_buy)
-		card.banned.connect(_on_ban)
 		if tut != null:
 			tut.register_anchor("shop_card_%d" % i, card)
 			if card.get_child_count() > 0 and card.get_child(0) is Button:
@@ -308,6 +262,14 @@ class _Slab extends Button:
 	var tint: Color = UiKit.TEXT
 	var label: Label
 
+	## ── 주 버튼 ─────────────────────────────────────────────────────────
+	## 상점에서 나가는 단추는 여기서 **반드시 눌러야 하는 유일한 것**인데,
+	## 재검색·보조 지휘와 같은 생김새라 목록의 한 칸으로 읽혔다.
+	##
+	## 테두리만으로는 위계가 안 생긴다. 안을 채우고 바깥으로 빛을 흘려야
+	## "다음" 이 된다 - 나머지가 비어 있으니 채운 것 하나가 곧 답이 된다.
+	var primary: bool = false
+
 	## 글자와 색을 한 번에 바꾼다. text 속성을 직접 건드리면 자식 라벨과
 	## 어긋나므로 이 함수만 쓴다.
 	func set_label(t: String, col: Color = Color(0, 0, 0, 0)) -> void:
@@ -335,11 +297,31 @@ class _Slab extends Button:
 		var body := Color(0.12, 0.135, 0.17) if not disabled else Color(0.075, 0.08, 0.10)
 		if on:
 			body = Color(0.17, 0.19, 0.24)
+
+		if primary and not disabled:
+			# 바깥으로 흘러나오는 빛. 도형을 조금씩 키워 겹쳐 깐다 - 그림자와
+			# 반대 방향이라 판이 앞으로 떠 보인다.
+			for g in 7:
+				var gf := float(g)
+				var gs := PackedVector2Array()
+				for pt in shape:
+					var c := s * 0.5
+					gs.append(c + (pt - c) * (1.0 + gf * 0.014))
+				draw_colored_polygon(gs, Color(tint.r, tint.g, tint.b,
+					0.055 * (1.0 - gf / 7.0)))
+			body = Color(tint.r * 0.62, tint.g * 0.46, tint.b * 0.16, 1.0) if on 				else Color(tint.r * 0.40, tint.g * 0.30, tint.b * 0.11, 1.0)
+
 		draw_colored_polygon(shape, body)
+		if primary and not disabled:
+			for i in 10:
+				var f := float(i) / 10.0
+				draw_rect(Rect2(2.0, s.y * f, s.x - 4.0, s.y * 0.1 + 1.0),
+					Color(1, 1, 1, 0.05 * (1.0 - f)))
 		var line := PackedVector2Array(shape)
 		line.append(shape[0])
-		var a: float = 0.20 if disabled else (0.95 if on else 0.55)
-		draw_polyline(line, Color(tint.r, tint.g, tint.b, a), 2.0, true)
+		var a: float = 1.0 if (primary and not disabled) 			else (0.20 if disabled else (0.95 if on else 0.55))
+		draw_polyline(line, Color(tint.r, tint.g, tint.b, a),
+			2.5 if primary else 2.0, true)
 		# 왼쪽 색 막대. 글자를 안 읽어도 무슨 종류의 단추인지 색으로 갈린다.
 		if not disabled:
 			draw_rect(Rect2(0, CUT, 4, s.y - CUT), Color(tint.r, tint.g, tint.b, a))
@@ -398,22 +380,14 @@ func _build_hand() -> void:
 
 	hand_root.add_child(tab)
 
-	var head_col := UiKit.TEXT
-	var head := ""
-	if refining:
-		head = UiText.t("shop.hand_refining", "버릴 모듈을 누르십시오 (정제권 %d)") % run.refine_tokens
-		head_col = UiKit.BAD
-	elif merging:
-		head = UiText.t("shop.hand_merging", "같은 것 2장을 1장으로 합쳐 한 단계 올립니다 (궁극기도 됩니다)")
-		head_col = UiKit.GOOD
-	if head != "":
-		UiKit.label(hand_root, Vector2(40, HAND_Y - 34), Vector2(900, 24), head, 15, head_col)
-
-	if n == 0:
-		return
-	# 평소에는 서류첩만 보인다. 펼쳐야 할 이유가 있을 때만 카드를 깐다.
-	if not (refining or merging):
-		return
+	# ── 여기서는 손패를 펴지 않는다 ─────────────────────────────────────
+	# 오른쪽 세로 탭이 장수를 말하고, 실제로 무엇을 가졌는지는 편성 화면에서
+	# 서류첩으로 편다. 상점에서까지 펴면 아래 적 배치판 위로 카드가 겹친다 -
+	# 실제로 그렇게 겹쳤다.
+	#
+	# 조작도 갈라 두었다. 사는 것은 이 화면, 합치는 것은 보조 지휘,
+	# 꽂는 것은 편성 화면이다. 한 화면이 셋을 다 받으면 어느 것도 안 읽힌다.
+	return
 
 	var mini_w := CardNode.W * 0.72
 	var max_span := 1000.0
@@ -427,18 +401,7 @@ func _build_hand() -> void:
 		hand_root.add_child(card)
 		card.setup(owned[i], i, true, false)
 		card.level = run.special_level(String(owned[i])) + 1 			if RunState.is_special(String(owned[i])) else run.card_level(String(owned[i]))
-		# 평소 손패는 보기 전용이다(장착은 2단계). 정제·합성 모드에서만 눌린다.
-		card.enabled = refining or (merging and run.can_merge(String(owned[i])))
-		if refining:
-			card.note = UiText.t("shop.note_discard", "누르면 버림")
-			card.clicked.connect(_on_hand_refine)
-		elif merging:
-			var cid2 := String(owned[i])
-			if run.can_merge(cid2):
-				card.note = UiText.t("shop.note_merge", "합성 -%d") % run.merge_price(cid2)
-				card.clicked.connect(_on_hand_merge)
-			else:
-				card.note = run.merge_blocker(cid2)
+		card.enabled = false
 		var offset := float(i) - mid
 		# 가운데가 높고 양끝이 낮은 아치
 		var arc := absf(offset) * 3.0
@@ -796,48 +759,11 @@ func _build_preview() -> void:
 		x += PREVIEW_W + 18.0
 
 
-func _on_merge_toggle() -> void:
-	merging = not merging
-	if merging:
-		refining = false
-	refresh()
-
-
-func _on_hand_merge(card: CardNode) -> void:
-	if run.merge(card.card_id):
-		sfx.play("special")
-		refresh()
-
-
 func _on_buy(card: CardNode) -> void:
 	if run.buy(card.index):
 		sfx.play("buy")
 		if tut != null:
 			tut.notify_action("buy")
-		refresh()
-
-
-func _on_ban(card: CardNode) -> void:
-	if run.ban(card.index):
-		if tut != null:
-			tut.notify_action("ban")
-		refresh()
-
-
-## 정제 = 손패에서 카드를 영구히 버린다.
-##
-## 덱이 두꺼워질수록 원하는 카드가 뽑힐 확률이 떨어진다. 정제는 그걸 되돌리는
-## 유일한 수단이고, 정제권은 보상에서만 나온다. 상시 무료로 열어두면 누구나
-## 덱을 최적으로 깎아서 오히려 빌드가 획일화된다.
-func _on_refine_toggle() -> void:
-	refining = not refining
-	if refining:
-		merging = false
-	refresh()
-
-
-func _on_hand_refine(card: CardNode) -> void:
-	if run.refine(card.card_id):
 		refresh()
 
 

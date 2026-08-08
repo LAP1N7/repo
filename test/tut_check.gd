@@ -29,12 +29,6 @@ func _init() -> void:
 	var need: int = int(Cards.TABLE[OFFERS[0]]["cost"]) + int(Cards.TABLE[OFFERS[1]]["cost"])
 	_ok(need <= 12, "0번+1번 값이 예산 12 안이다 (%d)" % need)
 
-	# 3) 대본이 [제외] 를 시킨다면 정제권이 있어야 한다. 시키는 대로 해도
-	#    안 되는 튜토리얼은 튜토리얼이 아니다.
-	var game_src := FileAccess.get_file_as_string("res://view/game.gd")
-	_ok(game_src.contains("run.refine_tokens = 1"),
-		"튜토리얼이 정제권을 한 장 준다")
-
 	# 4) 대본 자체
 	# 실제 게임과 같은 경로로 읽는다. 파일을 직접 파싱하면 story.json 에서
 	# 대사를 끌어오는 단계를 건너뛰어, 대사가 비어도 통과해 버린다.

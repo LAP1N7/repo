@@ -1,325 +1,324 @@
 {
-  "_comment": [
-    "튜토리얼 **진행 구조**. 대사는 여기 없다 - data/story.json 의",
-    "\"tutorial\" 항목에 step id 로 들어 있다.",
-    "",
-    "둘을 나눈 이유: 고치는 빈도가 다르다. 대사는 자주 손보고 진행 구조는",
-    "거의 안 건드린다. 한 파일에 섞여 있으면 말 한 줄 고치려고 앵커와 게이트",
-    "사이를 헤집어야 한다.",
-    "",
-    "필드",
-    "  screen   tutorial | shop | command | loadout | battle | any",
-    "  anchor   화면이 register_anchor 로 등록한 이름. 말풍선이 가리킨다",
-    "  advance  click | action:<이름>   action 이면 그 조작을 해야 넘어간다",
-    "  gate     참이면 앵커 밖의 조작을 막는다",
-    "  at_tick  전투 재생을 그 틱 앞에서 멈춘다",
-    "  place    말풍선 위치. 없으면 side 로 정한다",
-    "  portrait false 면 초상을 안 띄운다(전투 중에는 판을 가린다)",
-    "  text     비상용 폴백. 보통은 비워 두고 story.json 을 쓴다",
-    "",
-    "상점 제시는 view/game.gd 의 fixed_offers 가 고정한다. 자리를 지목하는",
-    "대사(0번을 사라 · 2번을 제외하라)가 있으므로 둘은 항상 같이 고쳐야 한다."
-  ],
-  "speaker_name": "MIRA",
-  "steps": [
-    {
-      "id": "intro_1",
-      "screen": "tutorial",
-      "speaker": "ai",
-      "side": "left",
-      "advance": "click"
-    },
-    {
-      "id": "intro_2",
-      "screen": "tutorial",
-      "speaker": "ai",
-      "side": "left",
-      "advance": "click"
-    },
-    {
-      "id": "intro_3",
-      "screen": "tutorial",
-      "speaker": "ai",
-      "side": "left",
-      "advance": "click"
-    },
-    {
-      "id": "intro_4",
-      "screen": "tutorial",
-      "speaker": "ai",
-      "side": "left",
-      "advance": "click"
-    },
-    {
-      "id": "intro_5",
-      "screen": "tutorial",
-      "speaker": "ai",
-      "side": "left",
-      "advance": "click"
-    },
-    {
-      "id": "intro_6",
-      "screen": "tutorial",
-      "speaker": "ai",
-      "side": "left",
-      "advance": "click"
-    },
-    {
-      "id": "shop_1",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "shop_2",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "shop_card_0",
-      "advance": "action:buy",
-      "gate": true
-    },
-    {
-      "id": "shop_3",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "shop_card_1",
-      "advance": "action:buy",
-      "gate": true
-    },
-    {
-      "id": "shop_4",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "shop_ban_2",
-      "advance": "action:ban",
-      "gate": true
-    },
-    {
-      "id": "shop_5",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "shop_reroll",
-      "advance": "click"
-    },
-    {
-      "id": "shop_6",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "shop_command",
-      "advance": "action:command",
-      "gate": true
-    },
-    {
-      "id": "cmd_1",
-      "screen": "command",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "shop_7",
-      "screen": "shop",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "shop_next",
-      "advance": "action:next",
-      "gate": true
-    },
-    {
-      "id": "load_1",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "unit_archer",
-      "advance": "action:pick_type",
-      "gate": true
-    },
-    {
-      "id": "load_2",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "grid_slot_0",
-      "advance": "action:place",
-      "gate": true
-    },
-    {
-      "id": "load_2b",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "load_2c",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "load_3",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "hand_card_0",
-      "advance": "action:equip",
-      "gate": true
-    },
-    {
-      "id": "load_4",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "hand_card_0",
-      "advance": "action:equip",
-      "gate": true
-    },
-    {
-      "id": "load_5",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "load_6",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "load_6b",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "advance": "click"
-    },
-    {
-      "id": "load_7",
-      "screen": "loadout",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "fight_button",
-      "advance": "action:fight",
-      "gate": true
-    },
-    {
-      "id": "battle_1",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "anchor": "start_button",
-      "portrait": false,
-      "advance": "action:start",
-      "gate": true
-    },
-    {
-      "id": "battle_t1",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 1,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t2",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 2,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t3",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 3,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t4",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 4,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t5",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "anchor": "roster_panel",
-      "at_tick": 5,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t6",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 6,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t7",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 7,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t8",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "at_tick": 8,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "battle_t9",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "right",
-      "place": "bottom_left",
-      "anchor": "brief_panel",
-      "at_tick": 10,
-      "portrait": false,
-      "advance": "click"
-    },
-    {
-      "id": "outro_1",
-      "screen": "battle",
-      "speaker": "ai",
-      "side": "left",
-      "place": "bottom_right",
-      "advance": "click"
-    }
-  ]
+	"_comment": [
+		"튜토리얼 **진행 구조**. 대사는 여기 없다 - data/story.json 의",
+		"\"tutorial\" 항목에 step id 로 들어 있다.",
+		"",
+		"둘을 나눈 이유: 고치는 빈도가 다르다. 대사는 자주 손보고 진행 구조는",
+		"거의 안 건드린다. 한 파일에 섞여 있으면 말 한 줄 고치려고 앵커와 게이트",
+		"사이를 헤집어야 한다.",
+		"",
+		"필드",
+		"  screen   tutorial | shop | command | loadout | battle | any",
+		"  anchor   화면이 register_anchor 로 등록한 이름. 말풍선이 가리킨다",
+		"  advance  click | action:<이름>   action 이면 그 조작을 해야 넘어간다",
+		"  gate     참이면 앵커 밖의 조작을 막는다",
+		"  at_tick  전투 재생을 그 틱 앞에서 멈춘다",
+		"  place    말풍선 위치. 없으면 side 로 정한다",
+		"  portrait false 면 초상을 안 띄운다(전투 중에는 판을 가린다)",
+		"  text     비상용 폴백. 보통은 비워 두고 story.json 을 쓴다",
+		"",
+		"상점 제시는 view/game.gd 의 fixed_offers 가 고정한다. 자리를 지목하는",
+		"대사(0번을 사라 · 2번을 제외하라)가 있으므로 둘은 항상 같이 고쳐야 한다."
+	],
+	"speaker_name": "MIRA",
+	"steps": [
+		{
+			"id": "intro_1",
+			"screen": "tutorial",
+			"speaker": "ai",
+			"side": "left",
+			"advance": "click"
+		},
+		{
+			"id": "intro_2",
+			"screen": "tutorial",
+			"speaker": "ai",
+			"side": "left",
+			"advance": "click"
+		},
+		{
+			"id": "intro_3",
+			"screen": "tutorial",
+			"speaker": "ai",
+			"side": "left",
+			"advance": "click"
+		},
+		{
+			"id": "intro_4",
+			"screen": "tutorial",
+			"speaker": "ai",
+			"side": "left",
+			"advance": "click"
+		},
+		{
+			"id": "intro_5",
+			"screen": "tutorial",
+			"speaker": "ai",
+			"side": "left",
+			"advance": "click"
+		},
+		{
+			"id": "intro_6",
+			"screen": "tutorial",
+			"speaker": "ai",
+			"side": "left",
+			"advance": "click"
+		},
+		{
+			"id": "shop_1",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "shop_2",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "shop_card_0",
+			"advance": "action:buy",
+			"gate": true
+		},
+		{
+			"id": "shop_3",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "shop_card_1",
+			"advance": "action:buy",
+			"gate": true
+		},
+		{
+			"id": "shop_4",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "shop_card_2",
+			"advance": "click"
+		},
+		{
+			"id": "shop_5",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "shop_reroll",
+			"advance": "click"
+		},
+		{
+			"id": "shop_6",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "shop_command",
+			"advance": "action:command",
+			"gate": true
+		},
+		{
+			"id": "cmd_1",
+			"screen": "command",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "shop_7",
+			"screen": "shop",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "shop_next",
+			"advance": "action:next",
+			"gate": true
+		},
+		{
+			"id": "load_1",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "unit_archer",
+			"advance": "action:pick_type",
+			"gate": true
+		},
+		{
+			"id": "load_2",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "grid_slot_0",
+			"advance": "action:place",
+			"gate": true
+		},
+		{
+			"id": "load_2b",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "load_2c",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "load_3",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "hand_card_0",
+			"advance": "action:equip",
+			"gate": true
+		},
+		{
+			"id": "load_4",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "hand_card_0",
+			"advance": "action:equip",
+			"gate": true
+		},
+		{
+			"id": "load_5",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "load_6",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "load_6b",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"advance": "click"
+		},
+		{
+			"id": "load_7",
+			"screen": "loadout",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "fight_button",
+			"advance": "action:fight",
+			"gate": true
+		},
+		{
+			"id": "battle_1",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"anchor": "start_button",
+			"portrait": false,
+			"advance": "action:start",
+			"gate": true
+		},
+		{
+			"id": "battle_t1",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 1,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t2",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 2,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t3",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 3,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t4",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 4,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t5",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"anchor": "roster_panel",
+			"at_tick": 5,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t6",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 6,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t7",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 7,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t8",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"at_tick": 8,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "battle_t9",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "right",
+			"place": "bottom_left",
+			"anchor": "brief_panel",
+			"at_tick": 10,
+			"portrait": false,
+			"advance": "click"
+		},
+		{
+			"id": "outro_1",
+			"screen": "battle",
+			"speaker": "ai",
+			"side": "left",
+			"place": "bottom_right",
+			"advance": "click"
+		}
+	]
 }

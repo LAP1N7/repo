@@ -8,7 +8,6 @@ extends Control
 ## Tween 을 쓰면 카드가 재배치될 때마다 이전 Tween 과 싸워서 튄다.
 
 signal clicked(node: CardNode)
-signal banned(node: CardNode)
 
 ## 카드 한 장의 기준 크기.
 ##
@@ -60,11 +59,10 @@ var _scale: float = 1.0
 var _tilt: float = 0.0
 var _t: float = 0.0
 
-var _ban_btn: Button
 
 
 func setup(p_card_id: String, p_index: int, p_mini: bool = false,
-		show_ban: bool = false, ban_left: int = -1) -> void:
+		_show_ban: bool = false, _ban_left: int = -1) -> void:
 	card_id = p_card_id
 	index = p_index
 	mini = p_mini
@@ -78,18 +76,6 @@ func setup(p_card_id: String, p_index: int, p_mini: bool = false,
 	mouse_exited.connect(func(): _hover = false)
 	gui_input.connect(_on_gui_input)
 
-	if show_ban:
-		# 카드 자체를 누르면 구매, 이 버튼을 누르면 추방. 둘을 확실히 갈라 놓는다.
-		# 이모지(🚫)는 맑은 고딕에 글리프가 없어서 빈 네모로 뜬다. 글자로 쓴다.
-		var s := card_size()
-		_ban_btn = UiKit.button(self, Vector2(8, s.y - 26), Vector2(s.x - 16, 20), UiText.t("card.ban", "제외"), 10)
-		_ban_btn.tooltip_text = UiText.t("card.m01", "이 카드를 이번 런 전체에서 배제한다 (다음 스테이지에도 안 나옴)")
-		# 제외권이 없으면 눌려도 아무 일이 안 일어난다. 눌리는데 아무 일이
-		# 없으면 그건 버그로 보인다 - 못 누르게 하고 이유를 글자로 적는다.
-		if ban_left >= 0:
-			_ban_btn.text = UiText.t("card.ban_n", "제외 %d") % ban_left
-			_ban_btn.disabled = ban_left <= 0
-		_ban_btn.pressed.connect(func(): banned.emit(self))
 
 	# 살짝 다른 위상으로 흔들리게 해서 카드가 한 덩어리로 보이지 않게 한다.
 	_t = float(p_index) * 0.7
@@ -166,17 +152,10 @@ func _process(delta: float) -> void:
 		pivot_offset = sz * 0.5
 		# 펼치면 [제외] 버튼도 같이 내려가야 한다. 안 옮기면 카드 한가운데에
 		# 남아 본문을 가린다.
-		if _ban_btn != null and is_instance_valid(_ban_btn):
-			_ban_btn.position = Vector2(8, sz.y - 26)
-			_ban_btn.size = Vector2(sz.x - 16, 20)
 		queue_redraw()
 
 	# [제외] 버튼은 매 프레임 현재 크기 기준으로 다시 놓는다. setup 에서 한 번만
 	# 놓으면 트리에 들어가기 전 크기로 굳어 프레임 밖으로 삐져나간다.
-	if _ban_btn != null and is_instance_valid(_ban_btn):
-		var bs := card_size()
-		_ban_btn.position = Vector2(8, bs.y - 26)
-		_ban_btn.size = Vector2(bs.x - 16, 20)
 
 	var target_lift: float = -34.0 if want_hover else 0.0
 	# 레이아웃이 이미 커졌으므로 확대는 살짝만 얹는다. 둘 다 크게 주면
@@ -416,7 +395,7 @@ func _draw() -> void:
 			UiKit.TEXT * dim, cap)
 
 	if note != "":
-		var ny := s.y - (32.0 if _ban_btn else 9.0)
+		var ny := s.y - 9.0
 		draw_string(fs, Vector2(pad, ny), note, HORIZONTAL_ALIGNMENT_LEFT,
 			s.x - pad * 2, 10, UiKit.BAD)
 

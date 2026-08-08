@@ -58,15 +58,21 @@ static func stage_budget(stage: int) -> int:
 ## 뒤로 갈수록 커진다 - 상점의 고가치 카드도 뒤로 갈수록 열리므로,
 ## 살 수 있는 돈이 같이 늘어야 보이기만 하고 못 사는 일이 없다.
 const REWARD_BUDGET: Array[int] = [4, 5, 7, 9, 12]
-const REWARD_TOKENS: Array[int] = [1, 1, 1, 2, 2]
+## ── 정제권을 예산으로 바꿨다 ────────────────────────────────────────────
+## 경제 보상이 "예산 + 정제권" 이었다. 정제를 없앴으니 정제권 자리가 비는데,
+## 그 자리를 그냥 두면 경제 보상이 강화·희귀 보상에 비해 초라해진다.
+##
+## 같은 값을 예산으로 준다. 정제권 1장이 하던 일(덱을 한 장 깎기)보다 예산
+## 쪽이 실제로 판을 더 바꾼다 - 살 수 있는 것이 늘어나니까.
+const REWARD_BONUS: Array[int] = [3, 4, 6, 8, 10]
 
 
 static func reward_budget(cleared_stage: int) -> int:
 	return REWARD_BUDGET[clampi(cleared_stage, 1, 5) - 1]
 
 
-static func reward_tokens(cleared_stage: int) -> int:
-	return REWARD_TOKENS[clampi(cleared_stage, 1, 5) - 1]
+static func reward_bonus(cleared_stage: int) -> int:
+	return REWARD_BONUS[clampi(cleared_stage, 1, 5) - 1]
 
 
 ## ── 신속 제압 보너스 ────────────────────────────────────────────────────
@@ -194,23 +200,17 @@ var upgrades: Dictionary = {}
 ## 장 단위가 아니라 **종류 단위**다. 이유는 Cards 쪽 주석 참조.
 var card_levels: Dictionary = {}
 
-## 덱 정제권. 보상으로 얻고, 손패에서 카드를 영구히 버릴 때 1장 쓴다.
-## 정제를 상시 무료로 열어두면 누구나 덱을 최적화해서 빌드 다양성이 죽는다.
-## 자원으로 묶어야 "지금 정제할까, 강화 받을까" 라는 진짜 선택이 생긴다.
-var refine_tokens: int = 0
-
-## ── 정제권이 제외권이다 ──────────────────────────────────────────────────
-## 덱을 다듬는 두 가지 조작이 **같은 자원**을 쓴다.
+## ── 정제와 제외를 걷어냈다 ──────────────────────────────────────────────
+## 손패에서 모듈을 버리는 [알고리즘 정제] 와 상점 카드를 런 전체에서 지우는
+## [제외] 가 있었다. 둘은 정제권이라는 같은 자원을 썼다.
 ##
-##   알고리즘 정제  손패에 있는 모듈을 버린다
-##   제외          상점에 뜬 모듈을 런 전체에서 없앤다
+## 뺀 이유는 **효과가 거의 없어서**다. 표가 55장이고 상점은 한 번에 다섯 칸을
+## 여는데, 한두 장을 지운다고 원하는 것이 나올 확률이 눈에 띄게 오르지 않는다.
+## 튜토리얼이 한 번 가르치고 나면 그 뒤로 누를 일이 없는 버튼이었다.
 ##
-## 둘 다 "주머니와 손패를 내 뜻대로 깎는" 행위다. 자원을 따로 두면 플레이어는
-## 두 개의 잔량을 기억해야 하고, 정작 저울질은 사라진다 - 각각 자기 것만 쓰면
-## 되니까. 하나로 묶어야 "이 장을 버릴까, 저 장이 안 나오게 할까" 가 생긴다.
-##
-## (제외가 아예 공짜였던 것을 고치면서 새 자원을 만들었다가 되돌렸다.
-##  정제권이 이미 그 자리에 있었다.)
+## 잃은 것 하나는 적어 둔다 - **계속 뜨는 나쁜 모듈을 지울 방법**이 사라졌다.
+## 그 자리는 [실험용 장치](같은 축 안에서 바꾸기)가 대신한다. 지우는 것보다
+## 바꾸는 쪽이 이 게임의 어법에 가깝기도 하다.
 
 ## 보상으로 받은 누적 예산.
 ##
@@ -233,9 +233,6 @@ var hand: Array[String] = []
 
 ## 구매한 특수 스킬. 카드와 섞지 않는다 - 꽂는 슬롯이 다르기 때문이다.
 var special_hand: Array[String] = []
-
-## 이번 런에서 추방한 카드. 리롤해도 다시 나오지 않는다.
-var banned: Dictionary = {}
 
 ## 상점에 깔린 카드. 산 자리는 "" 로 비워 둔다.
 var offers: Array[String] = []
@@ -267,7 +264,6 @@ func start_run(p_stage_id: int = 1) -> void:
 	upgrades.clear()
 	card_levels.clear()
 	fixed_offers.clear()
-	refine_tokens = 0
 	bonus_budget = 0
 	cleared = 0
 	pending_rewards.clear()
@@ -291,7 +287,6 @@ func start_run(p_stage_id: int = 1) -> void:
 	special_hand.clear()
 	# 추방은 런 전체에 걸린다. 스테이지 단위 start() 에서 지우면 다음 스테이지에
 	# 되살아나서 "이 런에서 다시 안 나온다" 는 약속이 거짓말이 된다.
-	banned.clear()
 	start(p_stage_id)
 
 
@@ -304,7 +299,6 @@ func start(p_stage_id: int) -> void:
 
 	stage_id = p_stage_id
 	budget = stage_budget(p_stage_id) + bonus_budget
-	# banned 는 여기서 지우지 않는다 - start_run 에서만 푼다.
 	roster.clear()
 	unit_cards.clear()
 	unit_special.clear()
@@ -335,21 +329,17 @@ func _return_equipped_to_hand() -> void:
 
 # ── 상점 ─────────────────────────────────────────────────────────────────
 
-## 추방되지 않은 카드 종류.
+## 상점에 나올 수 있는 카드 종류. 추방을 없앤 뒤로는 표 전체다.
 func pool() -> Array[String]:
 	var out: Array[String] = []
-	for cid in Cards.shop_order():
-		if not banned.has(cid):
-			out.append(cid)
+	out.append_array(Cards.shop_order())
 	return out
 
 
-## 추방되지 않은 특수 스킬 종류.
+## 상점에 나올 수 있는 궁극기 종류.
 func special_pool() -> Array[String]:
 	var out: Array[String] = []
-	for sid in Specials.ORDER:
-		if not banned.has(sid):
-			out.append(sid)
+	out.append_array(Specials.ORDER)
 	return out
 
 
@@ -476,26 +466,6 @@ func buy(index: int) -> bool:
 	else:
 		hand.append(cid)
 	offers[index] = ""
-	return true
-
-
-## 이번 런에서 그 카드를 영구 추방한다. 리롤해도 다시 나오지 않는다.
-## 값은 들지 않는다 - 손해는 "그 카드를 앞으로 못 쓴다" 는 것 자체다.
-func ban(index: int) -> bool:
-	if index < 0 or index >= offers.size():
-		return false
-	# 정제권을 쓴다. 손패를 버리는 것과 같은 자원이다.
-	if refine_tokens <= 0:
-		return false
-	var cid: String = offers[index]
-	if cid == "":
-		return false
-	refine_tokens -= 1
-	banned[cid] = true
-	# 같은 카드가 다른 자리에도 깔려 있으면 함께 치운다.
-	for i in offers.size():
-		if offers[i] == cid:
-			offers[i] = ""
 	return true
 
 
@@ -797,25 +767,6 @@ func merge_blocker(card_id: String) -> String:
 	return ""
 
 
-# ── 정제 ─────────────────────────────────────────────────────────────────
-
-## 손패에서 카드 한 장을 영구히 버린다. 정제권 1장을 쓴다.
-func refine(card_id: String) -> bool:
-	if refine_tokens <= 0:
-		return false
-	var at := hand.find(card_id)
-	if at >= 0:
-		hand.remove_at(at)
-		refine_tokens -= 1
-		return true
-	var at2 := special_hand.find(card_id)
-	if at2 >= 0:
-		special_hand.remove_at(at2)
-		refine_tokens -= 1
-		return true
-	return false
-
-
 # ── 스테이지 클리어 ──────────────────────────────────────────────────────
 
 ## ticks 는 그 전투가 걸린 틱 수. 신속 제압 보너스에 쓴다.
@@ -972,8 +923,7 @@ func command_swap(cid: String) -> String:
 	var axis := String(Cards.TABLE.get(cid, {}).get("axis", ""))
 	var pool: Array[String] = []
 	for other in Cards.shop_order():
-		if other != cid and String(Cards.TABLE[other]["axis"]) == axis \
-				and not banned.has(other):
+		if other != cid and String(Cards.TABLE[other]["axis"]) == axis:
 			pool.append(other)
 	if pool.is_empty():
 		return UiText.t("cmd.no_swap", "바꿀 대상이 없습니다")

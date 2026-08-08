@@ -339,103 +339,61 @@ class _TopLayer extends Control:
 
 
 ## ── 판 바닥 ──────────────────────────────────────────────────────────────
-## 명일방주 전술 화면의 인상은 "격자를 예쁘게 그렸다" 가 아니라 **판이 물체로
-## 보인다** 는 데서 온다. 평평한 체커보드에 선을 얹는 것으로는 안 된다.
+## Into the Breach 방식으로 다시 짰다. 그쪽 판은 그리는 것이 딱 둘이다 -
+## **칸 하나에 네모 하나**, 그리고 그 네모의 테두리. 무늬도 회로도 없다.
 ##
-## 그 인상을 만드는 것은 넷이다.
+## 앞서 넣었던 것(이음매·베벨·발광 회로·사선 해칭)을 다 걷어냈다. 넷을 겹치니
+## 칸 하나에 다섯 겹이 얹혔고, 그 위에 대원과 표적선과 범위 표시가 또 올라가서
+## 판이 시끄러워졌다. **바닥이 조용해야 그 위가 보인다.**
 ##
-##   1) 두께      칸마다 위쪽 밝은 면 / 아래쪽 어두운 면. 같은 색 두 줄이면
-##                타일이 바닥에서 **솟아 있는** 것으로 읽힌다. 판 전체에도
-##                같은 걸 걸어 두께를 준다.
-##   2) 이음매    칸과 칸 사이를 어둡게 파낸다. 격자선을 긋는 것과 다르다 -
-##                선은 위에 얹히고 이음매는 아래로 들어간다.
-##   3) 발광 회로 진영 쪽에서 안쪽으로 흐르는 얇은 가로줄. 판이 켜져 있는
-##                장비가 된다. 아군은 파랑, 적은 붉은색.
-##   4) 대각 무늬 아주 옅은 사선 해칭. 검은 면이 검은 면으로 안 남는다.
+## 지금 그리는 것:
+##   1) 칸마다 안쪽으로 패딩을 준 네모  -> 칸 사이에 저절로 간격이 생긴다.
+##      선을 긋지 않아도 격자가 읽히고, 그 간격이 판을 성기게 만들어 준다.
+##   2) 그 네모의 테두리 한 겹 + 바깥으로 한 겹 더 옅게 (글로우)
+##   3) 진영 두 열만 색을 바꾼다. 파랑/빨강, 아주 옅게.
 ##
-## ── 유닛이 먼저다 ───────────────────────────────────────────────────────
-## 그런데 이 넷을 다 넣으면 바닥이 시끄러워져 대원이 안 보인다. 그래서
-## **대원이 서는 자리(3~5열)는 일부러 조용하게** 둔다 - 회로도 해칭도 진영
-## 쪽에만 깔고 가운데는 비운다. 눈이 가운데로 모이는 것은 그 대비 때문이다.
+## 세 줄이면 끝이다. 나머지는 전부 그 위에 올라갈 것들의 몫이다.
+const CELL_PAD: float = 3.0
+
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), UiKit.BG)
 
 	var bw := float(Grid.W) * TILE_W
 	var bh := float(Grid.H) * TILE_H
 
-	# 판 아래로 떨어지는 그림자. 판이 화면 위에 놓인 물체가 된다.
-	for i in 7:
-		var f := float(i)
-		draw_rect(Rect2(BOARD_ORIGIN + Vector2(-f, -f * 0.4 + 6.0),
-			Vector2(bw + f * 2.0, bh + f)), Color(0, 0, 0, 0.055), false, 2.0)
-
 	for y in Grid.H:
 		for x in Grid.W:
-			var at := BOARD_ORIGIN + Vector2(x * TILE_W, y * TILE_H)
-			var base: Color = COL_TILE_A if (x + y) % 2 == 0 else COL_TILE_B
-			# 이음매. 칸을 1px 안쪽에 그려 사이가 파인 것처럼 보인다.
-			draw_rect(Rect2(at + Vector2(1, 1), Vector2(TILE_W - 2, TILE_H - 2)), base)
+			var at := BOARD_ORIGIN + Vector2(x * TILE_W, y * TILE_H) \
+				+ Vector2(CELL_PAD, CELL_PAD)
+			var sz := Vector2(TILE_W - CELL_PAD * 2.0, TILE_H - CELL_PAD * 2.0)
 
-			# 두께. 위 밝은 면 / 아래 어두운 면.
-			draw_rect(Rect2(at + Vector2(1, 1), Vector2(TILE_W - 2, 1)),
-				Color(1, 1, 1, 0.055))
-			draw_rect(Rect2(at + Vector2(1, TILE_H - 2), Vector2(TILE_W - 2, 1)),
-				Color(0, 0, 0, 0.35))
-
-			# 진영. 바깥 두 열만 물들이고 가운데는 비운다.
-			var side := 0
+			# 진영 두 열만 색이 다르다. 나머지는 같은 회색이다 - 체커보드를
+			# 없앴다. 밝기가 번갈아 바뀌면 그것만으로 눈이 바빠진다.
+			var fill := Color(0.075, 0.085, 0.115)
+			var edge := Color(0.42, 0.52, 0.70)
 			if x <= 1:
-				side = 1
+				fill = Color(0.070, 0.098, 0.145)
+				edge = Color(0.35, 0.66, 1.0)
 			elif x >= Grid.W - 2:
-				side = -1
-			if side != 0:
-				var tint: Color = Color(0.30, 0.62, 1.0) if side > 0 \
-					else Color(1.0, 0.28, 0.32)
-				var strong: float = 0.075 if (x == 0 or x == Grid.W - 1) else 0.042
-				draw_rect(Rect2(at + Vector2(1, 1), Vector2(TILE_W - 2, TILE_H - 2)),
-					Color(tint.r, tint.g, tint.b, strong))
-				# 발광 회로. 안쪽을 향해 흐르는 얇은 가로줄 둘.
-				for k in 2:
-					var ly := at.y + TILE_H * (0.34 + 0.32 * float(k))
-					var lx: float = at.x + 4.0 if side > 0 else at.x + TILE_W * 0.42
-					draw_rect(Rect2(lx, ly, TILE_W * 0.54, 1.0),
-						Color(tint.r, tint.g, tint.b, 0.34))
-					draw_rect(Rect2(lx + TILE_W * 0.54 - 3.0, ly - 1.0, 3.0, 3.0),
-						Color(tint.r, tint.g, tint.b, 0.55))
-			else:
-				# 가운데 열은 사선 해칭만. 아주 옅게.
-				for k in 3:
-					var ox := TILE_W * (0.22 + 0.28 * float(k))
-					draw_line(at + Vector2(ox, TILE_H - 2.0),
-						at + Vector2(ox + TILE_H * 0.5, 2.0),
-						Color(0.55, 0.70, 0.95, 0.022), 1.0)
+				fill = Color(0.115, 0.075, 0.088)
+				edge = Color(1.0, 0.38, 0.42)
 
-			# 모서리 자국. 네 귀에만 짧게.
-			var ln := 5.0
-			var cc := Color(0.62, 0.74, 0.95, 0.13)
-			for cx in [0.0, TILE_W]:
-				for cy in [0.0, TILE_H]:
-					var sx: float = 1.0 if cx == 0.0 else -1.0
-					var sy: float = 1.0 if cy == 0.0 else -1.0
-					draw_line(at + Vector2(cx, cy), at + Vector2(cx + ln * sx, cy), cc, 1.0)
-					draw_line(at + Vector2(cx, cy), at + Vector2(cx, cy + ln * sy), cc, 1.0)
+			draw_rect(Rect2(at, sz), fill)
+			# 바깥 한 겹을 옅게 깔아 테두리가 빛나는 것처럼 보이게 한다.
+			draw_rect(Rect2(at - Vector2(1, 1), sz + Vector2(2, 2)),
+				Color(edge.r, edge.g, edge.b, 0.10), false, 2.0)
+			draw_rect(Rect2(at, sz), Color(edge.r, edge.g, edge.b, 0.34), false, 1.0)
 
-	# 판 테두리도 두께를 갖는다. 밝은 윗변 / 어두운 아랫변.
-	draw_rect(Rect2(BOARD_ORIGIN - Vector2(3, 3), Vector2(bw + 6, bh + 6)),
-		Color(0.55, 0.68, 0.90, 0.22), false, 1.0)
-	draw_rect(Rect2(BOARD_ORIGIN - Vector2(3, 3), Vector2(bw + 6, 1)),
-		Color(0.72, 0.86, 1.0, 0.35))
-	draw_rect(Rect2(BOARD_ORIGIN + Vector2(-3, bh + 2), Vector2(bw + 6, 1)),
-		Color(0, 0, 0, 0.55))
-
-	# 네 귀 브래킷.
+	# 판 바깥 프레임과 네 귀 브래킷. 판이 화면에 놓인 장비로 읽힌다.
+	draw_rect(Rect2(BOARD_ORIGIN - Vector2(4, 4), Vector2(bw + 8, bh + 8)),
+		Color(0.45, 0.58, 0.80, 0.22), false, 1.0)
 	var bl := 18.0
 	for corner in [Vector2(0, 0), Vector2(bw, 0), Vector2(0, bh), Vector2(bw, bh)]:
-		var sx2: float = 1.0 if corner.x == 0.0 else -1.0
-		var sy2: float = 1.0 if corner.y == 0.0 else -1.0
-		var o2: Vector2 = BOARD_ORIGIN + corner + Vector2(-3.0 * sx2, -3.0 * sy2)
-		draw_line(o2, o2 + Vector2(bl * sx2, 0), Color(0.60, 0.80, 1.0, 0.6), 2.0)
-		draw_line(o2, o2 + Vector2(0, bl * sy2), Color(0.60, 0.80, 1.0, 0.6), 2.0)
+		var sx: float = 1.0 if corner.x == 0.0 else -1.0
+		var sy: float = 1.0 if corner.y == 0.0 else -1.0
+		var o2: Vector2 = BOARD_ORIGIN + corner + Vector2(-4.0 * sx, -4.0 * sy)
+		draw_line(o2, o2 + Vector2(bl * sx, 0), Color(0.60, 0.80, 1.0, 0.55), 2.0)
+		draw_line(o2, o2 + Vector2(0, bl * sy), Color(0.60, 0.80, 1.0, 0.55), 2.0)
 
 
 ## 판 **위에** 그리는 것들. _Overlay 가 매 프레임 이 함수를 부른다.

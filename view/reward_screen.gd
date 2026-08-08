@@ -117,12 +117,14 @@ func _roll_rewards() -> Array:
 			"id": rare_pool[rng.randi_range(0, rare_pool.size() - 1)],
 		})
 
-	# 3) 예산 + 정제권 - 항상 나온다. 앞의 둘이 비어도 고를 게 남아야 한다.
+	# 3) 예산 - 항상 나온다. 앞의 둘이 비어도 고를 게 남아야 한다.
 	#    금액은 방금 깬 스테이지에 따라 는다. (RunState.REWARD_BUDGET)
+	#
+	#    예전에는 "예산 + 정제권" 이었다. 정제를 없애면서 그 자리를 예산으로
+	#    바꿨다 - 비워 두면 경제 보상이 강화·희귀에 비해 초라해진다.
 	out.append({
 		"kind": Kind.ECONOMY,
-		"budget": RunState.reward_budget(run.stage_id),
-		"tokens": RunState.reward_tokens(run.stage_id),
+		"budget": RunState.reward_budget(run.stage_id) + RunState.reward_bonus(run.stage_id),
 	})
 	return out
 
@@ -145,8 +147,8 @@ func _build() -> void:
 		var x := x0 + i * (w + gap)
 		_build_option(r, Vector2(x, CARD_Y), w)
 
-	var summary := UiText.t("reward.summary", "현재 · 강화 %s · 정제권 %d · 다음 스테이지 예산 %d") % [
-		_upgrade_summary(), run.refine_tokens,
+	var summary := UiText.t("reward.summary", "현재 · 강화 %s · 다음 단계 예산 %d") % [
+		_upgrade_summary(),
 		RunState.stage_budget(run.cleared + 1) + run.bonus_budget]
 	UiKit.label(root, Vector2(48, 116), Vector2(1000, 22), summary, 13, UiKit.FAINT)
 
@@ -259,7 +261,6 @@ func _pick(r: Dictionary) -> void:
 			# start() 에서 재계산되므로 여기에 더하면 그대로 지워진다.
 			run.bonus_budget += int(r["budget"])
 			run.budget += int(r["budget"])
-			run.refine_tokens += int(r["tokens"])
 
 	# 고른 순간 나머지는 사라진다. 다음 보상은 새로 뽑는다.
 	run.pending_rewards.clear()

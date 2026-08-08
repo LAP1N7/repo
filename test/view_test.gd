@@ -225,16 +225,6 @@ func test_gate_lock() -> void:
 	ok(anchor is CardNode and (anchor as CardNode).enabled,
 		"앵커 카드는 눌린다")
 
-	# 그 카드 **안의** [제외] 버튼은 잠겨야 한다.
-	# 사라는 대사에서 제외가 눌리면 튜토리얼이 그대로 어긋난다.
-	var ban: Button = null
-	for c in anchor.get_children():
-		if c is Button:
-			ban = c as Button
-	ok(ban != null, "앵커 카드에 [제외] 버튼이 있다")
-	if ban != null:
-		ok(ban.disabled, "앵커 안의 [제외] 버튼은 잠긴다")
-
 	# 앵커가 아닌 다른 카드도 잠겨야 한다.
 	var others := 0
 	var locked := 0
