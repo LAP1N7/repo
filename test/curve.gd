@@ -8,7 +8,7 @@ extends SceneTree
 ##   ② 후반(강화 후): 후반형이 초반형을 **역전한다**
 ## 역전이 없으면 후반형을 고를 이유가 없고, 그냥 함정 선택지다.
 
-const CARDS := ["engage", "finisher", "retreat"]
+const CARDS := ["near_first", "finisher", "fall_back"]
 
 func _init() -> void:
 	print("=== 유닛별 파워 곡선 ===\n")

@@ -20,9 +20,9 @@ func _init() -> void:
 	print("=== 전투 트레이스 ===
 ")
 	trace_case("후반형 — 암살자2 + 방패병 vs 스테이지 1",
-		[{ "type": "assassin", "slot": 0, "cards": ["engage", "finisher"] },
-		 { "type": "assassin", "slot": 2, "cards": ["engage", "finisher"] },
-		 { "type": "shieldman", "slot": 4, "cards": ["guard_stance", "engage"] }],
+		[{ "type": "assassin", "slot": 0, "cards": ["near_first", "finisher"] },
+		 { "type": "assassin", "slot": 2, "cards": ["near_first", "finisher"] },
+		 { "type": "shieldman", "slot": 4, "cards": ["guard_stance", "near_first"] }],
 		1, 30)
 	quit(0)
 

@@ -225,10 +225,10 @@ func test_run_reset() -> void:
 	r.start_run(Stages.TUTORIAL_ID)
 
 	# 튜토리얼처럼 사서 꽂아 둔 상태를 만든다.
-	r.hand.append("hold_the_line")
+	r.hand.append("front_line")
 	r.hand.append("keep_range")
 	ok(r.place("archer", 0), "유닛 배치")
-	ok(r.equip(0, "hold_the_line"), "카드 장착 1")
+	ok(r.equip(0, "front_line"), "카드 장착 1")
 	ok(r.equip(0, "keep_range"), "카드 장착 2")
 	ok(r.hand.is_empty(), "손패가 비었다 (전부 꽂힘)")
 
@@ -244,12 +244,12 @@ func test_run_reset() -> void:
 	var r2 := RunState.new()
 	r2.fixed_seed = 1
 	r2.start_run(1)
-	r2.hand.append("hold_the_line")
+	r2.hand.append("front_line")
 	r2.place("archer", 0)
-	r2.equip(0, "hold_the_line")
+	r2.equip(0, "front_line")
 	r2.on_stage_cleared()
 	r2.advance()
-	ok(r2.hand.has("hold_the_line"), "스테이지를 넘어가면 꽂았던 카드가 손패로 돌아온다",
+	ok(r2.hand.has("front_line"), "스테이지를 넘어가면 꽂았던 카드가 손패로 돌아온다",
 		str(r2.hand))
 
 
@@ -511,11 +511,11 @@ func test_roster() -> void:
 	ok(not r.place("dragon", 5), "없는 유닛 타입 거부")
 
 	# 자리를 무르면 꽂아둔 카드는 손패로 돌아와야 한다. 카드가 증발하면 안 된다.
-	r.hand.append("hold_the_line")
-	r.equip(0, "hold_the_line")
+	r.hand.append("front_line")
+	r.equip(0, "front_line")
 	ok(r.hand.is_empty(), "장착하면 손패에서 빠짐")
 	ok(r.remove_member(0), "배치 무르기")
-	ok(r.hand.has("hold_the_line"), "무른 유닛의 카드가 손패로 복귀")
+	ok(r.hand.has("front_line"), "무른 유닛의 카드가 손패로 복귀")
 	ok(r.roster.size() == 2, "인원 감소")
 
 
@@ -523,9 +523,9 @@ func test_equip() -> void:
 	print("\n[5] 규칙 장착 · 우선순위")
 	var r := fresh()
 	r.place("archer", 0)
-	r.hand = ["hold_the_line", "run_down", "fall_back", "far_in_range"] as Array[String]
+	r.hand = ["front_line", "run_down", "fall_back", "far_in_range"] as Array[String]
 
-	ok(r.equip(0, "hold_the_line"), "1번 슬롯")
+	ok(r.equip(0, "front_line"), "1번 슬롯")
 	ok(r.equip(0, "run_down"), "2번 슬롯")
 	ok(r.equip(0, "fall_back"), "3번 슬롯")
 	ok(not r.equip(0, "far_in_range"), "슬롯 3칸 초과 거부")
@@ -534,7 +534,7 @@ func test_equip() -> void:
 
 	# 순서 바꾸기 = 전략 바꾸기
 	ok(r.move_slot(0, 0, 1), "1↔2 교체")
-	ok(r.unit_cards[0][0] == "run_down" and r.unit_cards[0][1] == "hold_the_line",
+	ok(r.unit_cards[0][0] == "run_down" and r.unit_cards[0][1] == "front_line",
 		"순서가 실제로 바뀜", str(r.unit_cards[0]))
 	ok(not r.move_slot(0, 0, -1), "맨 위에서 더 못 올림")
 	ok(not r.move_slot(0, 2, 1), "맨 아래에서 더 못 내림")
@@ -618,12 +618,12 @@ func test_run_progression() -> void:
 	ok(r.budget == RunState.START_BUDGET, "시작 예산 %d" % RunState.START_BUDGET)
 
 	# 덱을 좀 만들고 편성한다
-	r.hand = ["hold_the_line", "forced_march", "far_in_range", "fall_back"] as Array[String]
+	r.hand = ["front_line", "forced_march", "far_in_range", "fall_back"] as Array[String]
 	r.special_hand = ["unyielding"] as Array[String]
 	r.place("warrior", 4)
 	r.place("archer", 0)
 	r.place("archer", 2)
-	r.equip(0, "hold_the_line")
+	r.equip(0, "front_line")
 	r.equip_special(0, "unyielding")
 
 	var deck_before := r.hand.size()
@@ -718,10 +718,19 @@ func test_shadowing() -> void:
 	var dead2 := Shadow.shadowed_slots(always_first, 3)
 	ok(dead2.has(1) and dead2.has(2), "조건 없는 표적 모듈은 아래 표적을 전부 가린다", str(dead2))
 
-	# 이동 카드는 벽에 몰리면 실행 불가가 되어 아래로 양보한다 → 가림으로 보지 않는다.
-	# 이걸 가림으로 잡으면 정상적인 카이팅 빌드에 오경보가 뜬다.
-	ok(Shadow.shadowed_slots(["keep_range", "hold_the_line"], 3).is_empty(),
-		"이동 카드는 아래를 가리지 않는다 (실행 불가 시 양보)")
+	# ── 축이 다르면 안 가린다 ────────────────────────────────────────────
+	# 축을 도입하기 전에는 슬롯 하나가 아래를 전부 가렸다. 지금은 축마다 따로
+	# 읽으므로, 표적 하나와 위치 하나는 서로 자리를 다투지 않는다.
+	ok(Shadow.shadowed_slots(["near_first", "keep_range"], 3).is_empty(),
+		"축이 다르면 위가 아래를 안 가린다")
+
+	# 같은 축에 조건 없는 것이 둘이면 아래는 죽는다. 위치 축도 예외가 아니다.
+	#
+	# 예전 주석은 "이동 카드는 실행 불가 시 양보하므로 가림이 아니다" 였는데,
+	# 그건 축이 없던 시절의 규칙이다. 지금은 축이 **조건**으로 하나를 고르고,
+	# 실행 실패는 그 축 안에서 처리된다 - 아래 칸으로 내려가지 않는다.
+	ok(not Shadow.shadowed_slots(["keep_range", "front_line"], 3).is_empty(),
+		"같은 축에 조건 없는 것이 둘이면 아래가 죽는다")
 
 	# 조건 문턱 비교 — 넓은 조건이 좁은 조건을 가린다
 	# 같은 교전 축이고 위가 더 넓은 조건이면 아래는 절대 안 걸린다.
@@ -740,7 +749,7 @@ func test_shadowing() -> void:
 
 	# 빈 슬롯·미지의 카드에 죽지 않는다
 	ok(Shadow.shadowed_slots([], 3).is_empty(), "빈 목록도 처리한다")
-	ok(Shadow.shadowed_slots(["hold_the_line", "없는카드"], 3).size() >= 0, "없는 카드에 죽지 않는다")
+	ok(Shadow.shadowed_slots(["front_line", "없는카드"], 3).size() >= 0, "없는 카드에 죽지 않는다")
 
 	# 같은 카드 조합도 유닛에 따라 가림 여부가 달라야 한다 — 이게 사거리를 받는 이유다.
 	ok(Shadow.shadowed_slots(["far_in_range", "keep_range"], 1).is_empty(),
@@ -812,13 +821,13 @@ func test_tutorial() -> void:
 	# 고정 상점 — 대본이 지목한 카드가 실제로 깔리는가
 	var r := RunState.new()
 	r.start_run(1)
-	r.fixed_offers = ["hold_the_line", "keep_range", "execute"] as Array[String]
+	r.fixed_offers = ["front_line", "keep_range", "execute"] as Array[String]
 	r.offers.clear()
 	r._fill_offers()
-	ok(r.offers.size() == 3 and r.offers[0] == "hold_the_line", "고정 상점이 그대로 깔린다", str(r.offers))
+	ok(r.offers.size() == 3 and r.offers[0] == "front_line", "고정 상점이 그대로 깔린다", str(r.offers))
 	r.budget = 99
 	r.reroll()
-	ok(r.offers[0] == "hold_the_line", "리롤해도 고정 목록이 유지된다", str(r.offers))
+	ok(r.offers[0] == "front_line", "리롤해도 고정 목록이 유지된다", str(r.offers))
 	r.start_run(1)
 	ok(r.fixed_offers.is_empty(), "새 런에서는 고정이 풀린다")
 

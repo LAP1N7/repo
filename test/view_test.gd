@@ -196,8 +196,8 @@ func test_gate_lock() -> void:
 	var run := RunState.new()
 	run.fixed_seed = 1
 	run.start_run(Stages.TUTORIAL_ID)
-	run.fixed_offers = ["engage", "keep_distance", "finisher",
-		"pursue", "hold_ground"] as Array[String]
+	run.fixed_offers = ["near_first", "keep_range", "finisher",
+		"run_down", "guard_stance"] as Array[String]
 	run.offers.clear()
 	run._fill_offers()
 

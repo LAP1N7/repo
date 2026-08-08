@@ -11,49 +11,49 @@ func _init() -> void:
 
 	var candidates := {
 		"궁수3 / 교전만": [
-			{ "type": "archer", "slot": 3, "cards": ["engage"] },
-			{ "type": "archer", "slot": 4, "cards": ["engage"] },
-			{ "type": "archer", "slot": 5, "cards": ["engage"] },
+			{ "type": "archer", "slot": 3, "cards": ["near_first"] },
+			{ "type": "archer", "slot": 4, "cards": ["near_first"] },
+			{ "type": "archer", "slot": 5, "cards": ["near_first"] },
 		],
 		"궁수3 / 교전+추격": [
-			{ "type": "archer", "slot": 3, "cards": ["engage", "pursue"] },
-			{ "type": "archer", "slot": 4, "cards": ["engage", "pursue"] },
-			{ "type": "archer", "slot": 5, "cards": ["engage", "pursue"] },
+			{ "type": "archer", "slot": 3, "cards": ["near_first", "run_down"] },
+			{ "type": "archer", "slot": 4, "cards": ["near_first", "run_down"] },
+			{ "type": "archer", "slot": 5, "cards": ["near_first", "run_down"] },
 		],
 		"궁수3 / 거리유지+교전": [
-			{ "type": "archer", "slot": 3, "cards": ["keep_distance", "engage"] },
-			{ "type": "archer", "slot": 4, "cards": ["keep_distance", "engage"] },
-			{ "type": "archer", "slot": 5, "cards": ["keep_distance", "engage"] },
+			{ "type": "archer", "slot": 3, "cards": ["keep_range", "near_first"] },
+			{ "type": "archer", "slot": 4, "cards": ["keep_range", "near_first"] },
+			{ "type": "archer", "slot": 5, "cards": ["keep_range", "near_first"] },
 		],
 		"방패 앞 + 궁수2 뒤": [
-			{ "type": "shieldman", "slot": 4, "cards": ["engage", "charge"] },
-			{ "type": "archer",    "slot": 0, "cards": ["engage", "pursue"] },
-			{ "type": "archer",    "slot": 2, "cards": ["engage", "pursue"] },
+			{ "type": "shieldman", "slot": 4, "cards": ["near_first", "forced_march"] },
+			{ "type": "archer",    "slot": 0, "cards": ["near_first", "run_down"] },
+			{ "type": "archer",    "slot": 2, "cards": ["near_first", "run_down"] },
 		],
 		"방패 앞 + 궁수2 카이팅": [
-			{ "type": "shieldman", "slot": 4, "cards": ["engage", "charge"] },
-			{ "type": "archer",    "slot": 0, "cards": ["keep_distance", "engage"] },
-			{ "type": "archer",    "slot": 2, "cards": ["keep_distance", "engage"] },
+			{ "type": "shieldman", "slot": 4, "cards": ["near_first", "forced_march"] },
+			{ "type": "archer",    "slot": 0, "cards": ["keep_range", "near_first"] },
+			{ "type": "archer",    "slot": 2, "cards": ["keep_range", "near_first"] },
 		],
 		"전사 앞 + 궁수2 뒤": [
-			{ "type": "warrior", "slot": 4, "cards": ["engage", "charge"] },
-			{ "type": "archer",  "slot": 0, "cards": ["engage", "pursue"] },
-			{ "type": "archer",  "slot": 2, "cards": ["engage", "pursue"] },
+			{ "type": "warrior", "slot": 4, "cards": ["near_first", "forced_march"] },
+			{ "type": "archer",  "slot": 0, "cards": ["near_first", "run_down"] },
+			{ "type": "archer",  "slot": 2, "cards": ["near_first", "run_down"] },
 		],
 		"암살자 + 궁수2": [
-			{ "type": "assassin", "slot": 4, "cards": ["engage", "pursue"] },
-			{ "type": "archer",   "slot": 0, "cards": ["engage", "pursue"] },
-			{ "type": "archer",   "slot": 2, "cards": ["engage", "pursue"] },
+			{ "type": "assassin", "slot": 4, "cards": ["near_first", "run_down"] },
+			{ "type": "archer",   "slot": 0, "cards": ["near_first", "run_down"] },
+			{ "type": "archer",   "slot": 2, "cards": ["near_first", "run_down"] },
 		],
 		"암살자 + 방패 + 악사": [
-			{ "type": "shieldman", "slot": 4, "cards": ["guard_stance", "engage", "charge"] },
-			{ "type": "assassin",  "slot": 3, "cards": ["engage", "pursue"] },
-			{ "type": "bard",    "slot": 1, "cards": ["mend", "engage", "keep_distance"] },
+			{ "type": "shieldman", "slot": 4, "cards": ["guard_stance", "near_first", "forced_march"] },
+			{ "type": "assassin",  "slot": 3, "cards": ["near_first", "run_down"] },
+			{ "type": "bard",    "slot": 1, "cards": ["mend", "near_first", "keep_range"] },
 		],
 		"암살자2 + 악사": [
-			{ "type": "assassin", "slot": 3, "cards": ["engage", "pursue"] },
-			{ "type": "assassin", "slot": 5, "cards": ["engage", "pursue"] },
-			{ "type": "bard",   "slot": 1, "cards": ["mend", "engage", "keep_distance"] },
+			{ "type": "assassin", "slot": 3, "cards": ["near_first", "run_down"] },
+			{ "type": "assassin", "slot": 5, "cards": ["near_first", "run_down"] },
+			{ "type": "bard",   "slot": 1, "cards": ["mend", "near_first", "keep_range"] },
 		],
 	}
 
@@ -81,7 +81,7 @@ func diagnose_kiting() -> void:
 	print("   적  배치 열 x = %d, %d" % [Grid.ENEMY_SLOTS[3].x, Grid.ENEMY_SLOTS[0].x])
 	print("   → 아군 뒤쪽 여유 칸: %d열" % Grid.PLAYER_SLOTS[0].x)
 
-	var party := [{ "type": "archer", "slot": 3, "cards": ["keep_distance", "engage"] }]
+	var party := [{ "type": "archer", "slot": 3, "cards": ["keep_range", "near_first"] }]
 	var b := Battle.new()
 	b.setup(1, party)
 	var path: Array[String] = []

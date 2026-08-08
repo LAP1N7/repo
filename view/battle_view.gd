@@ -2733,6 +2733,25 @@ class _RosterPanel extends Control:
 	## 이번에 그린 적 네모들. [{ rect, unit }] - 마우스 판정이 읽는다.
 	var _foe_hits: Array = []
 
+	## ── 네모 안의 얼굴 ──────────────────────────────────────────────────
+	## 회색 네모만으로는 "적 셋이 붙었다" 까지만 읽히고 **무엇이** 붙었는지는
+	## 모른다. 자폭체 셋과 방패병 셋은 완전히 다른 상황인데 화면이 같았다.
+	##
+	## 30px 안에 얼굴을 넣으면 이름은 못 읽어도 **실루엣과 색으로 구분**된다.
+	## 정확히 누구인지는 네모에 손을 올리면 판 위 정보창이 말해 준다.
+	##
+	## 노드로 붙인다. _draw() 안의 draw_texture_rect 는 이 프로젝트에서 흰
+	## 사각형이 된다(다섯 번 겪었다). 그리고 매 프레임 만들면 안 되므로
+	## 풀에 담아 두고 자리와 그림만 갈아 끼운다.
+	var _icons: Array[TextureRect] = []
+
+	## 개체 종류별 아이콘. 리그로 움직이는 기계는 단일 그림이 없어서 대표
+	## 부품을 쓴다.
+	const ICON_PART: Dictionary = {
+		"turret": "turret_head",
+		"bomber": "bomber_body",
+	}
+
 	## ── 네모에 손을 올리면 그 적이 **판 위에서** 밝혀진다 ───────────────
 	## 회색 네모만 봐서는 누구인지 알 수가 없다. 그렇다고 여기에 또 정보창을
 	## 띄우면 같은 것을 두 군데서 설명하게 된다.
@@ -2750,9 +2769,14 @@ class _RosterPanel extends Control:
 			view.roster_hover = hit
 		queue_redraw()
 
+	## 이번 프레임에 쓴 아이콘 수. 남는 것은 숨긴다.
+	var _icon_n: int = 0
+
 	func _draw() -> void:
 		_foe_hits.clear()
+		_icon_n = 0
 		if view == null or view.battle == null:
+			_hide_rest()
 			return
 		var b = view.battle
 		var fs: Font = UiKit.font(11)
@@ -2788,6 +2812,41 @@ class _RosterPanel extends Control:
 		for u in allies:
 			_row(u, y, fs, b, allies)
 			y += ROW_H
+		_hide_rest()
+
+
+	## 네모 하나에 얼굴을 얹는다. 없으면 조용히 비운다 - 아직 그림이 없는
+	## 개체가 있어도 화면이 안 깨진다.
+	func _place_icon(i: int, r: Rect2, e: Unit, a2: float) -> void:
+		while _icons.size() <= i:
+			var t := TextureRect.new()
+			# 이 한 줄이 빠지면 TextureRect 의 최소 크기가 텍스처 크기라,
+			# size 를 아무리 작게 줘도 원본 크기로 되돌아간다.
+			t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(t)
+			_icons.append(t)
+		var t2 := _icons[i]
+		t2.texture = _icon_for(e.type_id)
+		t2.visible = t2.texture != null
+		t2.position = r.position + Vector2(2, 2)
+		t2.size = r.size - Vector2(4, 4)
+		# 위협이 옅으면 얼굴도 같이 옅어진다. 네모 색과 따로 놀면 두 신호가
+		# 서로를 지운다.
+		t2.modulate = Color(1, 1, 1, 0.45 + 0.55 * a2)
+
+
+	func _hide_rest() -> void:
+		for i in range(_icon_n, _icons.size()):
+			_icons[i].visible = false
+
+
+	static func _icon_for(tid: String) -> Texture2D:
+		var part := String(ICON_PART.get(tid, ""))
+		if part != "":
+			return UiKit.art(["units"], part)
+		return UiKit.art(["portraits", "units"], tid)
 
 	## 왼쪽 위·오른쪽 아래를 사선으로 깎은 테두리.
 	func _chamfer(r: Rect2, col: Color) -> void:
@@ -2864,7 +2923,7 @@ class _RosterPanel extends Control:
 			var r := Rect2(fx, y + 8, FOE_BOX, FOE_BOX)
 			_foe_hits.append({ "rect": r, "unit": e })
 			var lit: bool = view != null and view.hover_unit == e
-			draw_rect(r, Color(0.44, 0.46, 0.52, a2))
+			draw_rect(r, Color(0.10, 0.11, 0.14, 0.92))
 			draw_rect(r, Color(UiKit.BAD.r, UiKit.BAD.g, UiKit.BAD.b,
 				1.0 if lit else a2), false, 2.5 if lit else 1.5)
 			# ── 붉은 밑줄 = 지금 실제로 때리는 중 ────────────────────────
@@ -2876,6 +2935,8 @@ class _RosterPanel extends Control:
 			# "지금 ○○ 을 때리는 중" 이라고 말로 적어 준다. (_draw_hover)
 			if Grid.manhattan(e.pos, u.pos) <= e.atk_range:
 				draw_rect(Rect2(fx, y + 8 + FOE_BOX + 2, FOE_BOX, 3.0), UiKit.BAD)
+			_place_icon(_icon_n, r, e, a2)
+			_icon_n += 1
 			fx += FOE_BOX + FOE_GAP
 		if foes.size() > shown:
 			draw_string(fs, Vector2(fx + 2, y + 30), "+%d" % (foes.size() - shown),
