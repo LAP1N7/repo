@@ -29,6 +29,7 @@ func _init() -> void:
 	_stealth_moves_damage()
 	_no_flapping()
 	_forced_reaches_locked()
+	_stalker_keeps_its_mark()
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -166,6 +167,41 @@ func _forced_reaches_locked() -> void:
 	print("  표적 모듈 든 적이 방패병을 친 비중: 기본 %d%% -> [도발] %d%%" % [a, c])
 	_ok(locked_all_base > 20, "표본이 충분하다")
 	_ok(c > a, "도발이 표적 모듈을 든 적에게도 통한다")
+
+
+## 6. 추격 자폭체가 제 표적을 지키는가.
+##
+## 이 개체의 전부는 "가장 무른 대원을 향해 곧장 간다" 이다. 위협도가 점수
+## 하나로 지정을 덮게 했더니 앞줄 방패병이 붙어 있다는 이유만으로 표적이
+## 바뀌었다 - 개체의 정체성이 통째로 사라진 것이다.
+##
+## 지금은 **길이 막혔을 때만** 넘어간다. 길이 뚫려 있으면 끝까지 그 대원에게
+## 간다.
+func _stalker_keeps_its_mark() -> void:
+	var kept := 0
+	var total := 0
+	for stage in [1, 5]:
+		var b := _battle(stage, ["", "", ""])
+		while b.result == Battle.RESULT_ONGOING and b.tick < b.max_ticks():
+			b.step()
+			for u in b.units:
+				if u.type_id != "stalker" or not u.alive:
+					continue
+				if u.last_target == null:
+					continue
+				total += 1
+				# 가장 무른 대원(최대 HP 최소)을 겨누고 있는가.
+				var frail: Unit = null
+				for a in b.living_enemies_of(u):
+					if frail == null or a.max_hp < frail.max_hp:
+						frail = a
+				if frail != null and u.last_target.index == frail.index:
+					kept += 1
+	var pct: int = 0 if total == 0 else kept * 100 / total
+	print("  추격 자폭체가 무른 대원을 겨눈 틱: %d / %d  (%d%%)" % [kept, total, pct])
+	# 추격 자폭체는 판마다 한 마리뿐이고 붙으면 곧 터진다. 표본이 원래 적다.
+	_ok(total >= 8, "표본이 충분하다")
+	_ok(pct >= 80, "길이 뚫려 있으면 표적을 안 바꾼다")
 
 
 # ── 도구 ─────────────────────────────────────────────────────────────────

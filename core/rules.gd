@@ -48,33 +48,32 @@ static var _ctx_target: Unit = null
 ## 어긋난다.
 const THREAT_ONLY: Array[String] = ["taunt", "aggressive", "stealth"]
 
-## ── 위협도가 표적 지정에 개입하는 문턱 ──────────────────────────────────
+## ── 위협도가 표적 지정에 개입하는 규칙 ──────────────────────────────────
 ## 표적 축과 위협도는 원래 만나지 않았다. 모듈이 있으면 모듈이 이기고, 위협도는
 ## 모듈이 없을 때의 기본값일 뿐이었다. 그래서 표적 모듈을 든 적에게는 도발이
 ## 아예 안 통했다.
 ##
-## 그렇다고 위협도가 늘 이기게 하면 표적 축 16개가 통째로 장식이 된다.
-## 그래서 **문턱을 둘로 나눈다.**
+## 그렇다고 점수 하나로 문턱을 잡으면 **거리 항이 다 먹는다.** 실제로 그렇게
+## 했다가 추격 자폭체가 망가졌다 - 가장 무른 대원을 향해 곧장 가는 것이
+## 그 개체의 전부인데, 앞에 선 방패병이 붙어 있다는 이유만으로 문턱을 넘어
+## 표적이 바뀌었다. 지정을 무엇으로 덮을지를 **거리**가 정하면 안 된다.
 ##
-##   HARD  표적 모듈이 지정을 마친 상태를 덮으려면 이만큼 필요하다.
-##         지정은 플레이어가 명시적으로 내린 명령이므로 쉽게 뒤집히면 안 된다.
-##   SOFT  지정이 없거나(기본기) 물러나려는 상황에서는 이만큼이면 된다.
-##         이미 확신이 없는 상태라 작은 신호로도 방향이 바뀌어야 자연스럽다.
+## 그래서 둘로 가른다.
 ##
-## ── 값은 실측 분포에서 골랐다 ───────────────────────────────────────────
-## 한 판에서 나온 위협도 점수 5,262개의 분포:
+##   ① 선언된 유인 - 도발과 유인 신호기. 길이 뚫려 있어도 지정을 덮는다.
+##                   "이쪽을 봐라" 는 선언이므로 지정과 같은 층위에서 다툰다.
+##   ② 막힌 지정   - 지정한 대상에게 **실제로 갈 수 없으면** 눈앞의 위협으로
+##                   넘어간다. 못 가는 곳을 향해 계속 걷는 것은 판단이 아니다.
 ##
-##     -10~19  4,928 (94%)   평범한 상황
-##      20~29    ...         인접한 상대 (평균 22)
-##      30~49    148         도발 중 (평균 43)
-##      70~89    158         유인 신호기 (threat_base +70)
-##
-## HARD 30 - 도발과 신호기는 넘고 평범한 인접(22)은 못 넘는다. 지정을 덮는
-##           일이 드물게, 그러나 확실히 일어난다.
-## SOFT 18 - 인접한 상대는 넘고 멀리 있는 상대는 못 넘는다. "코앞의 위협은
-##           무시하지 않는다" 가 이 값의 뜻이다.
-const THREAT_HARD: int = 30
+## ②의 판정은 직선 거리가 아니라 **실제 경로 길이**다. 벽처럼 막혀 있으면
+## 우회 경로가 길어지고, 그게 이 길이 막혔다는 뜻이다.
 const THREAT_SOFT: int = 18
+
+## 실제 경로가 직선 거리보다 이만큼 넘게 길면 "막혔다" 로 본다.
+##
+## 3 인 이유: 격자에서 한 칸을 돌아가면 +2 다. 두 번 돌아가는 정도(+4)까지는
+## 그냥 길이 굽은 것이고, 그 이상이면 통로가 막힌 것이다.
+const DETOUR_LIMIT: int = 3
 
 ## [광전] 이 붙는 위력 배수. 물러나지 않는 대신 받는 값이다.
 ## 1.3 은 기본기(70)를 91 로, 평타(100)를 130 으로 올린다 - 한 방이 눈에 띄게
@@ -280,27 +279,35 @@ static func _pick_target(unit: Unit, state, trace: Dictionary) -> Dictionary:
 		out = { "target": resolve_target(unit, "highest_threat_enemy", state, "attack") }
 
 	# ── 위협도가 개입한다 ────────────────────────────────────────────────
-	# 여기가 위협도와 표적 축이 만나는 자리다. 문턱은 **지금 지정이 얼마나
-	# 확실한가**에 따라 달라진다(THREAT_HARD / THREAT_SOFT 주석 참조).
-	#
-	#   모듈이 지정을 마쳤다   -> HARD. 명시적 명령이라 쉽게 안 뒤집힌다
-	#   기본기로 떨어졌다      -> SOFT. 이미 확신이 없는 상태다
+	# 여기가 위협도와 표적 축이 만나는 자리다. 규칙은 위 상수 주석에 있다.
 	#
 	# 회복형(악사)의 아군 표적은 건드리지 않는다. 살릴 사람을 고르는 판단에
 	# 적의 위협도가 끼어들 이유가 없다.
 	var cur: Unit = out.get("target", null)
 	if cur == null or cur.team != unit.team:
-		var floor_: int = THREAT_HARD if not won.is_empty() else THREAT_SOFT
-		var top := _top_threat(unit, state)
-		var tu: Unit = top.get("unit", null)
-		if tu != null and int(top["score"]) >= floor_ 				and (cur == null or cur.index != tu.index):
+		var swap: Unit = null
+		var why := ""
+
+		# ① 선언된 유인은 길이 뚫려 있어도 덮는다.
+		var lure := _declared_lure(unit, state)
+		if lure != null:
+			swap = lure
+			why = UiText.t("rule.lure_why", "선언된 유인이 지정을 덮었다")
+		# ② 지정한 곳에 갈 수가 없으면 눈앞의 위협으로 넘어간다.
+		elif _designation_blocked(unit, cur, state):
+			var top := _top_threat(unit, state)
+			var tu: Unit = top.get("unit", null)
+			if tu != null and int(top["score"]) >= THREAT_SOFT:
+				swap = tu
+				why = UiText.t("rule.blocked_why",
+					"지정한 곳이 막혀 위협도 %d 로 넘어갔다") % int(top["score"])
+
+		if swap != null and (cur == null or cur.index != swap.index):
 			rows.append({ "slot": -1, "name": UiText.t("rule.forced", "위협 개입"),
-				"hit": true,
-				"why": UiText.t("rule.forced_why", "위협도 %d 가 문턱 %d 를 넘었다")
-					% [int(top["score"]), floor_] })
+				"hit": true, "why": why })
 			# rule 과 slot 은 그대로 둔다. 표적만 바뀌었을 뿐 "이 대원은 적을
 			# 찾아간다" 는 선언은 유효하고, 화면도 그 슬롯이 걸린 것으로 읽는다.
-			out["target"] = tu
+			out["target"] = swap
 			out["forced"] = true
 
 	trace[Axes.TARGET] = rows
@@ -431,9 +438,9 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 			# 그 붙은 것이 **도발 중인 방패병**이거나 유인 신호기면, 물러나는
 			# 것이 오히려 상대가 원하는 그림이다.
 			#
-			# 문턱은 낮은 쪽(SOFT)을 쓴다. 물러나려는 상태는 이미 "이 대원이
-			# 무엇을 할지" 가 확정된 상태가 아니므로, 작은 신호로도 방향이
-			# 바뀌는 편이 자연스럽다.
+			# 문턱은 SOFT 를 쓴다. 물러나려는 상태는 이미 "이 대원이 무엇을
+			# 할지" 가 확정된 상태가 아니므로, 작은 신호로도 방향이 바뀌는
+			# 편이 자연스럽다.
 			if flee > 0 and Threat.score(unit, target) >= THREAT_SOFT:
 				flee = 0
 			if flee > 0 and dist <= flee:
@@ -603,6 +610,48 @@ static func follow_anchor(unit: Unit, state) -> Unit:
 		if mate != null and mate.alive:
 			return mate
 	return null
+
+
+## 지금 "이쪽을 봐라" 를 **선언한** 상대. 없으면 null.
+##
+## 도발(태세)과 유인 신호기(특성) 둘뿐이다. 거리·누적 피해처럼 저절로 쌓이는
+## 값은 여기 안 들어간다 - 그건 "위협적이다" 이지 "선언" 이 아니고, 저절로
+## 쌓이는 값이 지정을 덮으면 추격 개체가 통째로 망가진다.
+##
+## 여럿이면 위협도가 높은 쪽. 동점은 index 로 끊는다.
+static func _declared_lure(unit: Unit, state) -> Unit:
+	var best: Unit = null
+	var bs: int = -(1 << 30)
+	for e in state.living_enemies_of(unit):
+		if e.threat_mod < Threat.TAUNT and e.threat_base < Traits.BEACON_THREAT:
+			continue
+		var sc := Threat.score(unit, e)
+		if sc > bs:
+			bs = sc
+			best = e
+	return best
+
+
+## 지정한 대상에게 실제로 갈 수 있는가.
+##
+## 직선 거리가 아니라 **막힌 칸을 피해 돌아가는 실제 경로 길이**를 잰다.
+## 앞줄이 통로를 막고 있으면 우회 경로가 길어지고, 그것이 "이 지정은 지금
+## 실행할 수 없다" 는 뜻이다.
+##
+## 사거리 안이면 이미 닿았으므로 막힌 것이 아니다.
+static func _designation_blocked(unit: Unit, target: Unit, state) -> bool:
+	if target == null:
+		return true
+	var direct: int = Grid.manhattan(unit.pos, target.pos)
+	if direct <= unit.atk_range:
+		return false
+	# 목적지 자신은 통과 가능한 칸으로 둔다(그 칸에 표적이 서 있다).
+	var blocked: Dictionary = state.occupancy(unit)
+	blocked.erase(target.pos)
+	var field: Dictionary = Grid.distance_field(target.pos, blocked)
+	if not field.has(unit.pos):
+		return true
+	return int(field[unit.pos]) - direct > DETOUR_LIMIT
 
 
 ## 지금 가장 위협적인 상대와 그 점수. { unit, score }
