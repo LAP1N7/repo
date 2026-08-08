@@ -6,6 +6,9 @@ extends Node2D
 ## Battle(코어)은 이 파일을 전혀 모른다. battle.step() 을 한 틱씩 돌리고 그 틱에
 ## 쌓인 이벤트를 순서대로 재생할 뿐이다. 연출을 아무리 바꿔도 전투 결과는 안 변한다.
 
+## 작전을 접는다. BRANCH B 로 간다.
+signal gave_up()
+
 signal to_loadout()
 signal to_shop()
 signal won()
@@ -164,8 +167,12 @@ var lbl_tick: Label
 var lbl_status: Label
 var btn_start: Button
 var btn_next: Button
+## 진 뒤에만 뜬다. 누르면 작전을 접고 BRANCH B 로 간다.
+var btn_giveup: Button
 var speed_buttons: Array[Button] = []
 var result_panel: Control
+## [덱부터 다시]. [작전 종료] 와 같은 자리를 쓴다.
+var _btn_to_shop: Button
 var lbl_result: Label
 var lbl_result_sub: Label
 ## 하단 대원 바. 얼굴 · HP · 기여도가 여기 산다.
@@ -826,11 +833,27 @@ func _build_ui() -> void:
 	b1.pressed.connect(func(): to_loadout.emit())
 	var b2 := UiKit.button(ui, Vector2(bx + 176, cy + 52), Vector2(164, 40), UiText.t("battle.to_shop", "←  덱부터 다시"), 14)
 	b2.pressed.connect(func(): to_shop.emit())
+	_btn_to_shop = b2
 
 	# 이기면 보상 화면으로. 아직 못 이겼으면 숨긴다.
 	btn_next = UiKit.button(ui, Vector2(bx, cy), Vector2(340, 44), UiText.t("battle.to_reward", "보급 수령  ▶"), 19)
 	btn_next.visible = false
 	btn_next.pressed.connect(func(): won.emit())
+
+	# ── 접는 길 ─────────────────────────────────────────────────────────
+	# 지금까지 진 판에서 나갈 길이 [편성 고치기] 와 [덱부터 다시] 둘뿐이었다.
+	# 둘 다 "다시 해라" 라서, 이 게임에는 **끝이 없었다.**
+	#
+	# 이야기가 요구하는 것은 그 반대다. ACT 5 의 분기는 이기면 A, 지면 B 인데
+	# B 로 갈 방법이 아예 없었다 - 대본은 써 두고 문을 안 낸 상태였다.
+	#
+	# 강제하지는 않는다. 이 게임은 어렵고, 지고 나서 다시 짜는 것이 본체다.
+	# 접는 것은 플레이어가 고르는 일이라 버튼 하나로 둔다.
+	btn_giveup = UiKit.button(ui, Vector2(bx + 176, cy + 52), Vector2(164, 40),
+		UiText.t("battle.give_up", "작전 종료"), 13)
+	btn_giveup.visible = false
+	btn_giveup.modulate = UiKit.BAD
+	btn_giveup.pressed.connect(func(): gave_up.emit())
 
 	# ── 하단 대원 바 ────────────────────────────────────────────────────
 	# 명일방주 하단 UI 의 어법이다. 오른쪽에 글자로 늘어놓던 출전 정보를 얼굴
@@ -1300,6 +1323,13 @@ func _refresh_ui() -> void:
 
 	# 마지막 스테이지에서도 보상은 받는다. 그 뒤에 런 클리어 화면으로 간다.
 	btn_next.visible = phase == Phase.RESULT and battle.result == Battle.RESULT_VICTORY
+	# 졌을 때만 접는 길이 열린다. 이기고 있는데 이 버튼이 보이면 그건 유혹이다.
+	if btn_giveup != null:
+		btn_giveup.visible = phase == Phase.RESULT 			and battle.result != Battle.RESULT_VICTORY
+		# [덱부터 다시] 와 자리를 나눠 쓴다. 둘이 겹치면 안 되므로 하나가
+		# 뜨면 다른 하나는 접는다.
+		if _btn_to_shop != null:
+			_btn_to_shop.visible = not btn_giveup.visible
 
 	for i in speed_buttons.size():
 		var m: float = SPEEDS[i]

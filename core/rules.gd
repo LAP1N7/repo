@@ -42,6 +42,9 @@ extends RefCounted
 ## 검사와 화면 양쪽에서 불리는데, 시그니처를 바꾸면 그 호출부가 전부 깨진다.
 static var _ctx_target: Unit = null
 
+## 이번 판단에서 고른 "교전당 1회" 모듈의 id. 실제로 실행되면 그때 소모된다.
+static var _ctx_once: String = ""
+
 ## 위협도만 바꾸는 수칙. 행동을 정하지 않으므로 **아래 칸을 가리지 않는다.**
 ##
 ## core/shadow.gd 의 같은 목록과 짝이다. 한쪽만 고치면 화면 경고와 실제 동작이
@@ -124,6 +127,10 @@ static func select(unit: Unit, state) -> Dictionary:
 
 	# 3) DOCTRINE - 언제 무엇을 하는가
 	var doc := _pick_doctrine(unit, state, trace)
+	# 조립부가 "이 판단을 실제로 실행했다" 를 표시할 수 있도록 id 를 넘긴다.
+	# 고르기만 하고 실행이 안 된 것까지 소모로 치면, 갈 곳이 없는 한 틱에
+	# 판을 뒤집을 카드가 조용히 날아간다.
+	_ctx_once = String((doc.get("rule", {}) as Dictionary).get("id", "")) 		if bool((doc.get("rule", {}) as Dictionary).get("once", false)) else ""
 	_ctx_target = null
 	var stance := String(doc.get("value", ""))
 	# 위협도 보정은 매 틱 다시 계산한다. 조건이 풀리면 꺼져야 하기 때문이다.
@@ -204,6 +211,13 @@ static func _pick_doctrine(unit: Unit, state, trace: Dictionary) -> Dictionary:
 			continue
 		var name := String(rule.get("name", ""))
 		var value := String(rule.get("stance", ""))
+
+		# 교전당 한 번인 것은 이미 썼으면 건너뛴다. 아래 칸으로 내려가므로
+		# "한 번 쓰고 나면 그 슬롯이 비는" 것이 된다.
+		if bool(rule.get("once", false)) 				and unit.once_used.has(String(rule.get("id", ""))):
+			rows.append({ "slot": slot, "name": name, "hit": false,
+				"why": UiText.t("rule.spent", "이미 썼다") })
+			continue
 
 		if not eval_condition(unit, String(rule["cond"]), int(rule["cond_arg"]), state):
 			rows.append({ "slot": slot, "name": name, "hit": false, "why": "조건 불성립" })
@@ -376,6 +390,35 @@ static func _assemble(unit: Unit, state, target: Unit, stance: String,
 				return _retreat(unit, state, bonus)
 		"avoid_boost":
 			return _retreat(unit, state, bonus + 1)
+
+		# ── 긴급 이탈 ────────────────────────────────────────────────────
+		# 세 칸을 한 번에 뺀다. [부상 후퇴](매 틱 한 칸)와 다른 물건이다 -
+		# 저쪽은 야금야금 물러나는 습관이고 이쪽은 **한 번의 탈출**이다.
+		#
+		# 교전당 한 번인 이유: 매 틱 세 칸씩 빠지면 그 대원은 판에서 사라진다.
+		# 한 번이라서 "지금 쓸까, 더 버틸까" 가 생긴다.
+		"bail":
+			var r := _retreat(unit, state, bonus + 2)
+			if not r.is_empty():
+				_spend_once(unit)
+			return r
+
+		# ── 집결 신호 ────────────────────────────────────────────────────
+		# 아군이 쓰러진 직후 남은 아군 곁으로 붙는다. 하나가 죽으면 대개 다음
+		# 하나도 같은 이유로 죽는데, 흩어져 있으면 그게 순서대로 일어난다.
+		"regroup":
+			var mate := _nearest_ally(unit, state)
+			if mate != null and Grid.manhattan(unit.pos, mate.pos) > 1 					and state.plan_move(unit, mate, true, bonus + 1, 1) != unit.pos:
+				_spend_once(unit)
+				return _rule(unit, "집결", "move_to_ally", mate, 0, bonus + 1)
+
+		# ── 최후 돌격 ────────────────────────────────────────────────────
+		# 장기전이 되면 한 번은 거리를 좁혀야 한다. 양쪽이 서로 카이팅하며
+		# 영영 안 붙는 것이 이 게임에서 세 번째로 흔한 결말이었다.
+		"final_push":
+			if target != null and Grid.manhattan(unit.pos, target.pos) > unit.atk_range:
+				_spend_once(unit)
+				return _approach(unit, state, target, bonus + 2, "최후 돌격")
 
 		# ── 붙어서 끝낸다 ────────────────────────────────────────────────
 		# 능력치를 안 준다. 하는 일은 둘이다 - 물러나는 판단을 이 틱에만 끄고,
@@ -767,6 +810,12 @@ static func _threat_mod(stance: String) -> int:
 	return 0
 
 
+## "교전당 1회" 모듈을 소모 처리한다. 실제로 행동이 나온 순간에만 부른다.
+static func _spend_once(unit: Unit) -> void:
+	if _ctx_once != "":
+		unit.once_used[_ctx_once] = true
+
+
 ## 물러난다. 갈 곳이 없으면 버틴다 - 실패했다고 공격으로 넘어가면 지시가 뒤집힌다.
 static func _retreat(unit: Unit, state, bonus: int) -> Dictionary:
 	var away := resolve_target(unit, "nearest_enemy", state, "")
@@ -855,6 +904,11 @@ static func eval_condition(unit: Unit, cond: String, arg: int, state) -> bool:
 
 		"self_hp_below":
 			return unit.hp_percent_below(arg)
+
+		"self_hp_above":
+			# self_hp_below 의 거울. "아직 버틸 수 있는 동안" 을 조건으로 쓸
+			# 수단이 없었다 - 위협을 끄는 판단은 대개 그 조건을 원한다.
+			return not unit.hp_percent_below(arg)
 
 		"was_hit_last_tick":
 			return unit.was_hit

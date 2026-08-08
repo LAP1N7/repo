@@ -265,5 +265,7 @@
   "card.taunt_text": "적이 인접할 때 위협도를 크게 올린다 (표적 지정도 덮는다)",
   "rule.lure_why": "선언된 유인이 지정을 덮었다",
   "rule.blocked_why": "지정한 곳이 막혀 위협도 %d 로 넘어갔다",
-  "rule.reroute_why": "지정한 곳이 막혀 갈 수 있는 대상으로 다시 골랐다"
+  "rule.reroute_why": "지정한 곳이 막혀 갈 수 있는 대상으로 다시 골랐다",
+  "rule.spent": "이미 썼다",
+  "battle.give_up": "작전 종료"
 }

@@ -452,10 +452,10 @@ const TABLE: Dictionary = {
 		"tier": 2,
 		"cost": 3,
 		"name": "은신",
-		"cond": "self_hp_below",
-		"cond_arg": 50,
+		"cond": "always",
+		"cond_arg": 0,
 		"stance": "stealth",
-		"text": "자신 HP < 50% → 위협도를 낮춘다",
+		"text": "\uc704\ud611\ub3c4\ub97c \ub0ae\ucd98\ub2e4. \uc801\uc774 \ub2e4\ub978 \ub300\uc6d0\uc744 \uba3c\uc800 \ubcf8\ub2e4",
 	},
 	"ambush": {
 		"axis": "doctrine",
@@ -517,16 +517,73 @@ const TABLE: Dictionary = {
 	# 같은 조건에 **행동을 안 뺏는 판단**을 붙였다. 위협 수칙은 행동 자리를
 	# 차지하지 않으므로(rules._pick_doctrine 참조) 손해가 날 수가 없고,
 	# "제 진영을 지키는 대원이 침입자를 받는다" 는 그림도 그대로 산다.
+	# ── 위협 수칙 셋을 어떻게 갈랐나 ─────────────────────────────────────
+	# 셋 다 하는 일은 같다 - 위협도를 올리거나 내린다. 다른 것은 **언제** 다.
+	#
+	#   전투태세  항상 +20    상시로 조금. 값이 싸고 조건이 없다
+	#   수비 태세 멀쩡하면 +35 아직 버틸 수 있는 동안 받아낸다
+	#   도발      붙으면 +35  이미 붙은 것을 확실히 붙잡는다. 지정도 덮는다
+	#
+	# 수비 태세는 원래 "내 진영 안" 이었다. 그런데 방패병은 앞으로 나가는
+	# 직업이라 두어 틱 만에 진영을 벗어나고, 그 뒤로는 영영 조건 불성립이었다.
+	# 자리로 조건을 걸면 그 자리를 지키는 것 자체가 목적이 되어 버린다.
+	#
+	# HP 로 바꿨다. 멀쩡할 때 받아내고 다치면 놓는다 - 탱커가 넘겨주는 그림이
+	# 규칙 하나로 나온다.
 	"home_guard": {
 		"axis": "doctrine",
 		"tag": "threat",
 		"tier": 2,
-		"cost": 2,
+		"cost": 3,
 		"name": "수비 태세",
-		"cond": "in_home_zone",
-		"cond_arg": 0,
+		"cond": "self_hp_above",
+		"cond_arg": 50,
 		"stance": "taunt",
-		"text": "내 진영 안이면 → 위협도를 크게 올린다",
+		"text": "자신 HP \u2265 50% \u2192 위협도를 크게 올린다",
+	},
+
+	# ── 교전당 한 번만 쓰는 교전 수칙 ────────────────────────────────────
+	# 매 틱 발동하는 것과는 성격이 다르다. 매 틱짜리는 **습관**이고 이쪽은
+	# **한 수**다. 한 번뿐이라 "지금 쓸까, 더 버틸까" 가 생기고, 그 판단은
+	# 능력치가 아니라 상황을 읽는 일이다.
+	#
+	# 슬롯을 하나 먹지만 한 번 쓰고 나면 그 칸은 비고 아래 칸으로 내려간다.
+	# 그래서 1번 칸에 두어도 아래를 영영 가리지 않는다.
+	"bail_out": {
+		"axis": "doctrine",
+		"tag": "patience",
+		"tier": 2,
+		"cost": 3,
+		"name": "긴급 이탈",
+		"cond": "self_hp_below",
+		"cond_arg": 30,
+		"stance": "bail",
+		"once": true,
+		"text": "자신 HP < 30% \u2192 세 칸 물러난다 (교전당 1회)",
+	},
+	"regroup": {
+		"axis": "doctrine",
+		"tag": "formation",
+		"tier": 2,
+		"cost": 3,
+		"name": "집결 신호",
+		"cond": "ally_died_last_tick",
+		"cond_arg": 0,
+		"stance": "regroup",
+		"once": true,
+		"text": "아군이 쓰러진 직후 \u2192 남은 아군 곁으로 (교전당 1회)",
+	},
+	"final_push": {
+		"axis": "doctrine",
+		"tag": "charge",
+		"tier": 3,
+		"cost": 4,
+		"name": "최후 돌격",
+		"cond": "tick_above",
+		"cond_arg": 30,
+		"stance": "final_push",
+		"once": true,
+		"text": "30틱 이후 \u2192 이동 +2로 표적에게 붙는다 (교전당 1회)",
 	},
 
 	"scatter": {

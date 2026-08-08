@@ -71,7 +71,7 @@ const CONDS := [
 	"ally_died_last_tick", "enemy_special_ready", "target_hp_below",
 	# 판을 읽는 조건들. 교전 축이 자기 HP·거리·틱밖에 못 보던 것을 넓혔다.
 	"target_hp_above", "enemies_left_at_most", "allies_left_at_most",
-	"in_home_zone",
+	"in_home_zone", "self_hp_above",
 ]
 const PICKS := [
 	"nearest_enemy", "farthest_enemy", "farthest_in_range_enemy", "backline_enemy",
@@ -82,7 +82,7 @@ const PICKS := [
 ]
 const STANCES := ["engage", "wait", "defend", "ambush",
 	"avoid_near", "avoid_mid", "avoid_boost", "taunt", "aggressive", "stealth",
-	"close_in"]
+	"close_in", "bail", "regroup", "final_push"]
 const STANDS := ["keep_range", "frontline", "behind_guard", "cluster", "march", "chase",
 	"follow_guard", "follow_lead", "protect_support", "protect_ranged", "escort", "rally"]
 

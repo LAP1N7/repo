@@ -317,6 +317,16 @@ func _do_goto_battle() -> void:
 	s.setup(run)
 	_attach_overlay(s, "battle")
 	s.to_loadout.connect(goto_loadout)
+	# ── BRANCH B ────────────────────────────────────────────────────────
+	# 작전을 접으면 루프 대본이 재생되고 런이 처음으로 돌아간다. 대본이
+	# "기억을 다듬고 다시 한 번" 이라고 말하는 그대로다 - 화면 밖의 진행도
+	# 초기화와 화면 안의 기억 소거가 같은 동작이 된다.
+	s.gave_up.connect(func():
+		play_story("loop", 0, func():
+			run.start_run(1)
+			goto_title()
+		)
+	)
 	s.to_shop.connect(func():
 		# 덱부터 다시 = 이번 스테이지의 상점만 다시. 런 상태는 유지된다.
 		run.start(run.stage_id)

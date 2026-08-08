@@ -289,22 +289,61 @@
   "loop_0": [
     {
       "speaker": "MIRA",
+      "art": "collapse",
+      "portrait": "ai",
+      "camera": 1.6,
+      "text": "방어 구역 상실.\n접근 기계체가 서버 구획에 진입했습니다."
+    },
+    {
+      "speaker": "MIRA",
+      "portrait": "ai_talk",
+      "text": "지휘관 양성 프로토콜 목표 수치 미달.\n수집된 판단 데이터로는 지상 수복을 실행할 수 없습니다."
+    },
+    {
+      "text": "화면 어딘가에서 팬이 멎는 소리가 난다.\n그리고 다시 돌아간다."
+    },
+    {
+      "speaker": "MIRA",
       "art": "commander_room",
       "portrait": "ai_smile",
-      "text": "괜찮습니다.\n기억을 다듬고, 다시 한 번 훈련을 거치면 되니까요."
+      "camera": 0.6,
+      "text": "괜찮습니다, 지휘관님.\n기억을 다듬고 다시 한 번 훈련을 거치면 되니까요."
+    },
+    {
+      "speaker": "MIRA",
+      "portrait": "ai_smile",
+      "text": "이번 회차의 판단 기록은 보존됩니다.\n지휘관님만 기억하지 못하실 뿐입니다."
     },
     {
       "fx": "glitch",
-      "text": "기억 지움 및 오버레이 재구성...\nPROJECT RECLAIM 재구동."
+      "camera": 1.8,
+      "text": "[시스템]  인지 롤백 절차 개시\n기억 소거 및 오버레이 재구성..."
     },
     {
       "fx": "sync",
+      "camera": 0.0,
+      "zoom": 0.0,
       "text": "MEMORY SYNCHRONIZATION  14 ... 20 ... 30 ... 100%"
+    },
+    {
+      "art": "commander_room",
+      "camera": 0.8,
+      "text": "아무 일도 없었다는 듯이, 지휘관실의 조명이 켜진다."
     },
     {
       "speaker": "대원 A",
       "portrait": "archer",
-      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!\n어서 명령을 내려주세요!"
+      "zoom": 1.3,
+      "text": "지휘관님! 대체 언제까지 멍하니 계실 거예요?\n지금 북부 전선이 돌파당하기 직전이라고요!"
+    },
+    {
+      "speaker": "MIRA",
+      "portrait": "ai",
+      "camera": 1.2,
+      "text": "안녕하세요, 지휘관님.\n작전 보조 에이전트 MIRA 입니다."
+    },
+    {
+      "text": "처음 듣는 인사였다.\n분명히, 처음 듣는 인사였다."
     }
   ],
   "_tutorial_comment": [

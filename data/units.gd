@@ -246,8 +246,14 @@ const TABLE: Dictionary = {
 	},
 }
 
-## 악사 기본기 [레가토] 1회 회복량. 매 틱 들어가므로 작아야 한다.
-const BARD_HEAL: int = 20
+## 악사 기본기 [레가토] 1회 회복량. **매 틱** 들어가므로 작아야 한다.
+##
+## 20 -> 16 으로 내렸다. 악사 하나가 붙어 있으면 적 딜의 상당 부분이 그대로
+## 지워져서, 판이 "누가 먼저 악사를 끊는가" 하나로 수렴했다. 회복이 판을
+## 끄는 것이 아니라 늘리는 쪽으로 두려면 딜보다 확실히 작아야 한다.
+##
+## 궁극기 [칸타빌레](한 번에 크게)는 그대로다. 지속 회복만 줄인다.
+const BARD_HEAL: int = 16
 
 static func get_stat(unit_id: String, key: String) -> Variant:
 	return TABLE[unit_id][key]
