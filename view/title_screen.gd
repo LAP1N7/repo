@@ -292,8 +292,15 @@ func setup() -> void:
 	# 규칙 요약은 상점 화면에도 [게임 방법] 으로 있다. 같은 것을 두 군데 둘
 	# 이유가 없고, 지금 더 급한 건 대본을 고칠 때마다 다섯 판을 다시 이기지
 	# 않고 이야기만 확인하는 길이다.
+	# ── 왜 확인을 한 번 받는가 ──────────────────────────────────────────
+	# 이 버튼은 대본 **전체**를 처음부터 끝까지 튼다. 최종 스테이지의 결말과
+	# 진상이 그 안에 그대로 들어 있어서, 무엇인지 모르고 눌러 본 사람은
+	# 되돌릴 수 없는 것을 본다. 한 번 묻는 것으로 사고가 사라진다.
 	var b3 := _menu(Vector2(TEXT_X, 512), UiText.t("title.story", "기록 열람"), 30)
-	b3.pressed.connect(func(): show_help.emit())
+	b3.pressed.connect(func():
+		sfx.play("click")
+		_ask_spoiler()
+	)
 
 	# 콘텐츠 개수(스테이지 5개 · 카드 18종 …)는 뺐다.
 	# 타이틀에서 그 숫자를 보고 판단할 사람은 없고, 시작 화면은 무엇을 누를지만
@@ -343,6 +350,93 @@ func _process(_d: float) -> void:
 		return
 	_lbl_audio.text = UiText.t("title.audio_fail", "음악 재생 실패 · %s") % Sfx.diagnose()
 	_lbl_audio.visible = true
+
+
+## ── 기록 열람 확인창 ─────────────────────────────────────────────────────
+## 화면 전체를 덮는다. 뒤의 버튼을 그대로 누를 수 있으면 확인창이 아니라
+## 장식이다. MOUSE_FILTER_STOP 이 그 역할을 한다.
+##
+## 기본값을 [돌아가기] 쪽에 둔다 - 실수로 연타했을 때 결말을 보는 쪽으로
+## 굴러가면 안 된다. 그래서 [열람] 을 왼쪽이 아니라 오른쪽에 놓았다.
+func _ask_spoiler() -> void:
+	var veil := Control.new()
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.size = Vector2(1280, 720)
+	veil.mouse_filter = Control.MOUSE_FILTER_STOP
+	veil.z_index = 300
+	add_child(veil)
+
+	var scrim := _Scrim.new()
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.size = Vector2(1280, 720)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil.add_child(scrim)
+
+	var w := 620.0
+	var h := 246.0
+	var at := Vector2(640.0 - w * 0.5, 360.0 - h * 0.5)
+
+	var panel := _AskSkin.new()
+	panel.position = at
+	panel.size = Vector2(w, h)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil.add_child(panel)
+
+	UiKit.label(veil, at + Vector2(28, 26), Vector2(w - 56, 24),
+		UiText.t("title.spoiler_head", "기록 열람"), 17, UiKit.ACCENT)
+
+	UiKit.label(veil, at + Vector2(28, 66), Vector2(w - 56, 96),
+		UiText.t("title.spoiler_body",
+			"이 기록은 본편의 결말을 포함합니다.\n"
+			+ "메인 스테이지를 모두 클리어하신 뒤 열람하시기를 권장합니다.\n\n"
+			+ "그래도 보시겠습니까?"),
+		14, UiKit.TEXT, true)
+
+	var bw := 168.0
+	var by := at.y + h - 62.0
+	var btn_back := UiKit.button(veil, Vector2(at.x + w - bw * 2.0 - 40.0, by),
+		Vector2(bw, 40), UiText.t("title.spoiler_no", "돌아가기"), 14)
+	var btn_go := UiKit.button(veil, Vector2(at.x + w - bw - 28.0, by),
+		Vector2(bw, 40), UiText.t("title.spoiler_yes", "열람합니다"), 14)
+	btn_go.add_theme_color_override("font_color", UiKit.ACCENT)
+
+	btn_back.pressed.connect(func():
+		sfx.play("click")
+		veil.queue_free()
+	)
+	btn_go.pressed.connect(func():
+		sfx.play("click")
+		veil.queue_free()
+		show_help.emit()
+	)
+
+
+## 확인창 뒤를 어둡게. 뒤 화면이 살아 있다는 것은 보이되 읽히지는 않게 한다.
+class _Scrim extends Control:
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.05, 0.78))
+
+
+## 확인창의 판. 튜토리얼 말풍선과 같은 어법(모서리를 사선으로 깎고 강조색
+## 테두리)을 쓴다. 여기만 둥근 패널이면 다른 시대의 UI 처럼 보인다.
+class _AskSkin extends Control:
+	func _draw() -> void:
+		var s := size
+		var cut := 16.0
+		var shape := PackedVector2Array([
+			Vector2(cut, 0), Vector2(s.x, 0), Vector2(s.x, s.y - cut),
+			Vector2(s.x - cut, s.y), Vector2(0, s.y), Vector2(0, cut),
+		])
+		draw_colored_polygon(shape, Color(0.07, 0.08, 0.11, 0.98))
+		var line := PackedVector2Array(shape)
+		line.append(shape[0])
+		draw_polyline(line, Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.18),
+			5.0, true)
+		draw_polyline(line, UiKit.ACCENT, 1.8, true)
+		for i in 6:
+			var x := 32.0 + i * 16.0
+			draw_line(Vector2(x, 4), Vector2(x, 9),
+				Color(UiKit.ACCENT.r, UiKit.ACCENT.g, UiKit.ACCENT.b, 0.35), 1.0)
 
 
 ## 타이틀 배경의 격자 장식. 전투 화면과 같은 타일 크기를 써서 톤을 맞춘다.
