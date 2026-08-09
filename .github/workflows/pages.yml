@@ -83,6 +83,27 @@ jobs:
           test -f build/web/index.pck
           test -f build/web/index.wasm
 
+      - name: 셸 리소스 복사
+        # ── 왜 익스포트만으로는 부족한가 ────────────────────────────────
+        # 로딩 셸은 게임이 뜨기 **전에** 그려지므로 .pck 안의 리소스를 못 읽는다.
+        # 셸이 쓰는 TIP 문구와 폰트는 웹 루트에 따로 있어야 한다.
+        #
+        # 이 단계가 빠져 있었다. 로컬 build_web.ps1 에는 있는데 CI 에만 없어서,
+        # 배포본에서 tips.json 과 폰트 둘이 계속 404 였다 - 로딩 화면의 서체와
+        # TIP 이 조용히 깨진 채로 나가고 있었다. 로컬에서는 멀쩡하니 알 수가 없다.
+        #
+        # 복사가 실패하면 배포를 멈춘다. 없는 채로 올라가는 것이 지금까지의
+        # 문제였으므로 여기서만큼은 조용히 넘어가면 안 된다.
+        run: |
+          set -euo pipefail
+          cp data/tips.json build/web/tips.json
+          cp assets/fonts/DNFForgedBlade-Bold.ttf build/web/DNFForgedBlade-Bold.ttf
+          cp assets/fonts/DNFBitBitv2.ttf build/web/DNFBitBitv2.ttf
+          # 셸이 참조하는 이름과 실제 파일이 어긋나면 다시 404 가 된다.
+          for f in $(grep -oE 'url\("[^"]+"\)' assets/web/shell.html | sed -E 's/url\("(.*)"\)/\1/'); do
+            test -f "build/web/$f" || { echo "셸이 참조하는 $f 가 웹 루트에 없다"; exit 1; }
+          done
+
       - name: Jekyll 끄기
         # Jekyll 은 밑줄로 시작하는 파일을 배포에서 뺀다. 게임 빌드에는 손해만 있다.
         run: touch build/web/.nojekyll
