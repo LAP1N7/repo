@@ -60,6 +60,21 @@ func _init() -> void:
 		if st.has("at_tick"):
 			ticks.append(int(st["at_tick"]))
 
+	# 3b) 가리키는 곳이 실제로 등록되는가
+	#
+	# 앵커는 대본이 이름으로 부르고 화면이 register_anchor 로 답한다. 둘을 잇는
+	# 것은 문자열뿐이라, 화면을 뜯어고치면서 등록 줄만 지워도 조용히 끊긴다.
+	# 끊긴 앵커는 티가 잘 안 난다 - 말풍선은 그대로 뜨고 자리만 엉뚱해지며,
+	# gate 가 걸려 있으면 **누를 곳이 사라져 진행이 막힌다.**
+	var known := _registered_anchors()
+	for s in steps:
+		var st2: Dictionary = s
+		var an := String(st2.get("anchor", ""))
+		if an == "":
+			continue
+		_ok(_anchor_known(an, known),
+			"%s 가 가리키는 [%s] 를 등록하는 화면이 있다" % [st2.get("id", ""), an])
+
 	# 4) 틱 정지 지점이 오름차순인가. 뒤엉키면 그 대사는 영영 안 뜬다.
 	var sorted_ticks := ticks.duplicate()
 	sorted_ticks.sort()
@@ -84,6 +99,47 @@ func _init() -> void:
 
 	print("\n=== %d개 검사 / 실패 %d개 ===" % [_n, fails])
 	quit(1 if fails > 0 else 0)
+
+
+## 화면들이 register_anchor 로 등록하는 이름을 코드에서 긁어 모은다.
+##
+## 이름이 "shop_card_%d" 처럼 서식이면 % 앞까지만 접두어로 담는다. 몇 번까지
+## 만들어지는지는 실행해 봐야 아는 값이라, 여기서는 "그 계열이 등록되기는
+## 하는가" 까지만 본다. 오타와 삭제는 그것만으로 다 잡힌다.
+func _registered_anchors() -> Dictionary:
+	var out := {"exact": {}, "prefix": []}
+	var re := RegEx.new()
+	re.compile('register_anchor\\("([^"]+)"')
+	for path in _view_scripts():
+		var src := FileAccess.get_file_as_string(path)
+		for m in re.search_all(src):
+			var name := m.get_string(1)
+			var pct := name.find("%")
+			if pct < 0:
+				out["exact"][name] = true
+			else:
+				(out["prefix"] as Array).append(name.substr(0, pct))
+	return out
+
+
+func _view_scripts() -> Array[String]:
+	var out: Array[String] = []
+	var d := DirAccess.open("res://view")
+	if d == null:
+		return out
+	for f in d.get_files():
+		if f.ends_with(".gd"):
+			out.append("res://view/" + f)
+	return out
+
+
+func _anchor_known(name: String, known: Dictionary) -> bool:
+	if (known["exact"] as Dictionary).has(name):
+		return true
+	for p in known["prefix"]:
+		if name.begins_with(String(p)):
+			return true
+	return false
 
 
 var _n := 0

@@ -936,8 +936,6 @@ func _build_ui() -> void:
 	brief_panel.size = Vector2(836, 74)
 	brief_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(brief_panel)
-	if tut != null:
-		tut.register_anchor("brief_panel", brief_panel)
 
 	# 대원 바가 x48~836 · y566~662 를 쓴다. 조작 버튼은 그 오른쪽 열이다.
 	var cy := 596.0

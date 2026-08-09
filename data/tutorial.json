@@ -307,7 +307,7 @@
 			"speaker": "ai",
 			"side": "right",
 			"place": "bottom_left",
-			"anchor": "brief_panel",
+			"anchor": "log_panel",
 			"at_tick": 10,
 			"portrait": false,
 			"advance": "click"

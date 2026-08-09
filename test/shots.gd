@@ -210,10 +210,19 @@ func _init() -> void:
 	tut_run.offers.clear()
 	tut_run._fill_offers()
 
-	for spec in [[7, "shop", "18_tut_shop", "res://scenes/shop_screen.tscn"],
-			[15, "loadout", "19_tut_loadout", "res://scenes/loadout_screen.tscn"],
-			[22, "battle", "20_tut_battle", "res://scenes/battle_view.tscn"]]:
-		tut.index = int(spec[0])
+	# ── 자리는 id 로 찍는다 ─────────────────────────────────────────────
+	# 예전에는 번호(7 · 15 · 22)로 적었다. 대본에 단계를 하나 끼워 넣을 때마다
+	# 뒤 번호가 통째로 밀리는데 여기는 안 따라와서, 22번이 load_6b(편성 대사)가
+	# 된 채로 **전투 화면 위에** 찍히고 있었다. 겹침을 보려고 만든 그림이
+	# 정작 그 화면에 뜨지도 않을 말풍선을 보여 준 셈이다.
+	for spec in [["shop_2", "shop", "18_tut_shop", "res://scenes/shop_screen.tscn"],
+			["load_2", "loadout", "19_tut_loadout", "res://scenes/loadout_screen.tscn"],
+			["battle_1", "battle", "20_tut_battle", "res://scenes/battle_view.tscn"],
+			["battle_t1", "battle", "20b_tut_tick", "res://scenes/battle_view.tscn"],
+			["battle_t5", "battle", "20c_tut_roster", "res://scenes/battle_view.tscn"],
+			["battle_t9", "battle", "20d_tut_log", "res://scenes/battle_view.tscn"],
+			["outro_1", "battle", "20e_tut_outro", "res://scenes/battle_view.tscn"]]:
+		tut.index = _step_index(tut, String(spec[0]))
 		var scr: Node = load(String(spec[3])).instantiate()
 		scr.set("tut", tut)
 		root.add_child(scr)
@@ -237,6 +246,15 @@ func _init() -> void:
 
 	print("=== .shots/ 에 저장 완료 ===")
 	quit(0)
+
+
+## 대본에서 그 id 가 몇 번째인가. 없으면 0 - 대본이 갈렸다는 뜻이므로 알린다.
+func _step_index(tut: Tutorial, id: String) -> int:
+	for i in tut.steps.size():
+		if String((tut.steps[i] as Dictionary).get("id", "")) == id:
+			return i
+	push_error("shots: 대본에 [%s] 가 없다" % id)
+	return 0
 
 
 ## 화면 하나를 띄우고 프레임을 몇 번 돌린 뒤 찍는다.

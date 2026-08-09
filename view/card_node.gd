@@ -305,12 +305,6 @@ func _draw() -> void:
 	_arc_to(pts, Vector2(r, s.y - r), r, PI * 0.5, PI)              # 왼쪽 아래
 
 	draw_colored_polygon(pts, body)
-	var outline := PackedVector2Array(pts)
-	outline.append(pts[0])
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 5.0 * k, true)
-	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.35),
-		1.6 * k, true)
-
 	# ── 노치 안의 사선 띠 ────────────────────────────────────────────────
 	# 양 끝을 사선 방향으로 맞춰 잘라 마감하고, 위아래에 얇은 선을 둘러
 	# 띠 하나로 묶는다. 그 위에 빛을 한 겹 흘린다.
@@ -333,6 +327,14 @@ func _draw() -> void:
 			Vector2(hx, band_y + band_h),
 		]), hatch)
 		hx += bar_w + bar_gap
+	# 테두리는 띠보다 **위**다. 아래에 두면 띠가 선을 덮어 노치 모서리가
+	# 끊겨 보인다.
+	var outline := PackedVector2Array(pts)
+	outline.append(pts[0])
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.12), 5.0 * k, true)
+	draw_polyline(outline, Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.35),
+		1.6 * k, true)
+
 	# ── 왼쪽 아래 두꺼운 선 ──────────────────────────────────────────────
 	draw_line(Vector2(r, s.y - 3.0 * k), Vector2(r + s.x * 0.32, s.y - 3.0 * k),
 		Color(neon.r, neon.g, neon.b, 0.95 if enabled else 0.3), 5.0 * k)
@@ -374,7 +376,7 @@ func _draw() -> void:
 	var cost_size: int = int(14.0 * k) + 1
 	var cw := fs.get_string_size(cost_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size).x
 	draw_string(fs, badge_at + Vector2(-cw * 0.5, 6.0 * k), cost_txt,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(0.06, 0.07, 0.1))
+		HORIZONTAL_ALIGNMENT_LEFT, -1, cost_size, Color(1, 1, 1))
 
 	# 이름.
 	_draw_tracked(f, String(c["name"]), Vector2(pad, 50.0 * k), name_size,

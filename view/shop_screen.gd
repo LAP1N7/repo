@@ -288,8 +288,6 @@ func _build_shop() -> void:
 		card.clicked.connect(_on_buy)
 		if tut != null:
 			tut.register_anchor("shop_card_%d" % i, card)
-			if card.get_child_count() > 0 and card.get_child(0) is Button:
-				tut.register_anchor("shop_ban_%d" % i, card.get_child(0))
 
 
 ## 손패는 발라트로처럼 부채꼴로 겹쳐 깐다. 장수가 늘면 자동으로 더 겹친다.
