@@ -12,12 +12,22 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 
 | 역할 | 이름 | 출처 | 라이선스 |
 |---|---|---|---|
-| **title** (게임 이름) | 빛의 계승자 Bold (HeirofLightBold) | 넥슨 히트 | SIL Open Font License 1.1 |
+| **title** (게임 이름) | 빛의 계승자 Bold (HeirofLightBold) | 컴투스 「빛의 계승자」 | 무료 배포 폰트 · 상업적 이용 가능 |
 | **large** (14px+) | 던파 비트비트체 (DNFBitBitTTF) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 |
-| **small** (13px 이하) | 던파 비트비트체 v2 (DNFBitBitv2) | 넥슨 던전앤파이터 | SIL Open Font License 1.1 |
-| 폴백 | 둥근모꼴 (DungGeunMo) / Pretendard 1.3.9 | 둥근모꼴 프로젝트 / orioncactus | SIL Open Font License 1.1 |
+| **small** (13px 이하) | **넥슨 Lv2 고딕 Bold / Regular** (NexonLv2Gothic) | 넥슨 | 넥슨 무료 폰트 · 상업적 이용 가능 |
+| **story** (스토리 본문) | **넥슨 Lv2 고딕 Bold / Regular** (NexonLv2Gothic) | 넥슨 | 넥슨 무료 폰트 · 상업적 이용 가능 |
+| 폴백 | Pretendard 1.3.9 | orioncactus | SIL Open Font License 1.1 |
+| 보관(미사용) | 던파 비트비트체 v2 · 둥근모꼴 | 넥슨 / 둥근모꼴 프로젝트 | OFL 1.1 |
 
-- 라이선스 전문: `assets/fonts/*-LICENSE.txt`
+**넥슨 폰트 3종**(던파 비트비트체 · 던파 비트비트체 v2 · 넥슨 Lv2 고딕)은
+넥슨이 무료로 배포하며 **상업적 이용을 허용**한다.
+이용 조건 원문: <https://brand.nexon.com/ko/ci-brand-guidelines/typeface>
+
+**빛의 계승자 Bold** 는 컴투스가 모바일 RPG 「빛의 계승자」의 공식 서체로
+무료 배포하는 폰트다. 상업적 이용을 허용한다.
+배포처: <https://heiroflighteclipse.com2us.com/ko>
+
+- 라이선스 전문(파일로 동봉된 것): `assets/fonts/*-LICENSE.txt`
 - OFL 1.1은 임베딩·재배포를 허용한다. 표기 의무만 지키면 된다.
 - **세 가지를 쓰는 이유**: 하나로 통일하면 반드시 어딘가가 깨진다. 장식적인
   제목용 서체는 9~13px 로 들어가면 획이 뭉쳐 못 읽고, 반대로 가독성 위주 서체로
@@ -62,6 +72,9 @@ AI 활용 기술 문서에 반드시 명시해야 합니다."*
 | `ost2.wav` | 3~4 스테이지 | Pixabay | Pixabay Content License |
 | `boss_theme.wav` | 5 스테이지 | Pixabay | Pixabay Content License |
 | `story_stage4.wav` | ACT 4 스토리 | Pixabay | Pixabay Content License |
+| `battle12.wav` | 1~2 스테이지 교전 | Pixabay | Pixabay Content License |
+| `story12.wav` | ACT 1·2 스토리 | Pixabay | Pixabay Content License |
+| `tutorial_theme.wav` | 튜토리얼 | Pixabay | Pixabay Content License |
 
 > Say 'thanks' to **PaulYudin**! This helps keep the creative spirit going!
 >

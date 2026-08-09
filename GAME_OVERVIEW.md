@@ -259,8 +259,8 @@ DOCTRINE  언제 무엇을 하는가
 전체 목록과 라이선스는 저장소 `CREDITS.md`, AI 활용 내역은 `AI_USAGE.md` 참조.
 
 - Godot Engine 4.7.1 — MIT
-- 폰트 4종 — 전부 SIL Open Font License 1.1
-- 배경음 4종 — Pixabay / Pixabay Content License
+- 폰트 6종 — 넥슨 무료 폰트 3종 · 컴투스 「빛의 계승자」 1종 · OFL 1.1 2종 (전부 상업적 이용 가능)
+- 배경음 7종 — Pixabay / Pixabay Content License
 - 효과음 7종 — 제작자 직접 제작
 - 효과음 2종 — Pixabay / Pixabay Content License
 - 효과음 6종 — 실행 시점에 코드가 파형을 합성 (**외부 저작물 아님**)
