@@ -75,6 +75,15 @@ const HAND_H: float = 226.0
 ## 아니라 이미 산 것을 어디에 꽂을지 정하는 일이라, 카드가 눈에 들어와야 한다.
 const HAND_SCALE: float = 0.78
 
+## ── 이 판에 들어가는 카드는 납작하다 ────────────────────────────────────
+## 홈의 높이가 두 줄을 겨우 담는 자리라, 원래 비율로는 카드가 홈을 넘어 머리띠
+## 위로 올라온다. 배지와 사선 띠가 띠 밖으로 튀어나와 판이 안 닫혀 보였다.
+##
+## 폭까지 같이 줄이면(=HAND_SCALE 을 낮추면) 글씨가 작아져 설명이 안 읽힌다.
+## 여기서 모자란 것은 폭이 아니라 높이뿐이므로 높이만 줄인다. 설명 글은 남은
+## 자리의 가운데로 알아서 다시 앉으므로 줄어든 만큼 여백만 사라진다.
+const HAND_SQUAT: float = 0.88
+
 ## 카드 안쪽 세로 배치. 전부 카드 원점 기준이다.
 const IN_FACE_H: float = 96.0
 const IN_NAME_Y: float = 118.0
@@ -568,7 +577,7 @@ func _build_hand() -> void:
 	# 간격을 고정하고 넘치는 만큼 옆으로 흐르게 둔다. 카드 하나의 크기는
 	# 손패가 몇 장이든 같아야 한다.
 	var mini_w := CardNode.W * HAND_SCALE
-	var mini_h := CardNode.H * HAND_SCALE
+	var mini_h := CardNode.H * HAND_SQUAT * HAND_SCALE
 	var rows := 2
 	var step := mini_w + 12.0
 	var cols: int = int(ceil(float(n) / float(rows)))
@@ -588,11 +597,25 @@ func _build_hand() -> void:
 	x0 -= hand_scroll
 	var mid := (n - 1) * 0.5
 
+	# ── 세로 자리는 홈에서 받아 온다 ─────────────────────────────────────
+	# 예전에는 36 이라고 적어 뒀는데, 홈은 34 부터 시작하고 창은 판보다 12 위에
+	# 있어서 실제로는 홈보다 10px 위였다. 그만큼 카드 윗머리(배지·사선 띠)가
+	# 머리띠 위로 올라와 판이 안 닫혀 보였다. 숫자를 손으로 맞추지 말고 홈의
+	# 치수에서 끌어온다.
+	var groove_top: float = (hand_folder.position.y + _Folder.SLOT_TOP) - hand_clip.position.y
+	var groove_h: float = hand_folder.size.y - _Folder.SLOT_TOP - _Folder.SLOT_PAD
+	var row_gap := 6.0
+	var stack_h := mini_h * float(rows) + row_gap * float(rows - 1)
+	var y0: float = groove_top + maxf(0.0, (groove_h - stack_h) * 0.5)
+
 	for i in n:
 		var id: String = owned[i]
 		var card := CardNode.new()
 		hand_root.add_child(card)
 		card.mini_scale = HAND_SCALE
+		card.height_scale = HAND_SQUAT
+		# 펼쳐진 카드가 창 아래로 삐져나가면 잘린다. 창 안쪽까지가 한계다.
+		card.open_limit_y = hand_clip.size.y - 6.0
 		card.setup(id, i, true, false)
 
 		# 꽂을 수 있는 것만 밝게. 특수는 직업이 맞아야 하고, 카드는 빈 슬롯이 있어야 한다.
@@ -610,7 +633,7 @@ func _build_hand() -> void:
 		# 두 줄로 쌓는다. 세로로 먼저 채워야 가로 스크롤이 자연스럽다 -
 		# 가로로 먼저 채우면 스크롤할 때 두 줄이 따로 논다.
 		card.place(Vector2(x0 + float(i / rows) * step,
-			36.0 + float(i % rows) * (mini_h + 4.0)), 0.0)
+			y0 + float(i % rows) * (mini_h + row_gap)), 0.0)
 		card.clicked.connect(_on_hand_clicked)
 		if tut != null:
 			tut.register_anchor("hand_card_%d" % i, card)
@@ -676,6 +699,14 @@ class _Folder extends Control:
 	const TAB_W: float = 44.0
 	const BLUE := Color(0.36, 0.72, 1.0)
 
+	## ── 홈의 치수는 여기 하나뿐이다 ──────────────────────────────────────
+	## 카드를 놓는 쪽(_build_hand)과 홈을 그리는 쪽(_draw)이 각자 숫자를 들고
+	## 있으면 반드시 어긋난다. 실제로 어긋나서 카드 윗머리가 머리띠 위로
+	## 삐져나와 있었다 - 그리는 쪽은 34 부터인데 놓는 쪽은 30 부터였다.
+	const BAND: float = 26.0        ## 위쪽 머리띠 높이
+	const SLOT_TOP: float = 34.0    ## 홈이 시작하는 y (머리띠 + 8)
+	const SLOT_PAD: float = 8.0     ## 홈 아래 여백
+
 	## 지금 몇 장인가. 머리띠에 적는다.
 	var count: int = 0
 
@@ -698,7 +729,7 @@ class _Folder extends Control:
 		draw_rect(Rect2(0, 0, s.x, s.y), Color(0.045, 0.058, 0.082, 0.96))
 
 		# 머리띠. 목록의 이름과 수가 여기 산다.
-		var band := 26.0
+		var band := BAND
 		draw_rect(Rect2(0, 0, s.x, band), Color(0.075, 0.135, 0.20, 0.98))
 		draw_rect(Rect2(0, band - 1.0, s.x, 1), Color(BLUE.r, BLUE.g, BLUE.b, 0.55))
 		# 왼쪽 색 기둥. 머리띠에서 바닥까지 한 줄로 내린다.
@@ -713,8 +744,8 @@ class _Folder extends Control:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.80, 0.42))
 
 		# 바닥 홈. 카드가 꽂히는 자리를 얕게 판다.
-		var slot_y := band + 8.0
-		draw_rect(Rect2(10, slot_y, s.x - 20.0, s.y - slot_y - 8.0),
+		var slot_y := SLOT_TOP
+		draw_rect(Rect2(10, slot_y, s.x - 20.0, s.y - slot_y - SLOT_PAD),
 			Color(0.02, 0.03, 0.05, 0.55))
 		draw_rect(Rect2(10, s.y - 9.0, s.x - 20.0, 1),
 			Color(BLUE.r, BLUE.g, BLUE.b, 0.18))

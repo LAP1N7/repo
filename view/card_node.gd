@@ -59,6 +59,12 @@ var _expanded: bool = false
 ## 하단 안내 문구. "예산 부족" 같은 상태를 카드 위에 직접 띄운다.
 var note: String = ""
 
+## 펼쳐진 카드의 아랫변이 넘어서면 안 되는 y (부모 좌표). 0 이면 제한 없음.
+##
+## 목록 창이 clip_contents 로 내용을 잘라내는 자리에서만 쓴다. 안 주면 아래로
+## 자란 부분이 창 밖에서 그대로 잘려 나가, 늘렸는데도 안 보이는 일이 생긴다.
+var open_limit_y: float = 0.0
+
 var _hover: bool = false
 var _lift: float = 0.0
 var _scale: float = 1.0
@@ -104,9 +110,22 @@ func setup(p_card_id: String, p_index: int, p_mini: bool = false,
 ## 상점은 스무 장을 훑는 자리라 작게, 편성은 이미 산 것을 꽂는 자리라 크게.
 var mini_scale: float = 0.72
 
+## ── 세로만 줄인 납작한 변형 ──────────────────────────────────────────────
+## 1.0 이면 원래 비율이다. 이것만 낮추면 **폭은 그대로 두고 키만** 준다.
+##
+## 왜 mini_scale 로는 안 되는가: 그건 가로세로를 같이 줄이므로 글씨까지 작아진다.
+## 보유 모듈 판은 폭이 남고 높이가 모자란 자리라, 필요한 것은 "작은 카드" 가
+## 아니라 "납작한 카드" 다.
+##
+## 이렇게 나눠도 안이 안 깨지는 이유는 _draw 의 모든 치수가 k = s.x / W,
+## 즉 **가로** 기준이기 때문이다. 높이를 쓰는 곳은 왼쪽 아래 두꺼운 선(s.y-3k)과
+## 설명 글의 아래 경계(s.y-10k) 둘뿐이고, 설명은 남은 자리의 가운데로 알아서
+## 다시 앉는다.
+var height_scale: float = 1.0
+
 
 func card_size() -> Vector2:
-	return Vector2(W, H) * (mini_scale if mini else 1.0)
+	return Vector2(W, H * height_scale) * (mini_scale if mini else 1.0)
 
 
 ## 원래 크기 카드를 펼칠 배율. 폭이 늘어나면 한 줄에 더 들어가고,
@@ -153,7 +172,24 @@ func _process(delta: float) -> void:
 	var k := 1.0 - exp(-16.0 * delta)
 	_lift = lerp(_lift, target_lift, k)
 	_scale = lerp(_scale, target_scale, k)
-	position = base_pos + Vector2(0.0, _lift)
+
+	# ── 글이 넘치면 카드가 아래로 자란다 ─────────────────────────────────
+	# 잘린 설명은 카드를 키우는 것만으로는 안 풀린다. 자리가 없으면 여전히
+	# 잘리기 때문이다. 필요한 높이를 재서 상자 자체를 늘려야 전문이 들어온다.
+	var want_h := card_size().y
+	if want_hover:
+		want_h = maxf(want_h, _needed_height())
+	if not is_equal_approx(size.y, want_h):
+		size.y = want_h
+		pivot_offset = size * 0.5
+		queue_redraw()
+
+	# 아래로 자란 만큼 창 밖으로 나가면 그만큼 위로 밀어 올린다. 목록 창이
+	# 내용을 잘라내므로(clip_contents), 자란 부분이 그냥 사라져 버린다.
+	var push := 0.0
+	if want_hover and open_limit_y > 0.0:
+		push = minf(0.0, open_limit_y - (base_pos.y + size.y))
+	position = base_pos + Vector2(0.0, _lift + push)
 	rotation = 0.0
 	scale = Vector2(_scale, _scale)
 	z_index = 50 if want_hover else index
@@ -162,6 +198,37 @@ func _process(delta: float) -> void:
 		_drawn_hover = want_hover
 		_drawn_enabled = enabled
 		queue_redraw()
+
+
+## 설명 전문을 자르지 않고 담으려면 높이가 얼마여야 하는가.
+##
+## _draw 와 같은 치수를 쓴다. 여기서 어긋나면 카드는 커지는데 글은 잘리거나,
+## 반대로 빈 칸만 늘어난다.
+func _needed_height() -> float:
+	var c: Dictionary = Cards.TABLE.get(card_id, {})
+	if c.is_empty():
+		return card_size().y
+	var s := size
+	var kx: float = s.x / W
+	var fs := UiKit.font_role("small")
+	var pad := 14.0 * kx
+	var text_size: int = int(13.0 * kx) + 1
+	var line_h := float(text_size) + 3.0
+	var body_w := s.x - pad * 2.0
+	var rule_text := String(c["text"])
+	var arrow := rule_text.find("→")
+	var lines := 0
+	var gap := 0.0
+	if arrow >= 0:
+		lines = _count_lines(fs, rule_text.substr(0, arrow).strip_edges(),
+			body_w, text_size, 999)
+		lines += _count_lines(fs, rule_text.substr(arrow + 1).strip_edges(),
+			body_w, text_size, 999)
+		gap = 2.0
+	else:
+		lines = _count_lines(fs, rule_text, body_w, text_size, 999)
+	# body_top(58k) + 글 + 아래 여백(10k). _draw 의 body_bottom 과 짝이다.
+	return 58.0 * kx + float(lines) * line_h + gap + 10.0 * kx
 
 
 ## 글자를 하나씩 놓아 자간을 벌린다.
@@ -396,25 +463,35 @@ func _draw() -> void:
 	var line_h := float(text_size) + 3.0
 	var room: float = body_bottom - body_top
 	var cap: int = maxi(1, int(room / line_h))
+	# ── 펼쳐진 동안은 아무것도 안 자른다 ─────────────────────────────────
+	# 평소에는 자리에 맞춰 줄을 끊고 말줄임표를 붙인다. 그 대신 마우스를 올리면
+	# 카드가 아래로 자라서 전문이 보여야 한다. 여기서 한도를 안 풀면 카드만
+	# 커지고 글은 여전히 잘린 채로 남는다 - 실제로 그 상태였다.
+	if _drawn_hover:
+		cap = 999
 	# 실제로 몇 줄이 나오는지 먼저 세어 가운데로 민다.
 	var used_lines := 0
 	if arrow >= 0:
-		used_lines = 1 + _count_lines(fs, rule_text.substr(arrow + 1).strip_edges(),
-			body_w, text_size, maxi(1, cap - 1))
+		used_lines = _count_lines(fs, rule_text.substr(0, arrow).strip_edges(),
+			body_w, text_size, 1 if not _drawn_hover else cap)
+		used_lines += _count_lines(fs, rule_text.substr(arrow + 1).strip_edges(),
+			body_w, text_size, maxi(1, cap - used_lines))
 	else:
 		used_lines = _count_lines(fs, rule_text, body_w, text_size, cap)
 	ty = body_top + maxf(0.0, (room - float(used_lines) * line_h) * 0.5)
 	if arrow >= 0:
 		var cond_line := rule_text.substr(0, arrow).strip_edges()
 		var act_line := rule_text.substr(arrow + 1).strip_edges()
+		# 조건은 평소 한 줄로 묶는다. 두 줄이 되면 행동이 밀려 카드가 글로만 찬다.
+		# 펼쳤을 때만 푼다.
 		var used := _wrapped(fs, cond_line, Vector2(pad, ty), body_w, text_size,
-			Color(0.62, 0.66, 0.74) * dim, 1)
+			Color(0.62, 0.66, 0.74) * dim, 0 if _drawn_hover else 1)
 		ty += used + 2.0
 		_wrapped(fs, act_line, Vector2(pad, ty), body_w, text_size,
-			UiKit.ACCENT * dim, maxi(1, cap - 1))
+			UiKit.ACCENT * dim, 0 if _drawn_hover else maxi(1, cap - 1))
 	else:
 		_wrapped(fs, rule_text, Vector2(pad, ty), body_w, text_size,
-			Color(0.80, 0.84, 0.90) * dim, cap)
+			Color(0.80, 0.84, 0.90) * dim, 0 if _drawn_hover else cap)
 
 	# 상태 문구. 오른쪽 아래에 붙인다 - 규칙 글과 자리를 다투지 않는다.
 	if note != "":
