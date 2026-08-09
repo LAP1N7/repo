@@ -259,7 +259,8 @@ DOCTRINE  언제 무엇을 하는가
 전체 목록과 라이선스는 저장소 `CREDITS.md`, AI 활용 내역은 `AI_USAGE.md` 참조.
 
 - Godot Engine 4.7.1 — MIT
-- 폰트 6종 — 넥슨 무료 폰트 3종 · 컴투스 「빛의 계승자」 1종 · OFL 1.1 2종 (전부 상업적 이용 가능)
+- 폰트 6종 — 네오플 무료 폰트 3종 · 넥슨 무료 폰트 2종 · OFL 1.1 2종
+  (전부 상업적 이용과 게임 임베딩이 허용된 것만 쓴다)
 - 배경음 7종 — Pixabay / Pixabay Content License
 - 효과음 7종 — 제작자 직접 제작
 - 효과음 2종 — Pixabay / Pixabay Content License

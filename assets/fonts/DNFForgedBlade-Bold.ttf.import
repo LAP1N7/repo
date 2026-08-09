@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://f148sumcuwyf"
-path="res://.godot/imported/HeirofLightBold.ttf-9e8f403d14e6d083901f3237673c1592.fontdata"
+uid="uid://ctueofkshrt5a"
+path="res://.godot/imported/DNFForgedBlade-Bold.ttf-3eaff8d5bf8a95a065dec8cfa605276e.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/HeirofLightBold.ttf"
-dest_files=["res://.godot/imported/HeirofLightBold.ttf-9e8f403d14e6d083901f3237673c1592.fontdata"]
+source_file="res://assets/fonts/DNFForgedBlade-Bold.ttf"
+dest_files=["res://.godot/imported/DNFForgedBlade-Bold.ttf-3eaff8d5bf8a95a065dec8cfa605276e.fontdata"]
 
 [params]
 

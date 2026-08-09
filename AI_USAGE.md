@@ -301,11 +301,11 @@ TARGET(누구를 쫓는가) → POSITION(어디에 서는가) → DOCTRINE(언�
 | 분류 | 항목 | 출처 | 라이선스 |
 |---|---|---|---|
 | 엔진 | Godot Engine 4.7.1 | godotengine.org | MIT |
-| 폰트 | 빛의 계승자 Bold | 컴투스 「빛의 계승자」 | 무료 배포 폰트 · 상업적 이용 가능 |
-| 폰트 | 던파 비트비트체 / v2 | 넥슨 | SIL OFL 1.1 |
-| 폰트 | **넥슨 Lv2 고딕 Bold / Regular** | 넥슨 | 넥슨 무료 폰트 · 상업적 이용 가능 |
+| 폰트 | DNF 단조된 검체 Bold (제목·컷인) | ㈜네오플 | 무료 · 상업적 이용 · 임베딩 가능 |
+| 폰트 | 던파 비트비트체 / v2 | ㈜네오플 | 무료 · 상업적 이용 · 임베딩 가능 |
+| 폰트 | 넥슨 Lv2 고딕 Bold / Regular (본문) | ㈜넥슨코리아 | 무료 · 상업적 이용 · 임베딩 가능 |
 | 폰트 | Pretendard 1.3.9 | orioncactus | SIL OFL 1.1 |
-| 폰트 | 둥근모꼴 (보관·미사용) | 둥근모꼴 프로젝트 | SIL OFL 1.1 |
+| 폰트 | Neo둥근모 (동봉·미사용) | 둥근모꼴 프로젝트 | SIL OFL 1.1 |
 | 배경음 | 7종 (`opening_theme` `ost2` `boss_theme` `story_stage4` `battle12` `story12` `tutorial_theme`) | Pixabay (`opening_theme`은 PaulYudin) | Pixabay Content License |
 | 효과음 | 7종 (`step` `attack_melee` `attack_ranged` `click` `special` `defeat` `opening`) | 제작자 직접 제작 | 본인 저작 |
 | 효과음 | 2종 (`typing` `beep`) | Pixabay | Pixabay Content License |
