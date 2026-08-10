@@ -9,7 +9,7 @@
 | ------------------- | ---------------------------------------------------------------- |
 | **플레이 (브라우저 웹 게임)** | [https://lap1n7.github.io/repo/](https://lap1n7.github.io/repo/) |
 | **소스 코드**           | [https://github.com/LAP1N7/repo](https://github.com/LAP1N7/repo) |
-| **플레이 영상**          |                                                                  |
+| **플레이 영상**          | [https://youtu.be/WfwLjlWSbvk](https://youtu.be/WfwLjlWSbvk)     |
 
 
 ---
