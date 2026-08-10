@@ -70,7 +70,7 @@ view/     렌더링 · UI. core 를 읽기만 한다
   shop_screen.gd    1단계
   loadout_screen.gd 2단계
   battle_view.gd    3단계
-  card_node.gd      카드 한 장 (발라트로식 호버/아치)
+  card_node.gd      카드 한 장 (호버로 들리고 부채꼴로 겹친다)
   unit_view.gd      유닛 한 명 (도형 + HP 바 + 규칙 라벨)
   burst.gd          사망 파티클
   ui_kit.gd         공용 색 · 폰트 · 위젯
